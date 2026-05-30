@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Holioo - Messages pour demain</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f7f3ed;
+      color: #2f2f2f;
+    }
+
+    header {
+      padding: 30px 8%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f7f3ed;
+    }
+
+    .logo {
+      font-size: 28px;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
+
+    nav a {
+      margin-left: 20px;
+      text-decoration: none;
+      color: #2f2f2f;
+      font-size: 15px;
+    }
+
+    .hero {
+      padding: 100px 8%;
+      text-align: center;
+      background: linear-gradient(to bottom, #f7f3ed, #e8ded2);
+    }
+
+    .hero h1 {
+      font-size: 52px;
+      margin-bottom: 20px;
+    }
+
+    .hero p {
+      font-size: 20px;
+      max-width: 700px;
+      margin: auto;
+      line-height: 1.6;
+    }
+
+    .button {
+      display: inline-block;
+      margin-top: 35px;
+      padding: 15px 30px;
+      background: #2f2f2f;
+      color: white;
+      text-decoration: none;
+      border-radius: 30px;
+      font-weight: bold;
+    }
+
+    section {
+      padding: 70px 8%;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 25px;
+      margin-top: 30px;
+    }
+
+    .card {
+      background: white;
+      padding: 30px;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    }
+
+    .card h3 {
+      margin-top: 0;
+    }
+
+    footer {
+      text-align: center;
+      padding: 30px;
+      background: #2f2f2f;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo">HOLIOO</div>
+    <nav>
+      <a href="#about">À propos</a>
+      <a href="#services">Services</a>
+      <a href="#contact">Contact</a>
+    </nav>
+  </header>
+
+  <div class="hero">
+    <h1>Vos souvenirs d’aujourd’hui, vos messages pour demain.</h1>
+    <p>
+      Holioo vous aide à créer des messages vidéo sincères, familiaux et émotionnels,
+      à conserver pour l’avenir et à redécouvrir au bon moment.
+    </p>
+    <a class="button" href="#contact">Nous contacter</a>
+  </div>
+
+  <section id="about">
+    <h2>À propos de Holioo</h2>
+    <p>
+      Holioo est un projet dédié aux familles, aux souvenirs et aux messages personnels.
+      L’idée est simple : enregistrer aujourd’hui une pensée, une promesse ou un souvenir,
+      pour le revoir demain, dans un an ou plus tard.
+    </p>
+  </section>
+
+  <section id="services">
+    <h2>Nos services</h2>
+    <div class="cards">
+      <div class="card">
+        <h3>Messages pour l’avenir</h3>
+        <p>Créez une vidéo personnelle à revoir dans le futur.</p>
+      </div>
+      <div class="card">
+        <h3>Souvenirs de famille</h3>
+        <p>Gardez les paroles, les émotions et les moments précieux.</p>
+      </div>
+      <div class="card">
+        <h3>Capsule annuelle</h3>
+        <p>Envoyez un message à votre futur vous et faites le point un an après.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="contact">
+    <h2>Contact</h2>
+    <p>
+      Pour préparer votre message ou poser une question, contactez-nous :
+    </p>
+    <p>
+      <strong>Email :</strong> contact@holioo.fr
+    </p>
+  </section>
+
+  <footer>
+    © 2026 Holioo - Tous droits réservés
+  </footer>
+
+</body>
+</html>

@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: #F8F4EF;
+    color: #2C2825;
+    font-family: 'DM Sans', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, h4 {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    letter-spacing: -0.01em;
+  }
+}
+
+@layer components {
+  .section-label {
+    @apply text-xs font-sans font-medium tracking-[0.2em] uppercase text-stone;
+  }
+  .section-title {
+    @apply text-4xl md:text-5xl font-serif font-light text-charcoal leading-tight;
+  }
+  .btn-primary {
+    @apply inline-block px-7 py-3.5 bg-charcoal text-cream font-sans text-sm font-medium tracking-wide transition-all duration-300 hover:bg-warm;
+  }
+  .btn-outline {
+    @apply inline-block px-7 py-3.5 border border-charcoal text-charcoal font-sans text-sm font-medium tracking-wide transition-all duration-300 hover:bg-charcoal hover:text-cream;
+  }
+  .btn-gold {
+    @apply inline-block px-8 py-4 bg-gold text-white font-sans text-sm font-medium tracking-wide transition-all duration-300 hover:opacity-90;
+  }
+  .card-elegant {
+    @apply bg-white border border-beige p-8 transition-all duration-300 hover:shadow-sm hover:border-taupe;
+  }
+  .input-elegant {
+    @apply w-full bg-transparent border-b border-taupe py-3 px-0 font-sans text-sm text-charcoal placeholder-stone focus:outline-none focus:border-charcoal transition-colors duration-200;
+  }
+  .nav-link {
+    @apply font-sans text-sm font-light text-warm hover:text-charcoal transition-colors duration-200 tracking-wide;
+  }
+  .divider { @apply w-12 h-px bg-taupe; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up { animation: fadeInUp 0.8s ease both; }
+.delay-100 { animation-delay: 0.1s; }
+.delay-200 { animation-delay: 0.2s; }
+.delay-300 { animation-delay: 0.3s; }
+.delay-400 { animation-delay: 0.4s; }
+.delay-500 { animation-delay: 0.5s; }
+
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.reveal.visible { opacity: 1; transform: translateY(0); }
+.cinematic-placeholder {
+  background: linear-gradient(135deg, #EDE8E1 0%, #C4B8A8 50%, #9B8E7E 100%);
+  position: relative; overflow: hidden;
+}

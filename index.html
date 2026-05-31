@@ -1,626 +1,636 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Message pour Demain — Studio cinématique interactif</title>
-  <meta name="description" content="Message pour Demain crée des films cinématographiques pour les familles, couples et personnes qui souhaitent enregistrer un message pour leur futur." />
-  <meta name="theme-color" content="#0e0d0b" />
-  <meta property="og:title" content="Message pour Demain" />
-  <meta property="og:description" content="Un film pour aujourd’hui. Un message pour demain." />
-  <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://holioo.fr" />
-  <meta property="og:image" content="https://holioo.fr/og-image.jpg" />
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Canvas, useFrame } from "@react-three/fiber";
+import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
+import {
+  ArrowRight,
+  Camera,
+  ChevronDown,
+  Film,
+  HeartHandshake,
+  Mail,
+  Menu,
+  Play,
+  Sparkles,
+  X,
+} from "lucide-react";
 
-  <style>
-    :root {
-      --dark: #0d0c0a;
-      --dark2: #171411;
-      --cream: #fff4e5;
-      --beige: #efe0cc;
-      --muted: rgba(255, 244, 229, .68);
-      --mutedDark: #74685c;
-      --gold: #d9a25b;
-      --accent: #d9a25b;
-      --accent2: #ffcf8a;
-      --cameraHue: 34;
-      --scroll: 0;
-      --mx: 50%;
-      --my: 50%;
-      --rx: 0deg;
-      --ry: 0deg;
-      --lensScale: 1;
-      --max: 1220px;
-      --line: rgba(255,244,229,.14);
-    }
+function usePageProgress() {
+  const [progress, setProgress] = useState(0);
 
-    * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; background: var(--dark); }
+  useEffect(() => {
+    const update = () => {
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      setProgress(max > 0 ? window.scrollY / max : 0);
+    };
 
-    body {
-      margin: 0;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: var(--cream);
-      background:
-        radial-gradient(circle at var(--mx) var(--my), hsla(var(--cameraHue), 78%, 62%, .25), transparent 22rem),
-        radial-gradient(circle at 12% 82%, rgba(255,244,229,.08), transparent 28rem),
-        linear-gradient(180deg, #0b0a08 0%, #18130f 45%, #0b0a08 100%);
-      cursor: none;
-      overflow-x: hidden;
-    }
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, []);
 
-    body::after {
-      content: "";
-      position: fixed;
-      inset: 0;
-      z-index: 9000;
-      pointer-events: none;
-      opacity: .10;
-      mix-blend-mode: soft-light;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='170' height='170' viewBox='0 0 170 170'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='170' height='170' filter='url(%23n)' opacity='.45'/%3E%3C/svg%3E");
-    }
+  return progress;
+}
 
-    a, button, input, select, textarea { font: inherit; }
-    a { color: inherit; }
-    ::selection { background: var(--accent); color: var(--dark); }
-    .container { width: min(var(--max), calc(100% - 44px)); margin: 0 auto; position: relative; z-index: 2; }
+function usePointer() {
+  const [pointer, setPointer] = useState({ x: 0, y: 0 });
 
-    .cursor-dot, .cursor-ring {
-      position: fixed;
-      left: 0;
-      top: 0;
-      transform: translate(-50%, -50%);
-      border-radius: 50%;
-      pointer-events: none;
-      z-index: 10000;
-    }
-    .cursor-dot { width: 12px; height: 12px; background: var(--accent); mix-blend-mode: difference; transition: width .18s ease, height .18s ease; }
-    .cursor-ring { width: 56px; height: 56px; border: 1px solid rgba(255,244,229,.55); transition: width .2s ease, height .2s ease, border .2s ease; }
-    body.cursor-big .cursor-dot { width: 22px; height: 22px; }
-    body.cursor-big .cursor-ring { width: 92px; height: 92px; border-color: hsla(var(--cameraHue), 84%, 68%, .78); }
+  useEffect(() => {
+    const move = (event) => {
+      setPointer({
+        x: (event.clientX / window.innerWidth) * 2 - 1,
+        y: -(event.clientY / window.innerHeight) * 2 + 1,
+      });
+    };
 
-    .loader {
-      position: fixed;
-      inset: 0;
-      z-index: 20000;
-      display: grid;
-      place-items: center;
-      background: var(--dark);
-      transition: transform .95s cubic-bezier(.77,0,.175,1), opacity .7s ease;
-    }
-    .loader.done { transform: translateY(-100%); opacity: .2; pointer-events: none; }
-    .loader-inner { text-align: center; }
-    .loader-button {
-      border: 1px solid var(--line);
-      background: var(--cream);
-      color: var(--dark);
-      padding: 18px 28px;
-      border-radius: 999px;
-      font-weight: 950;
-      text-transform: uppercase;
-      letter-spacing: .1em;
-      cursor: none;
-      animation: pulse 1.55s ease infinite;
-    }
-    @keyframes pulse { 50% { box-shadow: 0 0 0 18px rgba(217,162,91,0); } }
-    .loader-title {
-      margin-top: 24px;
-      font-family: Georgia, serif;
-      font-size: clamp(42px, 9vw, 112px);
-      font-weight: 500;
-      line-height: .9;
-      letter-spacing: -.07em;
-    }
+    window.addEventListener("pointermove", move, { passive: true });
+    return () => window.removeEventListener("pointermove", move);
+  }, []);
 
-    .progress-rail {
-      position: fixed;
-      left: 28px;
-      top: 120px;
-      bottom: 34px;
-      width: 2px;
-      background: rgba(255,244,229,.12);
-      z-index: 80;
-    }
-    .progress-rail i { display: block; width: 100%; height: calc(var(--scroll) * 1%); background: linear-gradient(var(--accent), var(--cream)); }
-    .side-label {
-      position: fixed;
-      left: 18px;
-      bottom: 34px;
-      z-index: 81;
-      writing-mode: vertical-rl;
-      transform: rotate(180deg);
-      color: rgba(255,244,229,.45);
-      font-size: 11px;
-      letter-spacing: .22em;
-      text-transform: uppercase;
-    }
+  return pointer;
+}
 
-    .site-header {
-      position: fixed;
-      top: 22px;
-      left: 0;
-      width: 100%;
-      z-index: 100;
-      pointer-events: none;
-    }
-    .nav-shell {
-      pointer-events: auto;
-      min-height: 74px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      padding: 10px 12px 10px 20px;
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      background: rgba(13, 12, 10, .58);
-      backdrop-filter: blur(18px);
-      box-shadow: 0 24px 80px rgba(0,0,0,.26);
-    }
-    .brand { display: flex; align-items: center; gap: 12px; text-decoration: none; line-height: 1; }
-    .brand-mark { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; background: var(--cream); color: var(--dark); font-family: Georgia, serif; font-size: 20px; }
-    .brand strong { display: block; font-family: Georgia, serif; font-size: clamp(18px, 2vw, 28px); font-weight: 500; letter-spacing: -.04em; }
-    .brand span span { display: block; margin-top: 5px; color: rgba(255,244,229,.56); font-size: 10px; letter-spacing: .20em; text-transform: uppercase; }
+function Stars({ count = 130 }) {
+  const points = useMemo(() => {
+    return Array.from({ length: count }, () => ({
+      position: [
+        (Math.random() - 0.5) * 16,
+        (Math.random() - 0.5) * 10,
+        (Math.random() - 0.5) * 10,
+      ],
+      scale: 0.012 + Math.random() * 0.035,
+      speed: 0.15 + Math.random() * 0.45,
+    }));
+  }, [count]);
 
-    .nav-center { display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 999px; background: rgba(255,244,229,.06); border: 1px solid rgba(255,244,229,.08); }
-    .nav-center a { text-decoration: none; color: rgba(255,244,229,.72); padding: 10px 13px; border-radius: 999px; font-size: 13px; transition: .22s ease; }
-    .nav-center a:hover { background: var(--cream); color: var(--dark); }
-    .nav-actions { display: flex; align-items: center; gap: 8px; }
-    .lang-switch { display: inline-flex; gap: 4px; padding: 5px; border-radius: 999px; background: rgba(255,244,229,.08); border: 1px solid rgba(255,244,229,.10); }
-    .lang-switch button { border: 0; background: transparent; color: rgba(255,244,229,.62); border-radius: 999px; padding: 8px 10px; font-size: 12px; font-weight: 900; cursor: none; }
-    .lang-switch button.active { background: var(--cream); color: var(--dark); }
-    .menu-toggle { display: none; border: 1px solid var(--line); background: rgba(255,244,229,.08); color: var(--cream); border-radius: 999px; width: 44px; height: 44px; cursor: none; }
+  const group = useRef();
 
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 52px;
-      padding: 14px 24px;
-      border-radius: 999px;
-      border: 1px solid transparent;
-      text-decoration: none;
-      font-weight: 950;
-      cursor: none;
-      transition: transform .22s ease, box-shadow .22s ease, color .22s ease, background .22s ease;
-      position: relative;
-      overflow: hidden;
-    }
-    .btn::after { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at var(--bx,50%) var(--by,50%), rgba(255,255,255,.35), transparent 32%); opacity: 0; transition: opacity .2s ease; }
-    .btn:hover { transform: translateY(-3px); box-shadow: 0 18px 50px rgba(0,0,0,.24); }
-    .btn:hover::after { opacity: 1; }
-    .btn-primary { background: var(--cream); color: var(--dark); }
-    .btn-outline { border-color: rgba(255,244,229,.22); color: var(--cream); background: rgba(255,244,229,.06); }
-    .btn-accent { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: var(--dark); }
+  useFrame(({ clock }) => {
+    if (!group.current) return;
+    group.current.rotation.y = clock.elapsedTime * 0.015;
+  });
 
-    .hero {
-      min-height: 100svh;
-      display: grid;
-      align-items: center;
-      padding: 146px 0 76px;
-      position: relative;
-    }
-    .hero-grid { display: grid; grid-template-columns: .76fr 1.24fr; gap: 44px; align-items: center; }
-    .eyebrow { display: inline-flex; align-items: center; gap: 10px; text-transform: uppercase; letter-spacing: .18em; font-size: 12px; font-weight: 950; color: var(--accent); margin-bottom: 18px; }
-    .eyebrow::before { content: ""; width: 34px; height: 1px; background: currentColor; }
-    h1, h2, h3 { margin: 0; letter-spacing: -.055em; }
-    h1 { font-family: Georgia, serif; font-size: clamp(58px, 8.8vw, 136px); line-height: .86; font-weight: 500; max-width: 790px; }
-    .lead { margin: 28px 0 0; color: var(--muted); line-height: 1.65; font-size: clamp(17px, 2vw, 22px); max-width: 640px; }
-    .hero-ctas { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 34px; }
-    .offer-chip { margin-top: 26px; display: inline-flex; align-items: center; gap: 12px; padding: 12px 15px; border: 1px solid hsla(var(--cameraHue), 78%, 62%, .28); background: hsla(var(--cameraHue), 78%, 62%, .10); border-radius: 999px; color: rgba(255,244,229,.88); font-size: 14px; max-width: 660px; }
-    .offer-chip i { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 7px hsla(var(--cameraHue), 78%, 62%, .14); flex: 0 0 auto; }
+  return (
+    <group ref={group}>
+      {points.map((star, index) => (
+        <mesh key={index} position={star.position} scale={star.scale}>
+          <sphereGeometry args={[1, 8, 8]} />
+          <meshBasicMaterial color="#f6ead8" transparent opacity={0.55} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
 
-    .camera-stage {
-      position: relative;
-      height: min(74vh, 760px);
-      min-height: 630px;
-      perspective: 1400px;
-    }
-    .studio-card {
-      position: absolute;
-      inset: 0;
-      border-radius: 48px;
-      overflow: hidden;
-      background:
-        radial-gradient(circle at var(--mx) var(--my), hsla(var(--cameraHue), 86%, 66%, .24), transparent 20rem),
-        linear-gradient(145deg, #29241f 0%, #12100e 56%, #070706 100%);
-      border: 1px solid var(--line);
-      box-shadow: 0 40px 130px rgba(0,0,0,.50);
-      transform-style: preserve-3d;
-      transform: rotateX(var(--rx)) rotateY(var(--ry));
-      transition: transform .12s linear;
-    }
-    .studio-card::before { content: ""; position: absolute; inset: 26px; border: 1px solid var(--line); border-radius: 36px; z-index: 3; pointer-events: none; }
-    .studio-grid { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(255,244,229,.05) 1px, transparent 1px), linear-gradient(180deg, rgba(255,244,229,.05) 1px, transparent 1px); background-size: 48px 48px; mask-image: radial-gradient(circle at 50% 50%, black 0%, transparent 72%); }
-    .big-word { position: absolute; left: -2vw; top: 5%; font-size: clamp(78px, 13.8vw, 210px); line-height: .82; color: rgba(255,244,229,.055); text-transform: uppercase; font-weight: 1000; letter-spacing: -.08em; user-select: none; transform: translateZ(-30px); }
+function MemoryCapsule({ progress, pointer }) {
+  const group = useRef();
+  const ringA = useRef();
+  const ringB = useRef();
+  const glow = useRef();
 
-    .camera-wrap {
-      position: absolute;
-      inset: 80px 48px 175px;
-      display: grid;
-      place-items: center;
-      transform: translateZ(110px);
-    }
-    .camera3d {
-      position: relative;
-      width: min(86%, 560px);
-      height: 310px;
-      transform-style: preserve-3d;
-      transform: rotateX(calc(var(--rx) * .2)) rotateY(calc(var(--ry) * .2)) scale(calc(.96 + var(--scroll) * .0018));
-      transition: transform .18s ease;
-      filter: drop-shadow(0 38px 48px rgba(0,0,0,.45));
-    }
-    .cam-body {
-      position: absolute;
-      left: 70px;
-      top: 80px;
-      width: 355px;
-      height: 180px;
-      border-radius: 36px;
-      background: linear-gradient(145deg, hsl(var(--cameraHue), 68%, 43%), hsl(var(--cameraHue), 76%, 27%) 58%, #16120e);
-      border: 1px solid rgba(255,244,229,.18);
-      box-shadow: inset 0 0 34px rgba(255,255,255,.10), inset 0 -35px 60px rgba(0,0,0,.28);
-      transform: translateZ(30px);
-    }
-    .cam-body::before { content: ""; position: absolute; left: 28px; top: 24px; right: 28px; height: 12px; border-radius: 999px; background: rgba(255,244,229,.26); }
-    .cam-top {
-      position: absolute;
-      left: 120px;
-      top: 35px;
-      width: 225px;
-      height: 65px;
-      border-radius: 26px 26px 14px 14px;
-      background: linear-gradient(145deg, rgba(255,244,229,.22), rgba(255,244,229,.08));
-      border: 1px solid rgba(255,244,229,.18);
-      transform: translateZ(70px);
-    }
-    .cam-handle {
-      position: absolute;
-      right: 65px;
-      top: 34px;
-      width: 105px;
-      height: 72px;
-      border: 14px solid rgba(255,244,229,.20);
-      border-bottom: 0;
-      border-radius: 42px 42px 8px 8px;
-      transform: translateZ(88px) rotateY(-8deg);
-    }
-    .cam-viewfinder {
-      position: absolute;
-      left: 6px;
-      top: 118px;
-      width: 100px;
-      height: 88px;
-      border-radius: 26px;
-      background: linear-gradient(145deg, #29241f, #0a0908);
-      border: 1px solid rgba(255,244,229,.18);
-      transform: translateZ(58px) rotateY(10deg);
-    }
-    .cam-lens {
-      position: absolute;
-      right: 66px;
-      top: 66px;
-      width: 205px;
-      height: 205px;
-      border-radius: 50%;
-      background: radial-gradient(circle at 42% 38%, rgba(255,255,255,.92), rgba(255,255,255,.18) 8%, transparent 13%), radial-gradient(circle, #14110e 0 28%, hsl(var(--cameraHue), 72%, 31%) 29% 45%, #0b0908 47% 64%, rgba(255,244,229,.12) 65% 68%, #100e0c 70%);
-      border: 1px solid rgba(255,244,229,.22);
-      transform: translateZ(125px) scale(var(--lensScale));
-      box-shadow: 0 0 0 18px rgba(255,244,229,.06), 0 22px 55px rgba(0,0,0,.38), inset 0 0 34px rgba(255,255,255,.15);
-      transition: transform .18s ease;
-    }
-    .cam-lens::after { content: ""; position: absolute; inset: 54px; border-radius: 50%; border: 1px solid rgba(255,244,229,.20); background: radial-gradient(circle at var(--mx) var(--my), hsla(var(--cameraHue), 88%, 72%, .7), transparent 30%), #070606; }
-    .cam-light {
-      position: absolute;
-      left: 115px;
-      top: 130px;
-      width: 38px;
-      height: 38px;
-      border-radius: 50%;
-      background: var(--accent2);
-      box-shadow: 0 0 30px var(--accent);
-      transform: translateZ(110px);
-    }
-    .cam-line {
-      position: absolute;
-      left: 70px;
-      right: 80px;
-      bottom: 22px;
-      height: 3px;
-      background: linear-gradient(90deg, transparent, rgba(255,244,229,.42), transparent);
-      transform: translateZ(150px);
-    }
+  useFrame(({ clock }) => {
+    const time = clock.elapsedTime;
+    if (!group.current) return;
 
-    .module-panel {
-      position: absolute;
-      min-width: 170px;
-      padding: 14px 16px;
-      border-radius: 20px;
-      background: rgba(255,244,229,.12);
-      border: 1px solid rgba(255,244,229,.18);
-      backdrop-filter: blur(18px);
-      color: var(--cream);
-      z-index: 5;
-      opacity: 0;
-      transform: translateY(18px) scale(.96);
-      transition: opacity .34s ease, transform .34s ease;
-    }
-    .module-panel.show { opacity: 1; transform: translateY(0) scale(1); }
-    .module-panel strong { display: block; margin-bottom: 4px; }
-    .module-panel span { color: rgba(255,244,229,.62); font-size: 13px; line-height: 1.4; }
-    .module-1 { left: 46px; top: 80px; }
-    .module-2 { right: 46px; top: 82px; }
-    .module-3 { left: 52px; bottom: 106px; }
-    .module-4 { right: 54px; bottom: 108px; }
+    const targetY = progress * Math.PI * 3.2 + pointer.x * 0.35;
+    const targetX = -0.15 + pointer.y * 0.14 + Math.sin(time * 0.55) * 0.04;
 
-    .camera-controls {
-      position: absolute;
-      left: 46px;
-      right: 46px;
-      bottom: 36px;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-      gap: 20px;
-      z-index: 6;
-      transform: translateZ(160px);
-    }
-    .meter { width: 260px; }
-    .meter span { display: block; color: rgba(255,244,229,.54); font-size: 12px; text-transform: uppercase; letter-spacing: .16em; margin-bottom: 10px; }
-    .meter-line { height: 7px; border-radius: 999px; background: rgba(255,244,229,.13); overflow: hidden; }
-    .meter-line i { display: block; height: 100%; width: calc(var(--scroll) * 1%); background: linear-gradient(90deg, var(--accent), var(--cream)); }
-    .capsule { width: min(385px, 100%); padding: 22px; border-radius: 28px; background: rgba(255,244,229,.11); border: 1px solid rgba(255,244,229,.18); backdrop-filter: blur(18px); }
-    .capsule h3 { margin: 0 0 8px; font-size: 25px; }
-    .capsule p { margin: 0 0 16px; color: rgba(255,244,229,.66); line-height: 1.55; }
-    .mini-menu { display: grid; gap: 10px; max-height: 0; overflow: hidden; transition: max-height .52s cubic-bezier(.2,.8,.2,1); }
-    .capsule.open .mini-menu { margin-top: 14px; max-height: 280px; }
-    .mini-menu a { display: flex; justify-content: space-between; text-decoration: none; color: var(--cream); border: 1px solid rgba(255,244,229,.12); background: rgba(255,244,229,.09); padding: 12px 14px; border-radius: 16px; }
+    group.current.rotation.y += (targetY - group.current.rotation.y) * 0.055;
+    group.current.rotation.x += (targetX - group.current.rotation.x) * 0.045;
+    group.current.position.y = Math.sin(time * 0.75) * 0.08 - progress * 0.18;
+    group.current.position.x = pointer.x * 0.08;
 
-    section { padding: 108px 0; position: relative; z-index: 2; }
-    .section-head { max-width: 860px; margin-bottom: 44px; }
-    .section-head.center { margin-left: auto; margin-right: auto; text-align: center; }
-    .section-head h2 { font-family: Georgia, serif; font-weight: 500; font-size: clamp(42px, 6vw, 84px); line-height: .98; }
-    .section-head p { color: var(--muted); line-height: 1.72; font-size: 18px; margin: 20px 0 0; }
-    .split { display: grid; grid-template-columns: .92fr 1.08fr; gap: 30px; align-items: center; }
-    .panel { border: 1px solid var(--line); border-radius: 34px; background: rgba(255,244,229,.075); backdrop-filter: blur(12px); box-shadow: 0 28px 90px rgba(0,0,0,.20); }
-    .text-panel { padding: clamp(28px, 5vw, 54px); }
-    .text-panel p { color: var(--muted); line-height: 1.85; font-size: 17px; }
-    .orbit { min-height: 560px; position: relative; overflow: hidden; background: radial-gradient(circle at 50% 50%, hsla(var(--cameraHue), 78%, 60%, .28), transparent 16rem), linear-gradient(135deg, #2b251f, #0d0c0b); }
-    .orbit-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); width: 150px; height: 150px; border-radius: 50%; display: grid; place-items: center; border: 1px solid rgba(255,244,229,.2); background: rgba(255,244,229,.10); color: var(--accent); font-family: Georgia, serif; font-size: 52px; }
-    .orbit-card { position: absolute; width: 205px; padding: 18px; border-radius: 24px; background: rgba(255,244,229,.10); border: 1px solid rgba(255,244,229,.14); animation: float 5s ease-in-out infinite; }
-    .orbit-card strong { display: block; margin-bottom: 6px; }
-    .orbit-card span { color: rgba(255,244,229,.62); font-size: 14px; line-height: 1.5; }
-    .orbit-card:nth-child(2) { left: 40px; top: 70px; }
-    .orbit-card:nth-child(3) { right: 48px; top: 76px; animation-delay: .7s; }
-    .orbit-card:nth-child(4) { left: 55px; bottom: 72px; animation-delay: 1.2s; }
-    .orbit-card:nth-child(5) { right: 44px; bottom: 72px; animation-delay: 1.8s; }
-    @keyframes float { 50% { transform: translateY(-16px); } }
+    if (ringA.current) ringA.current.rotation.z = time * 0.34 + progress * 3;
+    if (ringB.current) ringB.current.rotation.x = time * 0.26 + progress * 2.1;
+    if (glow.current) glow.current.scale.setScalar(1.04 + Math.sin(time * 1.4) * 0.025);
+  });
 
-    .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
-    .card { min-height: 250px; padding: 26px; border-radius: 30px; background: rgba(255,244,229,.075); border: 1px solid var(--line); transition: transform .28s ease, background .28s ease, box-shadow .28s ease; position: relative; overflow: hidden; }
-    .card::before { content: ""; position: absolute; inset: auto -30% -60% -30%; height: 80%; background: radial-gradient(circle, hsla(var(--cameraHue), 78%, 62%, .24), transparent 62%); opacity: 0; transition: opacity .25s ease; }
-    .card:hover { transform: translateY(-8px) rotateX(3deg); background: rgba(255,244,229,.11); box-shadow: 0 24px 80px rgba(0,0,0,.22); }
-    .card:hover::before { opacity: 1; }
-    .icon { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 18px; background: hsla(var(--cameraHue), 78%, 62%, .14); color: var(--accent); font-size: 22px; margin-bottom: 18px; }
-    .card h3 { font-size: 22px; margin-bottom: 12px; }
-    .card p { color: var(--muted); margin: 0; line-height: 1.65; }
+  return (
+    <group ref={group} position={[0, -0.05, 0]}>
+      <mesh ref={glow}>
+        <sphereGeometry args={[1.82, 64, 64]} />
+        <meshBasicMaterial color="#a9794f" transparent opacity={0.08} />
+      </mesh>
 
-    .timeline { display: grid; grid-template-columns: repeat(7, minmax(180px,1fr)); gap: 16px; overflow-x: auto; padding-bottom: 12px; }
-    .step { min-height: 240px; border-radius: 30px; padding: 24px; background: rgba(255,244,229,.075); border: 1px solid var(--line); }
-    .step b { color: var(--accent); letter-spacing: .16em; font-size: 12px; }
-    .step h3 { margin-top: 16px; font-size: 22px; }
-    .step p { color: var(--muted); line-height: 1.6; margin: 12px 0 0; }
+      <mesh rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.66, 0.66, 2.65, 80, 1, true]} />
+        <meshStandardMaterial color="#d6c1a4" metalness={0.42} roughness={0.28} transparent opacity={0.42} />
+      </mesh>
 
-    .offer-box { position: relative; overflow: hidden; border-radius: 52px; padding: clamp(36px, 7vw, 82px); background: radial-gradient(circle at var(--mx) var(--my), rgba(255,244,229,.24), transparent 20rem), linear-gradient(135deg, var(--accent2), var(--accent) 46%, #2b2017); color: var(--dark); box-shadow: 0 38px 120px rgba(0,0,0,.38); }
-    .offer-box::before { content: ""; position: absolute; inset: 26px; border: 1px solid rgba(255,255,255,.24); border-radius: 38px; pointer-events: none; }
-    .offer-grid { position: relative; display: grid; grid-template-columns: 1.05fr .95fr; gap: 34px; align-items: center; }
-    .offer-box .eyebrow, .offer-box h2 { color: var(--dark); }
-    .offer-box h2 { font-family: Georgia, serif; font-weight: 500; font-size: clamp(44px, 6vw, 86px); line-height: .96; }
-    .offer-box p { color: rgba(13,12,10,.70); font-size: 18px; line-height: 1.7; }
-    .included { display: grid; gap: 12px; }
-    .included div { padding: 15px 17px; border-radius: 18px; background: rgba(255,244,229,.35); border: 1px solid rgba(13,12,10,.12); font-weight: 800; }
+      <mesh position={[0, 1.32, 0]}>
+        <sphereGeometry args={[0.665, 64, 32, 0, Math.PI * 2, 0, Math.PI / 2]} />
+        <meshStandardMaterial color="#eee1cf" metalness={0.38} roughness={0.22} transparent opacity={0.58} />
+      </mesh>
 
-    .light-section { background: var(--beige); color: var(--dark); }
-    .light-section .eyebrow { color: #a66e2d; }
-    .light-section h2, .light-section h3 { color: var(--dark); }
-    .light-section p { color: var(--mutedDark); }
-    .booking { display: grid; grid-template-columns: .82fr 1.18fr; gap: 30px; align-items: start; }
-    .booking-note { padding: 34px; background: rgba(255,255,255,.35); border-color: var(--lineDark); }
-    form { padding: 30px; border-radius: 36px; background: rgba(255,255,255,.42); border: 1px solid var(--lineDark); box-shadow: 0 24px 70px rgba(31,24,18,.10); }
-    .form-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 16px; }
-    .full { grid-column: 1 / -1; }
-    label { display: grid; gap: 8px; color: var(--dark); font-size: 14px; font-weight: 900; }
-    input, select, textarea { width: 100%; border: 1px solid rgba(13,12,10,.15); background: rgba(255,255,255,.6); border-radius: 18px; padding: 14px 15px; color: var(--dark); outline: none; cursor: none; }
-    input:focus, select:focus, textarea:focus { border-color: hsla(var(--cameraHue), 70%, 44%, .7); box-shadow: 0 0 0 5px hsla(var(--cameraHue), 70%, 44%, .13); }
-    textarea { min-height: 120px; resize: vertical; }
-    .question-note { display: none; margin-top: 14px; padding: 14px 16px; border-radius: 18px; background: rgba(166,110,45,.13); color: var(--mutedDark); line-height: 1.55; }
-    .question-note.show { display: block; }
-    .checkline { display: flex; align-items: flex-start; gap: 12px; margin: 18px 0 22px; color: var(--mutedDark); font-weight: 650; line-height: 1.5; }
-    .checkline input { width: 18px; height: 18px; margin-top: 3px; }
+      <mesh position={[0, -1.32, 0]} rotation={[Math.PI, 0, 0]}>
+        <sphereGeometry args={[0.665, 64, 32, 0, Math.PI * 2, 0, Math.PI / 2]} />
+        <meshStandardMaterial color="#eee1cf" metalness={0.38} roughness={0.22} transparent opacity={0.58} />
+      </mesh>
 
-    .gallery-grid { display: grid; grid-template-columns: 1.2fr .8fr .8fr; gap: 18px; }
-    .gallery-item { min-height: 265px; padding: 26px; border-radius: 34px; color: var(--cream); display: flex; flex-direction: column; justify-content: flex-end; position: relative; overflow: hidden; background: linear-gradient(180deg, rgba(0,0,0,.05), rgba(0,0,0,.56)), linear-gradient(135deg, hsl(var(--cameraHue), 72%, 75%), hsl(var(--cameraHue), 58%, 44%), #211914); border: 1px solid var(--line); }
-    .gallery-item.large { grid-row: span 2; min-height: 550px; }
-    .gallery-item::before { content: ""; position: absolute; inset: 20px; border: 1px solid rgba(255,244,229,.20); border-radius: 24px; }
-    .gallery-item strong, .gallery-item span { position: relative; }
-    .gallery-item strong { font-size: 24px; margin-bottom: 8px; }
-    .gallery-item span { color: rgba(255,244,229,.68); line-height: 1.5; }
+      <mesh position={[0, 0, 0]}>
+        <sphereGeometry args={[0.27, 48, 48]} />
+        <meshStandardMaterial color="#ffcf8b" emissive="#8a4e20" emissiveIntensity={1.7} roughness={0.2} />
+      </mesh>
 
-    .faq-list { max-width: 960px; margin: 0 auto; display: grid; gap: 12px; }
-    .faq-item { border: 1px solid var(--line); border-radius: 24px; background: rgba(255,244,229,.075); overflow: hidden; }
-    .faq-button { width: 100%; border: 0; background: transparent; color: var(--cream); display: flex; justify-content: space-between; gap: 20px; text-align: left; padding: 22px 24px; font-weight: 950; cursor: none; }
-    .faq-button span:last-child { color: var(--accent); font-size: 22px; }
-    .faq-answer { max-height: 0; overflow: hidden; transition: max-height .35s ease; }
-    .faq-answer p { margin: 0; padding: 0 24px 24px; color: var(--muted); line-height: 1.75; }
-    .faq-item.open .faq-answer { max-height: 240px; }
+      <mesh ref={ringA} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[1.08, 0.012, 16, 140]} />
+        <meshStandardMaterial color="#f6d6aa" emissive="#7a3f16" emissiveIntensity={0.8} />
+      </mesh>
 
-    .contact-grid { display: grid; grid-template-columns: .95fr 1.05fr; gap: 30px; }
-    .contact-card { padding: 34px; border-radius: 36px; background: rgba(255,244,229,.075); border: 1px solid var(--line); }
-    .contact-card h3 { font-size: 34px; }
-    .contact-card p, .contact-card li { color: var(--muted); line-height: 1.75; }
-    .contact-links { display: grid; gap: 12px; margin-top: 24px; }
-    .contact-links a, .contact-links div { text-decoration: none; padding: 14px 16px; border-radius: 18px; background: rgba(255,244,229,.08); border: 1px solid var(--line); color: rgba(255,244,229,.78); }
+      <mesh ref={ringB} rotation={[0.2, Math.PI / 2, 0]}>
+        <torusGeometry args={[1.52, 0.008, 16, 160]} />
+        <meshStandardMaterial color="#c7b49d" transparent opacity={0.65} />
+      </mesh>
 
-    .legal-tabs { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-bottom: 24px; }
-    .legal-tabs button { border: 1px solid var(--line); background: rgba(255,244,229,.08); color: var(--cream); border-radius: 999px; padding: 12px 18px; font-weight: 950; cursor: none; }
-    .legal-tabs button.active { background: var(--cream); color: var(--dark); }
-    .legal-box { display: none; max-width: 950px; margin: 0 auto; padding: 32px; border-radius: 32px; background: rgba(255,244,229,.075); border: 1px solid var(--line); }
-    .legal-box.active { display: block; }
-    .legal-box h3 { font-size: 29px; }
-    .legal-box p { color: var(--muted); line-height: 1.75; }
+      {[...Array(12)].map((_, i) => {
+        const angle = (i / 12) * Math.PI * 2;
+        const radius = 1.05 + (i % 3) * 0.16;
+        return (
+          <mesh key={i} position={[Math.cos(angle) * radius, Math.sin(angle * 1.7) * 0.4, Math.sin(angle) * radius]}>
+            <sphereGeometry args={[0.025 + (i % 2) * 0.012, 16, 16]} />
+            <meshStandardMaterial color="#f7e1bf" emissive="#9a602c" emissiveIntensity={0.6} />
+          </mesh>
+        );
+      })}
+    </group>
+  );
+}
 
-    footer { padding: 58px 0 34px; background: #070706; color: rgba(255,244,229,.62); position: relative; z-index: 2; }
-    .footer-grid { display: grid; grid-template-columns: 1.2fr .8fr .8fr .8fr; gap: 32px; margin-bottom: 36px; }
-    footer h3, footer h4 { color: var(--cream); margin: 0 0 14px; }
-    footer h3 { font-family: Georgia, serif; font-weight: 500; font-size: 36px; }
-    footer a { display: block; color: rgba(255,244,229,.62); text-decoration: none; margin: 10px 0; }
-    footer a:hover { color: var(--cream); }
-    .footer-bottom { border-top: 1px solid var(--line); padding-top: 22px; display: flex; justify-content: space-between; gap: 18px; flex-wrap: wrap; font-size: 14px; }
+function Scene({ progress, pointer }) {
+  return (
+    <Canvas camera={{ position: [0, 0, 5.3], fov: 45 }} dpr={[1, 1.8]}>
+      <color attach="background" args={["#050505"]} />
+      <ambientLight intensity={0.55} />
+      <pointLight position={[3, 3, 4]} intensity={2.1} color="#f4c792" />
+      <pointLight position={[-4, -2, -2]} intensity={1.1} color="#8f8a83" />
+      <Stars />
+      <MemoryCapsule progress={progress} pointer={pointer} />
+    </Canvas>
+  );
+}
 
-    .reveal { opacity: 0; transform: translateY(36px); transition: opacity .8s ease, transform .8s cubic-bezier(.2,.8,.2,1); }
-    .reveal.visible { opacity: 1; transform: translateY(0); }
+function Preloader() {
+  const [visible, setVisible] = useState(true);
 
-    @media (max-width: 1100px) {
-      body { cursor: auto; }
-      .cursor-dot, .cursor-ring { display: none; }
-      a, button, input, select, textarea { cursor: pointer; }
-      .hero-grid, .split, .offer-grid, .booking, .contact-grid { grid-template-columns: 1fr; }
-      .cards { grid-template-columns: repeat(2,1fr); }
-      .gallery-grid { grid-template-columns: 1fr 1fr; }
-      .gallery-item.large { grid-column: 1 / -1; grid-row: auto; }
-      .footer-grid { grid-template-columns: 1fr 1fr; }
-      .camera-stage { height: 650px; }
-    }
-    @media (max-width: 820px) {
-      .progress-rail, .side-label { display: none; }
-      .site-header { top: 12px; }
-      .nav-shell { border-radius: 30px; align-items: flex-start; }
-      .nav-center { display: none; position: fixed; left: 22px; right: 22px; top: 98px; flex-direction: column; align-items: stretch; border-radius: 26px; padding: 16px; background: rgba(13,12,10,.96); box-shadow: 0 28px 90px rgba(0,0,0,.42); }
-      .nav-center.open { display: flex; }
-      .menu-toggle { display: grid; place-items: center; }
-      .hero { padding-top: 130px; }
-      .hero-grid { gap: 28px; }
-      .camera-stage { height: 630px; min-height: 630px; }
-      .camera-wrap { inset: 70px 14px 248px; }
-      .camera3d { width: 96%; transform: scale(.78); }
-      .module-panel { display: none; }
-      .camera-controls { left: 22px; right: 22px; bottom: 22px; display: grid; }
-      .meter { width: 210px; }
-      .cards, .form-grid, .gallery-grid, .footer-grid { grid-template-columns: 1fr; }
-      .section-head.center { text-align: left; }
-      section { padding: 78px 0; }
-    }
-  </style>
-</head>
-<body>
-  <div class="cursor-dot"></div>
-  <div class="cursor-ring"></div>
-  <div class="loader" id="loader"><div class="loader-inner"><button class="loader-button" id="loadBtn" data-i18n="loadBtn">Charger la caméra</button><div class="loader-title" data-i18n="loadTitle">Message<br>pour Demain</div></div></div>
-  <div class="progress-rail"><i></i></div>
-  <div class="side-label" data-i18n="sideLabel">camera · memory · future</div>
+  useEffect(() => {
+    const timer = setTimeout(() => setVisible(false), 1650);
+    return () => clearTimeout(timer);
+  }, []);
 
-  <header class="site-header">
-    <div class="container nav-shell">
-      <a href="#top" class="brand"><span class="brand-mark">M</span><span><strong data-i18n="brandName">Message pour Demain</strong><span data-i18n="brandSub">Studio de mémoire</span></span></a>
-      <nav class="nav-center" id="mainNav"><a href="#concept" data-i18n="navConcept">Concept</a><a href="#services" data-i18n="navServices">Services</a><a href="#offer" data-i18n="navOffer">Offre</a><a href="#booking" data-i18n="navBooking">Réservation</a><a href="#faq" data-i18n="navFaq">FAQ</a></nav>
-      <div class="nav-actions"><div class="lang-switch"><button type="button" data-lang="fr" class="active">FR</button><button type="button" data-lang="en">EN</button></div><button class="menu-toggle" id="menuToggle">☰</button></div>
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.div
+          initial={{ opacity: 1 }}
+          exit={{ opacity: 0, transition: { duration: 0.75, ease: "easeInOut" } }}
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-[#050505] text-[#f8ead9]"
+        >
+          <div className="text-center">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ repeat: Infinity, duration: 1.9, ease: "linear" }}
+              className="mx-auto mb-6 h-16 w-16 rounded-full border border-[#d6c1a4]/20 border-t-[#d6c1a4]"
+            />
+            <p className="text-xs uppercase tracking-[0.55em] text-[#cbb89f]/70">Launching Memory</p>
+            <h2 className="mt-3 text-2xl font-light tracking-[-0.03em] md:text-4xl">Message to Future</h2>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+const navItems = ["Home", "Experience", "Services", "Stories", "Contact"];
+
+function Header() {
+  const [open, setOpen] = useState(false);
+
+  const scrollTo = (id) => {
+    const element = document.getElementById(id.toLowerCase());
+    if (element) element.scrollIntoView({ behavior: "smooth" });
+    setOpen(false);
+  };
+
+  return (
+    <>
+      <header className="fixed left-0 right-0 top-0 z-50 px-5 py-5 md:px-10">
+        <div className="mx-auto flex max-w-7xl items-center justify-between rounded-full border border-white/10 bg-black/25 px-5 py-3 text-white shadow-2xl backdrop-blur-xl">
+          <button onClick={() => scrollTo("home")} className="flex items-center gap-3">
+            <span className="grid h-9 w-9 place-items-center rounded-full border border-[#d6c1a4]/30 bg-[#d6c1a4]/10">
+              <Sparkles size={16} className="text-[#e9d6bd]" />
+            </span>
+            <span className="text-sm font-medium tracking-[0.16em]">MESSAGE TO FUTURE</span>
+          </button>
+
+          <nav className="hidden items-center gap-7 text-xs uppercase tracking-[0.22em] text-white/60 md:flex">
+            {navItems.map((item) => (
+              <button key={item} onClick={() => scrollTo(item)} className="transition hover:text-[#f0d2a8]">
+                {item}
+              </button>
+            ))}
+          </nav>
+
+          <button
+            onClick={() => setOpen(true)}
+            className="grid h-10 w-10 place-items-center rounded-full bg-white/10 transition hover:bg-white/15 md:hidden"
+            aria-label="Open menu"
+          >
+            <Menu size={18} />
+          </button>
+        </div>
+      </header>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[70] bg-[#070707]/95 px-6 py-6 text-white backdrop-blur-xl md:hidden"
+          >
+            <div className="flex justify-end">
+              <button onClick={() => setOpen(false)} className="grid h-11 w-11 place-items-center rounded-full bg-white/10">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="mt-16 space-y-5">
+              {navItems.map((item, index) => (
+                <motion.button
+                  key={item}
+                  initial={{ x: -20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ delay: index * 0.06 }}
+                  onClick={() => scrollTo(item)}
+                  className="block text-left text-4xl font-light tracking-[-0.06em] text-[#f6ead8]"
+                >
+                  {item}
+                </motion.button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
+function SectionLabel({ children }) {
+  return (
+    <div className="mb-5 inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs uppercase tracking-[0.26em] text-[#d7c3a8]/75 backdrop-blur">
+      <span className="h-1.5 w-1.5 rounded-full bg-[#d7c3a8]" />
+      {children}
     </div>
-  </header>
+  );
+}
 
-  <main>
-    <section class="hero" id="top">
-      <div class="container hero-grid">
-        <div class="reveal">
-          <div class="eyebrow" data-i18n="heroEyebrow">France · Dijon · Nevers</div>
-          <h1 data-i18n="heroTitle">Un film pour aujourd’hui. Un message pour demain.</h1>
-          <p class="lead" data-i18n="heroText">Nous créons des vidéos cinématographiques qui relient votre histoire d’aujourd’hui à votre futur.</p>
-          <div class="hero-ctas"><a class="btn btn-primary" href="#booking" data-i18n="heroCta1">Réserver une séance gratuite</a><a class="btn btn-outline" href="#concept" data-i18n="heroCta2">Découvrir le concept</a></div>
-          <div class="offer-chip"><i></i><strong data-i18n="heroOffer">Offre de lancement : service complet gratuit pour les 5 premières familles.</strong></div>
+function Reveal({ children, delay = 0 }) {
+  return (
+    <motion.div
+      initial={{ y: 38, opacity: 0 }}
+      whileInView={{ y: 0, opacity: 1 }}
+      viewport={{ once: true, margin: "-120px" }}
+      transition={{ duration: 0.75, delay, ease: [0.22, 1, 0.36, 1] }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+function MagneticCard({ icon: Icon, title, text, index }) {
+  return (
+    <motion.div
+      initial={{ y: 45, opacity: 0 }}
+      whileInView={{ y: 0, opacity: 1 }}
+      viewport={{ once: true, margin: "-80px" }}
+      transition={{ duration: 0.75, delay: index * 0.08 }}
+      whileHover={{ y: -8, scale: 1.015 }}
+      className="group relative overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.045] p-6 text-white shadow-2xl backdrop-blur-xl"
+    >
+      <div className="absolute -right-16 -top-16 h-44 w-44 rounded-full bg-[#d6b37d]/10 blur-3xl transition group-hover:bg-[#d6b37d]/20" />
+      <div className="relative z-10">
+        <div className="mb-8 grid h-12 w-12 place-items-center rounded-2xl border border-[#d6c1a4]/20 bg-[#d6c1a4]/10 text-[#efd8b9]">
+          <Icon size={20} />
+        </div>
+        <h3 className="text-2xl font-light tracking-[-0.04em]">{title}</h3>
+        <p className="mt-4 leading-7 text-white/55">{text}</p>
+      </div>
+    </motion.div>
+  );
+}
+
+function ProgressLine() {
+  const { scrollYProgress } = useScroll();
+  const scaleX = useTransform(scrollYProgress, [0, 1], [0, 1]);
+
+  return (
+    <motion.div
+      style={{ scaleX }}
+      className="fixed left-0 top-0 z-[90] h-[2px] w-full origin-left bg-gradient-to-r from-[#6f6256] via-[#e0c298] to-[#ffffff]"
+    />
+  );
+}
+
+function Hero() {
+  return (
+    <section id="home" className="relative flex min-h-screen items-center px-5 pt-28 text-white md:px-10">
+      <div className="mx-auto grid max-w-7xl items-end gap-12 md:grid-cols-[1.05fr_0.95fr]">
+        <div className="pb-16 md:pb-24">
+          <Reveal>
+            <SectionLabel>Interactive family cinema</SectionLabel>
+          </Reveal>
+          <Reveal delay={0.08}>
+            <h1 className="max-w-4xl text-6xl font-light leading-[0.88] tracking-[-0.085em] text-[#f8ead9] md:text-8xl lg:text-[8.5rem]">
+              Messages that wait for the future.
+            </h1>
+          </Reveal>
+          <Reveal delay={0.16}>
+            <p className="mt-7 max-w-xl text-lg leading-8 text-white/58 md:text-xl">
+              A cinematic web experience for families who record today’s memories and reopen them tomorrow — with video, emotion, and a time capsule feeling.
+            </p>
+          </Reveal>
+          <Reveal delay={0.24}>
+            <div className="mt-10 flex flex-col gap-4 sm:flex-row">
+              <button className="group inline-flex items-center justify-center gap-3 rounded-full bg-[#ead7bd] px-7 py-4 text-sm font-medium uppercase tracking-[0.18em] text-black transition hover:bg-white">
+                Start the story
+                <ArrowRight size={16} className="transition group-hover:translate-x-1" />
+              </button>
+              <button className="inline-flex items-center justify-center gap-3 rounded-full border border-white/12 bg-white/[0.04] px-7 py-4 text-sm uppercase tracking-[0.18em] text-white/80 backdrop-blur transition hover:border-[#ead7bd]/50 hover:text-[#ead7bd]">
+                <Play size={15} />
+                Watch concept
+              </button>
+            </div>
+          </Reveal>
         </div>
 
-        <div class="camera-stage reveal" id="stage">
-          <div class="studio-card" id="studioCard">
-            <div class="studio-grid"></div><div class="big-word">CAMERA<br>DRIVE</div>
-            <div class="camera-wrap">
-              <div class="camera3d" id="camera3d">
-                <div class="cam-handle"></div><div class="cam-top"></div><div class="cam-viewfinder"></div><div class="cam-body"></div><div class="cam-light"></div><div class="cam-lens"></div><div class="cam-line"></div>
-              </div>
+        <Reveal delay={0.18}>
+          <div className="mb-14 rounded-[2rem] border border-white/10 bg-black/25 p-5 backdrop-blur-xl md:mb-24">
+            <p className="text-xs uppercase tracking-[0.28em] text-[#d6c1a4]/70">Scroll to unlock</p>
+            <div className="mt-5 grid grid-cols-3 gap-3 text-center">
+              {[
+                ["01", "Record"],
+                ["02", "Seal"],
+                ["03", "Reopen"],
+              ].map(([number, label]) => (
+                <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-5">
+                  <div className="text-2xl font-light text-[#f8ead9]">{number}</div>
+                  <div className="mt-1 text-[10px] uppercase tracking-[0.2em] text-white/45">{label}</div>
+                </div>
+              ))}
             </div>
-            <div class="module-panel module-1"><strong data-i18n="mod1Title">Souvenir</strong><span data-i18n="mod1Text">Une trace intime.</span></div>
-            <div class="module-panel module-2"><strong data-i18n="mod2Title">Famille</strong><span data-i18n="mod2Text">Des voix à garder.</span></div>
-            <div class="module-panel module-3"><strong data-i18n="mod3Title">Futur</strong><span data-i18n="mod3Text">Un rendez-vous dans un an.</span></div>
-            <div class="module-panel module-4"><strong data-i18n="mod4Title">Film</strong><span data-i18n="mod4Text">Une finition cinématique.</span></div>
-            <div class="camera-controls"><div class="meter"><span data-i18n="buildLabel">Faites tourner la caméra avec la souris</span><div class="meter-line"><i></i></div></div><div class="capsule" id="capsule"><h3 data-i18n="memoryTitle">Ouvrir le menu caméra</h3><p data-i18n="memoryText">La couleur, la profondeur et les menus changent avec la souris et le scroll.</p><a class="btn btn-accent" href="javascript:void(0)" id="openCapsule" data-i18n="memoryCta">Ouvrir les modules</a><div class="mini-menu"><a href="#services"><span data-i18n="mini1">Films de famille</span><b>→</b></a><a href="#process"><span data-i18n="mini2">Processus</span><b>→</b></a><a href="#offer"><span data-i18n="mini3">Offre gratuite</span><b>→</b></a><a href="#booking"><span data-i18n="mini4">Réserver</span><b>→</b></a></div></div></div>
           </div>
+        </Reveal>
+      </div>
+
+      <motion.div
+        animate={{ y: [0, 10, 0] }}
+        transition={{ repeat: Infinity, duration: 1.9 }}
+        className="absolute bottom-8 left-1/2 hidden -translate-x-1/2 text-white/40 md:block"
+      >
+        <ChevronDown />
+      </motion.div>
+    </section>
+  );
+}
+
+function Experience() {
+  return (
+    <section id="experience" className="relative min-h-screen px-5 py-28 text-white md:px-10">
+      <div className="mx-auto max-w-7xl">
+        <Reveal>
+          <SectionLabel>Brand experience</SectionLabel>
+        </Reveal>
+        <div className="grid gap-10 md:grid-cols-[0.9fr_1.1fr] md:items-start">
+          <Reveal delay={0.08}>
+            <h2 className="text-5xl font-light leading-[0.95] tracking-[-0.07em] text-[#f8ead9] md:text-7xl">
+              A website that feels like opening a private memory capsule.
+            </h2>
+          </Reveal>
+          <Reveal delay={0.15}>
+            <div className="space-y-6 text-lg leading-8 text-white/60">
+              <p>
+                The design is built around movement: soft scrolling, floating cards, a central 3D capsule, and warm cinematic light. The goal is not only to explain your service, but to make families feel the emotion before they book.
+              </p>
+              <p>
+                Every section is intentionally simple: one clear idea, one visual moment, one action. This avoids the common mistake of beautiful websites that look expensive but do not guide the visitor.
+              </p>
+            </div>
+          </Reveal>
+        </div>
+
+        <div className="mt-16 grid gap-4 md:grid-cols-3">
+          <MagneticCard
+            index={0}
+            icon={Camera}
+            title="Cinematic capture"
+            text="A page structure for presenting family interviews, personal messages, and emotional video sessions."
+          />
+          <MagneticCard
+            index={1}
+            icon={HeartHandshake}
+            title="Family emotion"
+            text="Warm typography, beige light, soft glass cards, and storytelling sections designed for trust."
+          />
+          <MagneticCard
+            index={2}
+            icon={Sparkles}
+            title="Future reveal"
+            text="The scroll experience simulates time passing: recording today, sealing the message, reopening it later."
+          />
         </div>
       </div>
     </section>
+  );
+}
 
-    <section id="concept"><div class="container split"><div class="orbit panel reveal"><div class="orbit-center">4</div><div class="orbit-card"><strong data-i18n="orbit1Title">Tournage</strong><span data-i18n="orbit1Text">Captation, lumière, son et cadre.</span></div><div class="orbit-card"><strong data-i18n="orbit2Title">Interview</strong><span data-i18n="orbit2Text">Questions, écoute et accompagnement.</span></div><div class="orbit-card"><strong data-i18n="orbit3Title">Montage</strong><span data-i18n="orbit3Text">Rythme, émotion et narration.</span></div><div class="orbit-card"><strong data-i18n="orbit4Title">Post-production</strong><span data-i18n="orbit4Text">Couleur, son et livraison finale.</span></div></div><div class="panel text-panel reveal"><div class="eyebrow" data-i18n="conceptEyebrow">À propos</div><div class="section-head"><h2 data-i18n="conceptTitle">Nous ne filmons pas seulement votre présent. Nous vous connectons à votre futur.</h2><p data-i18n="conceptIntro">Message pour Demain transforme une conversation intime en film de mémoire, à revoir plus tard.</p></div><p data-i18n="conceptP1">Le service aide les familles, les couples et les personnes seules à enregistrer des souvenirs, des objectifs, des souhaits, des émotions et des messages pour leur futur.</p><p data-i18n="conceptP2">Un an plus tard, vous pouvez regarder la vidéo et voir ce qui a changé : vos rêves, vos priorités, votre famille, votre histoire.</p><p data-i18n="conceptP3">Le tournage se fait dans le lieu choisi par le client, de préférence en intérieur ou dans un espace calme pour un meilleur son et une meilleure image.</p></div></div></section>
+function Services() {
+  const services = [
+    {
+      title: "Video message sessions",
+      text: "Families record intimate messages for their future selves, children, partners, or special anniversaries.",
+    },
+    {
+      title: "Memory capsule package",
+      text: "A premium service concept: filming, editing, secure delivery, and a scheduled reveal date.",
+    },
+    {
+      title: "Annual reflection",
+      text: "A yearly ritual where each person watches their old message and records a new one for the next year.",
+    },
+    {
+      title: "Private digital archive",
+      text: "A protected space for emotional video memories, family promises, goals, and future letters.",
+    },
+  ];
 
-    <section id="services"><div class="container"><div class="section-head center reveal"><div class="eyebrow" data-i18n="servicesEyebrow">Services</div><h2 data-i18n="servicesTitle">Des formats pensés comme de petits films.</h2><p data-i18n="servicesIntro">Pas de style enfantin, pas de vidéo froide. Une esthétique calme, intime, cinématographique et humaine.</p></div><div class="cards"><article class="card reveal"><div class="icon">⌂</div><h3 data-i18n="service1Title">Films de mémoire familiale</h3><p data-i18n="service1Text">Des souvenirs filmés avec plusieurs membres de la famille.</p></article><article class="card reveal"><div class="icon">✦</div><h3 data-i18n="service2Title">Messages pour le futur</h3><p data-i18n="service2Text">Des paroles personnelles à revoir dans un an ou plus tard.</p></article><article class="card reveal"><div class="icon">◐</div><h3 data-i18n="service3Title">Interviews individuelles</h3><p data-i18n="service3Text">Une conversation calme pour raconter une histoire ou un objectif.</p></article><article class="card reveal"><div class="icon">♡</div><h3 data-i18n="service4Title">Vidéos de couple</h3><p data-i18n="service4Text">Un message à deux, pour garder un moment de votre relation.</p></article><article class="card reveal"><div class="icon">◌</div><h3 data-i18n="service5Title">Grandes familles</h3><p data-i18n="service5Text">Des formats adaptés aux familles nombreuses et aux générations.</p></article><article class="card reveal"><div class="icon">↻</div><h3 data-i18n="service6Title">Concept annuel</h3><p data-i18n="service6Text">Regarder la vidéo l’année suivante et faire le point.</p></article><article class="card reveal"><div class="icon">✂</div><h3 data-i18n="service7Title">Montage inclus</h3><p data-i18n="service7Text">Montage, rythme, ambiance, son et post-production inclus.</p></article><article class="card reveal"><div class="icon">▣</div><h3 data-i18n="service8Title">QR code ou USB</h3><p data-i18n="service8Text">La vidéo finale peut être livrée par QR code ou clé USB.</p></article></div></div></section>
+  return (
+    <section id="services" className="relative px-5 py-28 text-white md:px-10">
+      <div className="mx-auto max-w-7xl">
+        <Reveal>
+          <SectionLabel>Services</SectionLabel>
+        </Reveal>
+        <Reveal delay={0.08}>
+          <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
+            <h2 className="max-w-3xl text-5xl font-light leading-[0.95] tracking-[-0.07em] text-[#f8ead9] md:text-7xl">
+              Turn today’s words into tomorrow’s treasure.
+            </h2>
+            <p className="max-w-sm leading-7 text-white/55">
+              This section can later become your real offers, prices, booking system, and client examples.
+            </p>
+          </div>
+        </Reveal>
 
-    <section id="process"><div class="container"><div class="section-head reveal"><div class="eyebrow" data-i18n="processEyebrow">Comment ça marche</div><h2 data-i18n="processTitle">Un chemin simple, de l’idée au souvenir.</h2></div><div class="timeline"><article class="step reveal"><b>01</b><h3 data-i18n="step1Title">Réserver</h3><p data-i18n="step1Text">Vous demandez une séance gratuite.</p></article><article class="step reveal"><b>02</b><h3 data-i18n="step2Title">Choisir le lieu</h3><p data-i18n="step2Text">Vous choisissez un lieu calme, idéalement intérieur.</p></article><article class="step reveal"><b>03</b><h3 data-i18n="step3Title">Préparer</h3><p data-i18n="step3Text">Vous préparez vos questions ou notre équipe vous aide.</p></article><article class="step reveal"><b>04</b><h3 data-i18n="step4Title">Filmer</h3><p data-i18n="step4Text">Notre équipe vient filmer et guider l’échange.</p></article><article class="step reveal"><b>05</b><h3 data-i18n="step5Title">Monter</h3><p data-i18n="step5Text">Nous faisons le montage et la post-production.</p></article><article class="step reveal"><b>06</b><h3 data-i18n="step6Title">Recevoir</h3><p data-i18n="step6Text">Vous recevez la vidéo par QR code ou USB.</p></article><article class="step reveal"><b>07</b><h3 data-i18n="step7Title">Revoir</h3><p data-i18n="step7Text">Un an après, vous retrouvez votre message.</p></article></div></div></section>
+        <div className="mt-14 grid gap-4 md:grid-cols-2">
+          {services.map((service, index) => (
+            <motion.div
+              key={service.title}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: index * 0.07, duration: 0.7 }}
+              className="group rounded-[2rem] border border-white/10 bg-[#0c0b0a]/55 p-7 backdrop-blur-xl transition hover:border-[#d6c1a4]/35 hover:bg-white/[0.06]"
+            >
+              <div className="mb-10 flex items-center justify-between text-[#d6c1a4]/70">
+                <span className="text-xs uppercase tracking-[0.25em]">0{index + 1}</span>
+                <ArrowRight size={17} className="transition group-hover:translate-x-1 group-hover:text-[#f8ead9]" />
+              </div>
+              <h3 className="text-3xl font-light tracking-[-0.05em] text-[#f8ead9]">{service.title}</h3>
+              <p className="mt-4 max-w-xl leading-7 text-white/55">{service.text}</p>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
 
-    <section id="offer"><div class="container"><div class="offer-box reveal"><div class="offer-grid"><div><div class="eyebrow" data-i18n="offerEyebrow">Offre de lancement</div><h2 data-i18n="offerTitle">Service complet gratuit pour les 5 premières familles.</h2><p data-i18n="offerText">Pour lancer le projet, les 5 premières familles bénéficient du service complet gratuitement, sans frais cachés.</p><a class="btn btn-primary" href="#booking" data-i18n="offerCta">Demander une place gratuite</a></div><div class="included"><div data-i18n="offerItem1">✓ Tournage inclus</div><div data-i18n="offerItem2">✓ Montage et post-production inclus</div><div data-i18n="offerItem3">✓ Livraison finale par QR code ou USB</div><div data-i18n="offerItem4">✓ Aucun extrait publié sans accord clair</div><div data-i18n="offerItem5">✓ Formulaire de consentement avant le tournage</div></div></div></div></div></section>
+function Stories() {
+  return (
+    <section id="stories" className="relative px-5 py-28 text-white md:px-10">
+      <div className="mx-auto max-w-7xl">
+        <Reveal>
+          <SectionLabel>Stories</SectionLabel>
+        </Reveal>
+        <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
+          <Reveal delay={0.06}>
+            <div className="min-h-[520px] overflow-hidden rounded-[2.5rem] border border-white/10 bg-gradient-to-br from-[#17110d]/80 via-[#0c0b0a]/70 to-[#050505]/80 p-8 shadow-2xl backdrop-blur-xl md:p-10">
+              <div className="flex h-full flex-col justify-between">
+                <div>
+                  <div className="mb-8 inline-flex rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs uppercase tracking-[0.25em] text-white/50">
+                    Featured concept
+                  </div>
+                  <h3 className="max-w-2xl text-5xl font-light leading-[0.95] tracking-[-0.07em] text-[#f8ead9] md:text-7xl">
+                    “One year from now, I want to remember who I was today.”
+                  </h3>
+                </div>
+                <div className="mt-16 grid gap-4 md:grid-cols-3">
+                  {[
+                    ["12", "months later"],
+                    ["04", "family voices"],
+                    ["01", "private film"],
+                  ].map(([number, label]) => (
+                    <div key={label} className="rounded-3xl border border-white/10 bg-black/20 p-5">
+                      <div className="text-4xl font-light text-[#f8ead9]">{number}</div>
+                      <div className="mt-2 text-xs uppercase tracking-[0.22em] text-white/40">{label}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </Reveal>
 
-    <section class="light-section" id="booking"><div class="container booking"><div class="panel booking-note reveal"><div class="eyebrow" data-i18n="bookingEyebrow">Réservation</div><h2 data-i18n="bookingTitle">Préparer une première séance.</h2><p data-i18n="bookingText1">Le formulaire ne demande que les informations nécessaires pour vous recontacter et confirmer les détails.</p><p data-i18n="bookingText2">Vous pouvez préparer vos propres questions : jusqu’à 10 questions par personne. Si vous préférez, notre équipe peut aussi préparer des questions émotionnelles.</p><p data-i18n="bookingText3">Les forfaits payants seront disponibles plus tard. Pour le moment, l’offre gratuite concerne les 5 premières familles.</p></div><form class="reveal" id="bookingForm" action="#" method="post"><div class="form-grid"><label><span data-i18n="formName">Nom complet</span><input name="name" type="text" required></label><label><span data-i18n="formEmail">Email</span><input name="email" type="email" required></label><label><span data-i18n="formPhone">Téléphone</span><input name="phone" type="tel"></label><label><span data-i18n="formCity">Ville</span><input name="city" type="text" placeholder="Dijon, Nevers..."></label><label><span data-i18n="formPeople">Nombre de personnes à filmer</span><input name="people" type="number" min="1"></label><label><span data-i18n="formLang">Langue préférée</span><select name="language"><option>Français</option><option>English</option></select></label><label class="full"><span data-i18n="formLocation">Lieu préféré</span><input name="location" type="text"></label><label class="full"><span data-i18n="formDate">Date ou période souhaitée</span><input name="date" type="text"></label><label class="full"><span data-i18n="formQuestions">Voulez-vous préparer vos propres questions ?</span><select name="ownQuestions" id="ownQuestions"><option value="not-sure" data-i18n="formNotSure">Je ne sais pas encore</option><option value="yes" data-i18n="formYes">Oui</option><option value="no" data-i18n="formNo">Non</option></select></label></div><div class="question-note" id="questionNote" data-i18n="questionNote">Vous pouvez préparer jusqu’à 10 questions par personne. Nous pouvons aussi vous aider à les organiser.</div><label class="checkline"><input type="checkbox" required><span data-i18n="formConsent">J’accepte d’être contacté(e) pour confirmer les détails.</span></label><button class="btn btn-primary" type="submit" data-i18n="formSubmit">Envoyer la demande</button><p id="formMessage" style="display:none;color:var(--mutedDark);line-height:1.6;margin-top:18px;" data-i18n="formMessage">Merci. Le formulaire est prêt visuellement, mais il n’est pas encore connecté à un email.</p></form></div></section>
+          <Reveal delay={0.12}>
+            <div className="space-y-5">
+              <div className="rounded-[2rem] border border-white/10 bg-white/[0.045] p-7 backdrop-blur-xl">
+                <Film className="mb-10 text-[#e7cfaa]" />
+                <h4 className="text-3xl font-light tracking-[-0.05em] text-[#f8ead9]">Emotional, not decorative</h4>
+                <p className="mt-4 leading-7 text-white/55">
+                  The strongest part of this brand is not technology. It is the private promise people make to themselves and their loved ones.
+                </p>
+              </div>
+              <div className="rounded-[2rem] border border-white/10 bg-[#ead7bd] p-7 text-black">
+                <h4 className="text-3xl font-light tracking-[-0.05em]">Design truth</h4>
+                <p className="mt-4 leading-7 text-black/65">
+                  A beautiful 3D website will fail if the service is unclear. The page must always answer: what is it, why does it matter, and how do I book?
+                </p>
+              </div>
+            </div>
+          </Reveal>
+        </div>
+      </div>
+    </section>
+  );
+}
 
-    <section id="gallery"><div class="container"><div class="section-head center reveal"><div class="eyebrow" data-i18n="galleryEyebrow">Galerie</div><h2 data-i18n="galleryTitle">Un espace pour les futurs exemples.</h2><p data-i18n="galleryIntro">Nos premiers exemples seront bientôt disponibles.</p></div><div class="gallery-grid"><article class="gallery-item large reveal"><strong data-i18n="gallery1Title">Vidéo exemple</strong><span data-i18n="gallery1Text">Espace réservé pour un futur extrait vidéo.</span></article><article class="gallery-item reveal"><strong data-i18n="gallery2Title">Photo de famille</strong><span data-i18n="gallery2Text">Espace réservé pour une image douce et élégante.</span></article><article class="gallery-item reveal"><strong data-i18n="gallery3Title">Coulisses</strong><span data-i18n="gallery3Text">Espace réservé pour le tournage.</span></article><article class="gallery-item reveal"><strong data-i18n="gallery4Title">Témoignage</strong><span data-i18n="gallery4Text">Espace réservé pour un futur avis client.</span></article></div></div></section>
+function Contact() {
+  return (
+    <section id="contact" className="relative px-5 pb-12 pt-28 text-white md:px-10">
+      <div className="mx-auto max-w-7xl overflow-hidden rounded-[2.5rem] border border-white/10 bg-white/[0.045] p-6 backdrop-blur-2xl md:p-10">
+        <div className="grid gap-10 md:grid-cols-[0.9fr_1.1fr]">
+          <Reveal>
+            <div>
+              <SectionLabel>Contact</SectionLabel>
+              <h2 className="text-5xl font-light leading-[0.95] tracking-[-0.07em] text-[#f8ead9] md:text-7xl">
+                Ready to build your family time capsule?
+              </h2>
+              <p className="mt-6 max-w-md leading-8 text-white/58">
+                Replace this form with your real booking form later. For now, it gives the website a complete professional structure.
+              </p>
+              <div className="mt-10 flex items-center gap-3 text-[#e8d0ae]">
+                <Mail size={18} />
+                <span>hello@messagetofuture.com</span>
+              </div>
+            </div>
+          </Reveal>
 
-    <section id="faq"><div class="container"><div class="section-head center reveal"><div class="eyebrow" data-i18n="faqEyebrow">Questions fréquentes</div><h2 data-i18n="faqTitle">Avant de réserver.</h2></div><div class="faq-list" id="faqList"></div></div></section>
+          <Reveal delay={0.1}>
+            <form className="grid gap-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <input className="rounded-2xl border border-white/10 bg-black/25 px-5 py-4 outline-none transition placeholder:text-white/35 focus:border-[#e8d0ae]/60" placeholder="Name" />
+                <input className="rounded-2xl border border-white/10 bg-black/25 px-5 py-4 outline-none transition placeholder:text-white/35 focus:border-[#e8d0ae]/60" placeholder="Email" />
+              </div>
+              <input className="rounded-2xl border border-white/10 bg-black/25 px-5 py-4 outline-none transition placeholder:text-white/35 focus:border-[#e8d0ae]/60" placeholder="Phone number" />
+              <textarea className="min-h-36 rounded-2xl border border-white/10 bg-black/25 px-5 py-4 outline-none transition placeholder:text-white/35 focus:border-[#e8d0ae]/60" placeholder="Tell us about your family story" />
+              <button type="button" className="mt-2 inline-flex items-center justify-center gap-3 rounded-full bg-[#ead7bd] px-7 py-4 text-sm font-medium uppercase tracking-[0.18em] text-black transition hover:bg-white">
+                Send request
+                <ArrowRight size={16} />
+              </button>
+            </form>
+          </Reveal>
+        </div>
+      </div>
 
-    <section id="contact"><div class="container contact-grid"><div class="contact-card reveal"><h3 data-i18n="contactTitle">Nous contacter</h3><p data-i18n="contactText">Le service est disponible en France, surtout à Dijon, Nevers et dans un rayon d’environ 70 km autour de ces villes.</p><ul><li data-i18n="contactArea">Zone : Dijon · Nevers · environ 70 km</li><li data-i18n="contactIndoor">Lieu conseillé : intérieur ou espace calme</li><li data-i18n="contactPrivacy">Confidentialité : aucun contenu publié sans permission</li></ul><div class="contact-links"><div data-i18n="emailPlaceholder">Email : à ajouter bientôt</div><div data-i18n="phonePlaceholder">Téléphone : à ajouter bientôt</div><a href="#" data-i18n="whatsappPlaceholder">WhatsApp : lien à ajouter bientôt</a><a href="#" data-i18n="socialPlaceholder">Instagram / TikTok : liens à ajouter bientôt</a></div></div><form class="reveal" action="#" method="post"><div class="form-grid"><label><span data-i18n="contactName">Nom</span><input type="text" required></label><label><span data-i18n="contactEmail">Email</span><input type="email" required></label><label class="full"><span data-i18n="contactSubject">Sujet</span><input type="text"></label><label class="full"><span data-i18n="contactMessage">Message</span><textarea required></textarea></label></div><button class="btn btn-primary" type="submit" data-i18n="contactSubmit">Envoyer</button></form></div></section>
+      <footer className="mx-auto flex max-w-7xl flex-col justify-between gap-4 px-2 py-8 text-xs uppercase tracking-[0.22em] text-white/35 md:flex-row">
+        <span>© 2026 Message to Future</span>
+        <span>Interactive memory experience</span>
+      </footer>
+    </section>
+  );
+}
 
-    <section id="legal"><div class="container"><div class="section-head center reveal"><div class="eyebrow" data-i18n="legalEyebrow">Informations légales</div><h2 data-i18n="legalTitle">Confidentialité et conditions.</h2></div><div class="legal-tabs reveal"><button type="button" class="active" data-legal="privacy" data-i18n="privacyTab">Politique de confidentialité</button><button type="button" data-legal="terms" data-i18n="termsTab">Conditions générales</button></div><div class="legal-box active reveal" id="privacyBox"><h3 data-i18n="privacyTitle">Politique de confidentialité</h3><p data-i18n="privacyP1">Les données collectées via les formulaires servent uniquement à répondre aux demandes, organiser une séance et confirmer les détails pratiques.</p><p data-i18n="privacyP2">Les vidéos, images, sons et informations personnelles restent confidentiels. Aucun extrait ne sera publié sans autorisation claire et optionnelle.</p><p data-i18n="privacyP3">Avant le tournage, un accord de consentement sera signé. Refuser l’utilisation d’un extrait comme portfolio n’affecte pas le service.</p><p data-i18n="privacyP4">Vous pouvez demander la suppression de vos données en contactant l’équipe. Ce texte est une base informative et doit être vérifié par un professionnel avant publication.</p></div><div class="legal-box reveal" id="termsBox"><h3 data-i18n="termsTitle">Conditions générales</h3><p data-i18n="termsP1">La réservation permet d’échanger sur la demande et de confirmer les détails. L’offre de lancement est gratuite pour les 5 premières familles.</p><p data-i18n="termsP2">Un formulaire de consentement est signé avant le tournage. Le client choisit le lieu de tournage et doit s’assurer qu’il est adapté, calme et autorisé.</p><p data-i18n="termsP3">La livraison finale peut se faire par QR code ou USB. Aucune vidéo, photo ou extrait ne sera publié sans accord écrit.</p><p data-i18n="termsP4">Les annulations et reports doivent être communiqués dès que possible. Ces conditions sont une base informative et doivent être vérifiées avant publication.</p></div></div></section>
-  </main>
+export default function MessageToFutureWebsite() {
+  const progress = usePageProgress();
+  const pointer = usePointer();
 
-  <footer><div class="container"><div class="footer-grid"><div><h3 data-i18n="footerBrand">Message pour Demain</h3><p data-i18n="footerTagline">Un film pour aujourd’hui. Un message pour demain.</p></div><div><h4 data-i18n="footerNav">Navigation</h4><a href="#concept" data-i18n="navConcept">Concept</a><a href="#services" data-i18n="navServices">Services</a><a href="#booking" data-i18n="navBooking">Réservation</a><a href="#gallery" data-i18n="galleryEyebrow">Galerie</a></div><div><h4 data-i18n="footerContact">Contact</h4><a href="#contact" data-i18n="emailPlaceholder">Email : à ajouter bientôt</a><a href="#contact" data-i18n="phonePlaceholder">Téléphone : à ajouter bientôt</a><a href="#contact" data-i18n="socialPlaceholder">Instagram / TikTok : liens à ajouter bientôt</a></div><div><h4 data-i18n="footerLegal">Légal</h4><a href="#legal" data-i18n="privacyTab">Politique de confidentialité</a><a href="#legal" data-i18n="termsTab">Conditions générales</a><div class="lang-switch" style="margin-top:14px;width:max-content;"><button type="button" data-lang="fr" class="active">FR</button><button type="button" data-lang="en">EN</button></div></div></div><div class="footer-bottom"><span>© 2026 Message pour Demain. <span data-i18n="footerRights">Tous droits réservés.</span></span><span data-i18n="footerArea">France · Dijon · Nevers · 70 km autour</span></div></div></footer>
-
-  <script>
-    const translations = {
-      fr: {
-        loadBtn:"Charger la caméra", loadTitle:"Message<br>pour Demain", sideLabel:"camera · memory · future", brandName:"Message pour Demain", brandSub:"Studio de mémoire", navConcept:"Concept", navServices:"Services", navOffer:"Offre", navBooking:"Réservation", navFaq:"FAQ", navContact:"Contact", heroEyebrow:"France · Dijon · Nevers", heroTitle:"Un film pour aujourd’hui. Un message pour demain.", heroText:"Nous créons des vidéos cinématographiques qui relient votre histoire d’aujourd’hui à votre futur.", heroCta1:"Réserver une séance gratuite", heroCta2:"Découvrir le concept", heroOffer:"Offre de lancement : service complet gratuit pour les 5 premières familles.", buildLabel:"Faites tourner la caméra avec la souris", memoryTitle:"Ouvrir le menu caméra", memoryText:"La couleur, la profondeur et les menus changent avec la souris et le scroll.", memoryCta:"Ouvrir les modules", mini1:"Films de famille", mini2:"Processus", mini3:"Offre gratuite", mini4:"Réserver", mod1Title:"Souvenir", mod1Text:"Une trace intime.", mod2Title:"Famille", mod2Text:"Des voix à garder.", mod3Title:"Futur", mod3Text:"Un rendez-vous dans un an.", mod4Title:"Film", mod4Text:"Une finition cinématique.", orbit1Title:"Tournage", orbit1Text:"Captation, lumière, son et cadre.", orbit2Title:"Interview", orbit2Text:"Questions, écoute et accompagnement.", orbit3Title:"Montage", orbit3Text:"Rythme, émotion et narration.", orbit4Title:"Post-production", orbit4Text:"Couleur, son et livraison finale.", conceptEyebrow:"À propos", conceptTitle:"Nous ne filmons pas seulement votre présent. Nous vous connectons à votre futur.", conceptIntro:"Message pour Demain transforme une conversation intime en film de mémoire, à revoir plus tard.", conceptP1:"Le service aide les familles, les couples et les personnes seules à enregistrer des souvenirs, des objectifs, des souhaits, des émotions et des messages pour leur futur.", conceptP2:"Un an plus tard, vous pouvez regarder la vidéo et voir ce qui a changé : vos rêves, vos priorités, votre famille, votre histoire.", conceptP3:"Le tournage se fait dans le lieu choisi par le client, de préférence en intérieur ou dans un espace calme pour un meilleur son et une meilleure image.", servicesEyebrow:"Services", servicesTitle:"Des formats pensés comme de petits films.", servicesIntro:"Pas de style enfantin, pas de vidéo froide. Une esthétique calme, intime, cinématographique et humaine.", service1Title:"Films de mémoire familiale", service1Text:"Des souvenirs filmés avec plusieurs membres de la famille.", service2Title:"Messages pour le futur", service2Text:"Des paroles personnelles à revoir dans un an ou plus tard.", service3Title:"Interviews individuelles", service3Text:"Une conversation calme pour raconter une histoire ou un objectif.", service4Title:"Vidéos de couple", service4Text:"Un message à deux, pour garder un moment de votre relation.", service5Title:"Grandes familles", service5Text:"Des formats adaptés aux familles nombreuses et aux générations.", service6Title:"Concept annuel", service6Text:"Regarder la vidéo l’année suivante et faire le point.", service7Title:"Montage inclus", service7Text:"Montage, rythme, ambiance, son et post-production inclus.", service8Title:"QR code ou USB", service8Text:"La vidéo finale peut être livrée par QR code ou clé USB.", processEyebrow:"Comment ça marche", processTitle:"Un chemin simple, de l’idée au souvenir.", step1Title:"Réserver", step1Text:"Vous demandez une séance gratuite.", step2Title:"Choisir le lieu", step2Text:"Vous choisissez un lieu calme, idéalement intérieur.", step3Title:"Préparer", step3Text:"Vous préparez vos questions ou notre équipe vous aide.", step4Title:"Filmer", step4Text:"Notre équipe vient filmer et guider l’échange.", step5Title:"Monter", step5Text:"Nous faisons le montage et la post-production.", step6Title:"Recevoir", step6Text:"Vous recevez la vidéo par QR code ou USB.", step7Title:"Revoir", step7Text:"Un an après, vous retrouvez votre message.", offerEyebrow:"Offre de lancement", offerTitle:"Service complet gratuit pour les 5 premières familles.", offerText:"Pour lancer le projet, les 5 premières familles bénéficient du service complet gratuitement, sans frais cachés.", offerCta:"Demander une place gratuite", offerItem1:"✓ Tournage inclus", offerItem2:"✓ Montage et post-production inclus", offerItem3:"✓ Livraison finale par QR code ou USB", offerItem4:"✓ Aucun extrait publié sans accord clair", offerItem5:"✓ Formulaire de consentement avant le tournage", bookingEyebrow:"Réservation", bookingTitle:"Préparer une première séance.", bookingText1:"Le formulaire ne demande que les informations nécessaires pour vous recontacter et confirmer les détails.", bookingText2:"Vous pouvez préparer vos propres questions : jusqu’à 10 questions par personne. Si vous préférez, notre équipe peut aussi préparer des questions émotionnelles.", bookingText3:"Les forfaits payants seront disponibles plus tard. Pour le moment, l’offre gratuite concerne les 5 premières familles.", formName:"Nom complet", formEmail:"Email", formPhone:"Téléphone", formCity:"Ville", formPeople:"Nombre de personnes à filmer", formLang:"Langue préférée", formLocation:"Lieu préféré", formDate:"Date ou période souhaitée", formQuestions:"Voulez-vous préparer vos propres questions ?", formNotSure:"Je ne sais pas encore", formYes:"Oui", formNo:"Non", questionNote:"Vous pouvez préparer jusqu’à 10 questions par personne. Nous pouvons aussi vous aider à les organiser.", formConsent:"J’accepte d’être contacté(e) pour confirmer les détails.", formSubmit:"Envoyer la demande", formMessage:"Merci. Le formulaire est prêt visuellement, mais il n’est pas encore connecté à un email.", galleryEyebrow:"Galerie", galleryTitle:"Un espace pour les futurs exemples.", galleryIntro:"Nos premiers exemples seront bientôt disponibles.", gallery1Title:"Vidéo exemple", gallery1Text:"Espace réservé pour un futur extrait vidéo.", gallery2Title:"Photo de famille", gallery2Text:"Espace réservé pour une image douce et élégante.", gallery3Title:"Coulisses", gallery3Text:"Espace réservé pour le tournage.", gallery4Title:"Témoignage", gallery4Text:"Espace réservé pour un futur avis client.", faqEyebrow:"Questions fréquentes", faqTitle:"Avant de réserver.", contactTitle:"Nous contacter", contactText:"Le service est disponible en France, surtout à Dijon, Nevers et dans un rayon d’environ 70 km autour de ces villes.", contactArea:"Zone : Dijon · Nevers · environ 70 km", contactIndoor:"Lieu conseillé : intérieur ou espace calme", contactPrivacy:"Confidentialité : aucun contenu publié sans permission", emailPlaceholder:"Email : à ajouter bientôt", phonePlaceholder:"Téléphone : à ajouter bientôt", whatsappPlaceholder:"WhatsApp : lien à ajouter bientôt", socialPlaceholder:"Instagram / TikTok : liens à ajouter bientôt", contactName:"Nom", contactEmail:"Email", contactSubject:"Sujet", contactMessage:"Message", contactSubmit:"Envoyer", legalEyebrow:"Informations légales", legalTitle:"Confidentialité et conditions.", privacyTab:"Politique de confidentialité", termsTab:"Conditions générales", privacyTitle:"Politique de confidentialité", privacyP1:"Les données collectées via les formulaires servent uniquement à répondre aux demandes, organiser une séance et confirmer les détails pratiques.", privacyP2:"Les vidéos, images, sons et informations personnelles restent confidentiels. Aucun extrait ne sera publié sans autorisation claire et optionnelle.", privacyP3:"Avant le tournage, un accord de consentement sera signé. Refuser l’utilisation d’un extrait comme portfolio n’affecte pas le service.", privacyP4:"Vous pouvez demander la suppression de vos données en contactant l’équipe. Ce texte est une base informative et doit être vérifié par un professionnel avant publication.", termsTitle:"Conditions générales", termsP1:"La réservation permet d’échanger sur la demande et de confirmer les détails. L’offre de lancement est gratuite pour les 5 premières familles.", termsP2:"Un formulaire de consentement est signé avant le tournage. Le client choisit le lieu de tournage et doit s’assurer qu’il est adapté, calme et autorisé.", termsP3:"La livraison finale peut se faire par QR code ou USB. Aucune vidéo, photo ou extrait ne sera publié sans accord écrit.", termsP4:"Les annulations et reports doivent être communiqués dès que possible. Ces conditions sont une base informative et doivent être vérifiées avant publication.", footerBrand:"Message pour Demain", footerTagline:"Un film pour aujourd’hui. Un message pour demain.", footerNav:"Navigation", footerContact:"Contact", footerLegal:"Légal", footerRights:"Tous droits réservés.", footerArea:"France · Dijon · Nevers · 70 km autour"
-      },
-      en: {}
-    };
-
-    translations.en = { ...translations.fr,
-      loadBtn:"Load the camera", loadTitle:"Message<br>for Tomorrow", brandSub:"Memory studio", heroTitle:"A film for today. A message for tomorrow.", heroText:"We create cinematic videos that connect today’s story with your future.", heroCta1:"Book a free session", heroCta2:"Discover the concept", heroOffer:"Launch offer: the complete service is free for the first 5 families.", buildLabel:"Rotate the camera with your mouse", memoryTitle:"Open camera menu", memoryText:"Color, depth and menus change with mouse movement and scroll.", memoryCta:"Open modules", mini1:"Family films", mini2:"Process", mini3:"Free offer", mini4:"Book", mod1Title:"Memory", mod1Text:"An intimate trace.", mod2Title:"Family", mod2Text:"Voices to keep.", mod3Title:"Future", mod3Text:"A meeting in one year.", mod4Title:"Film", mod4Text:"A cinematic finish.", navBooking:"Booking", navOffer:"Offer", bookingEyebrow:"Booking", bookingTitle:"Prepare a first session.", bookingText1:"The form only asks for the information needed to contact you and confirm the details.", bookingText2:"You can prepare your own questions: up to 10 questions per person. If you prefer, our team can also prepare emotional questions.", bookingText3:"Paid packages will be available later. For now, the free offer is limited to the first 5 families.", formName:"Full name", formPhone:"Phone number", formCity:"City", formPeople:"Number of people to be filmed", formLang:"Preferred language", formLocation:"Preferred location", formDate:"Preferred date or period", formQuestions:"Do you want to prepare your own questions?", formNotSure:"Not sure yet", formYes:"Yes", formNo:"No", questionNote:"You can prepare up to 10 questions per person. We can also help you organize them.", formConsent:"I agree to be contacted to confirm the details.", formSubmit:"Send request", formMessage:"Thank you. The form is visually ready, but it is not connected to email yet.", galleryEyebrow:"Gallery", galleryTitle:"A space for future examples.", galleryIntro:"Our first examples will be available soon.", contactTitle:"Contact us", contactName:"Name", contactSubject:"Subject", contactMessage:"Message", contactSubmit:"Send", privacyTab:"Privacy Policy", termsTab:"Terms and Conditions", footerRights:"All rights reserved."
-    };
-
-    const faqData = {
-      fr: [["Le service est-il vraiment gratuit pour les 5 premières familles ?","Oui. L’offre inclut le tournage, le montage, la post-production et la livraison finale, sans frais cachés."],["Où filmez-vous ?","Nous nous déplaçons surtout à Dijon, Nevers et dans un rayon d’environ 70 km autour de ces villes."],["Pouvons-nous choisir les questions ?","Oui. Vous pouvez préparer vos propres questions avant la séance."],["Pouvez-vous préparer les questions pour nous ?","Oui. Notre équipe peut préparer des questions simples, humaines et émotionnelles."],["Combien de questions pouvons-nous préparer ?","Jusqu’à 10 questions par personne."],["Publiez-vous notre vidéo ?","Non. Aucune vidéo, photo ou extrait n’est publié sans votre permission claire."],["Notre vie privée est-elle protégée ?","Oui. Les souvenirs familiaux sont privés et confidentiels."]],
-      en: [["Is the service really free for the first 5 families?","Yes. The offer includes filming, editing, post-production and final delivery with no hidden fee."],["Where do you film?","We mainly cover Dijon, Nevers and within around 70 km of these cities."],["Can we choose the questions?","Yes. You can prepare your own questions before the session."],["Can you prepare the questions for us?","Yes. Our team can prepare simple, human and emotional questions."],["How many questions can we prepare?","Up to 10 questions per person."],["Do you publish our video?","No. No video, photo or extract is published without your clear permission."],["Is our privacy protected?","Yes. Family memories are private and confidential."]]
-    };
-
-    const loader = document.getElementById("loader");
-    document.getElementById("loadBtn").addEventListener("click", () => loader.classList.add("done"));
-    setTimeout(() => loader.classList.add("done"), 1800);
-
-    let currentLang = localStorage.getItem("mpd_lang") || "fr";
-    function applyLanguage(lang){currentLang=lang;localStorage.setItem("mpd_lang",lang);document.documentElement.lang=lang;document.querySelectorAll("[data-i18n]").forEach(el=>{const key=el.getAttribute("data-i18n");if(translations[lang][key]) el.innerHTML=translations[lang][key];});document.querySelectorAll("[data-lang]").forEach(btn=>btn.classList.toggle("active",btn.getAttribute("data-lang")===lang));renderFaq(lang);} 
-    function renderFaq(lang){const list=document.getElementById("faqList");list.innerHTML="";faqData[lang].forEach(([q,a],i)=>{const item=document.createElement("article");item.className="faq-item"+(i===0?" open":"");item.innerHTML=`<button class="faq-button" type="button" aria-expanded="${i===0}"><span>${q}</span><span>${i===0?"−":"+"}</span></button><div class="faq-answer"><p>${a}</p></div>`;const btn=item.querySelector("button"),sign=item.querySelector(".faq-button span:last-child");btn.addEventListener("click",()=>{const open=item.classList.toggle("open");btn.setAttribute("aria-expanded",open);sign.textContent=open?"−":"+";});list.appendChild(item);});}
-    document.querySelectorAll("[data-lang]").forEach(btn=>btn.addEventListener("click",()=>applyLanguage(btn.getAttribute("data-lang"))));
-
-    const cursor=document.querySelector(".cursor-dot"), ring=document.querySelector(".cursor-ring");let mx=innerWidth/2,my=innerHeight/2,rx=mx,ry=my;function cursorLoop(){rx+=(mx-rx)*.13;ry+=(my-ry)*.13;if(cursor)cursor.style.transform=`translate(${mx}px,${my}px) translate(-50%,-50%)`;if(ring)ring.style.transform=`translate(${rx}px,${ry}px) translate(-50%,-50%)`;requestAnimationFrame(cursorLoop)}cursorLoop();
-    window.addEventListener("mousemove",e=>{mx=e.clientX;my=e.clientY;document.documentElement.style.setProperty("--mx",`${e.clientX/innerWidth*100}%`);document.documentElement.style.setProperty("--my",`${e.clientY/innerHeight*100}%`);});
-    document.querySelectorAll("a,button,input,select,textarea,.card,.gallery-item,.module-panel").forEach(el=>{el.addEventListener("mouseenter",()=>document.body.classList.add("cursor-big"));el.addEventListener("mouseleave",()=>document.body.classList.remove("cursor-big"));});
-    document.querySelectorAll(".btn").forEach(btn=>btn.addEventListener("mousemove",e=>{const r=btn.getBoundingClientRect();btn.style.setProperty("--bx",`${e.clientX-r.left}px`);btn.style.setProperty("--by",`${e.clientY-r.top}px`);}));
-
-    const menuToggle=document.getElementById("menuToggle"), nav=document.getElementById("mainNav");menuToggle.addEventListener("click",()=>nav.classList.toggle("open"));nav.querySelectorAll("a").forEach(a=>a.addEventListener("click",()=>nav.classList.remove("open")));
-    const stage=document.getElementById("stage"), card=document.getElementById("studioCard"), capsule=document.getElementById("capsule"), modules=[...document.querySelectorAll(".module-panel")];
-    function setMotion(percent){const p=Math.max(0,Math.min(100,percent));document.documentElement.style.setProperty("--scroll",p.toFixed(1));document.documentElement.style.setProperty("--cameraHue",(24 + p * 2.2).toFixed(0));document.documentElement.style.setProperty("--lensScale",(1 + p/450).toFixed(3));modules.forEach((m,i)=>m.classList.toggle("show",p > 15 + i*15));}
-    stage.addEventListener("mousemove",e=>{const r=stage.getBoundingClientRect();const x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height;card.style.setProperty("--ry",`${(x-.5)*15}deg`);card.style.setProperty("--rx",`${-(y-.5)*10}deg`);setMotion(Math.max(parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--scroll")) || 0, 18 + x*54 + y*24));});
-    stage.addEventListener("mouseleave",()=>{card.style.setProperty("--rx","0deg");card.style.setProperty("--ry","0deg");});
-    document.getElementById("openCapsule").addEventListener("click",()=>{capsule.classList.toggle("open");modules.forEach(m=>m.classList.toggle("show",capsule.classList.contains("open")));});
-
-    const question=document.getElementById("ownQuestions"), qNote=document.getElementById("questionNote");question.addEventListener("change",()=>qNote.classList.toggle("show",question.value==="yes"));
-    document.querySelectorAll("form").forEach(form=>form.addEventListener("submit",e=>{e.preventDefault();const msg=form.querySelector("#formMessage");if(msg)msg.style.display="block";}));
-    document.querySelectorAll("[data-legal]").forEach(btn=>btn.addEventListener("click",()=>{const t=btn.getAttribute("data-legal");document.querySelectorAll("[data-legal]").forEach(b=>b.classList.remove("active"));btn.classList.add("active");document.getElementById("privacyBox").classList.toggle("active",t==="privacy");document.getElementById("termsBox").classList.toggle("active",t==="terms");}));
-    const obs=new IntersectionObserver(entries=>entries.forEach(en=>{if(en.isIntersecting)en.target.classList.add("visible")}),{threshold:.12});document.querySelectorAll(".reveal").forEach(el=>obs.observe(el));
-    addEventListener("scroll",()=>{const max=document.documentElement.scrollHeight-innerHeight;setMotion(Math.max(0,Math.min(100,scrollY/max*100)));},{passive:true});
-    applyLanguage(currentLang);setMotion(0);
-  </script>
-</body>
-</html>
+  return (
+    <main className="relative min-h-screen overflow-x-hidden bg-[#050505] font-sans selection:bg-[#ead7bd] selection:text-black">
+      <ProgressLine />
+      <Preloader />
+      <div className="fixed inset-0 z-0 opacity-90">
+        <Scene progress={progress} pointer={pointer} />
+      </div>
+      <div className="pointer-events-none fixed inset-0 z-[1] bg-[radial-gradient(circle_at_50%_25%,rgba(217,181,129,0.13),transparent_35%),linear-gradient(to_bottom,rgba(5,5,5,0.06),rgba(5,5,5,0.76)_78%,#050505)]" />
+      <div className="pointer-events-none fixed inset-0 z-[2] opacity-[0.07] [background-image:linear-gradient(rgba(255,255,255,.7)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.7)_1px,transparent_1px)] [background-size:72px_72px]" />
+      <Header />
+      <div className="relative z-10">
+        <Hero />
+        <Experience />
+        <Services />
+        <Stories />
+        <Contact />
+      </div>
+    </main>
+  );
+}

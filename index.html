@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Message pour Demain — Studio cinématographique de mémoire</title>
+  <title>Message pour Demain — Cinematic Memory Drive</title>
   <meta name="description" content="Message pour Demain crée des films cinématographiques pour les familles, les couples et les personnes qui veulent enregistrer un message pour leur futur." />
-  <meta name="theme-color" content="#efe7dc" />
+  <meta name="theme-color" content="#11100e" />
   <meta property="og:title" content="Message pour Demain" />
   <meta property="og:description" content="Un film pour aujourd’hui. Un message pour demain." />
   <meta property="og:type" content="website" />
@@ -14,1268 +14,646 @@
 
   <style>
     :root {
-      --bg: #efe7dc;
-      --paper: #fbf7ef;
-      --paper2: #f5ede2;
-      --ink: #211f1c;
-      --muted: #756b61;
-      --soft: #d8c6b3;
-      --gold: #b28a5b;
-      --gold2: #e0b980;
-      --dark: #151412;
-      --dark2: #25211d;
-      --line: rgba(33, 31, 28, 0.13);
-      --whiteLine: rgba(255,255,255,.18);
-      --shadow: 0 35px 95px rgba(31, 24, 18, .20);
-      --radius: 32px;
-      --max: 1220px;
+      --ink: #0d0d0b;
+      --ink2: #171512;
+      --sand: #f1e6d8;
+      --paper: #fbf4e9;
+      --warm: #d6b48a;
+      --gold: #d69b52;
+      --cream: #fff8ed;
+      --muted: rgba(255,248,237,.68);
+      --mutedDark: #7a6e62;
+      --line: rgba(255,248,237,.16);
+      --lineDark: rgba(13,13,11,.13);
+      --radius: 28px;
+      --max: 1240px;
       --mx: 50%;
       --my: 50%;
+      --scroll: 0;
     }
 
     * { box-sizing: border-box; }
-
-    html { scroll-behavior: smooth; }
+    html { scroll-behavior: smooth; background: var(--ink); }
 
     body {
       margin: 0;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: var(--ink);
-      background:
-        radial-gradient(circle at var(--mx) var(--my), rgba(224,185,128,.28), transparent 18rem),
-        linear-gradient(180deg, #f7f0e6 0%, var(--bg) 55%, #eadfD3 100%);
+      background: var(--ink);
+      color: var(--cream);
       overflow-x: hidden;
       cursor: none;
     }
 
-    a, button, input, select, textarea { font: inherit; }
-    a { color: inherit; }
-
-    ::selection { background: #221f1b; color: #fff; }
-
-    .container { width: min(var(--max), calc(100% - 42px)); margin: 0 auto; }
-
-    .cursor {
+    body::before {
+      content: "";
       position: fixed;
-      width: 18px;
-      height: 18px;
-      left: 0;
-      top: 0;
-      border-radius: 50%;
-      background: var(--gold);
+      inset: 0;
       pointer-events: none;
-      z-index: 9999;
-      transform: translate(-50%, -50%);
-      mix-blend-mode: difference;
-      transition: width .18s ease, height .18s ease, opacity .18s ease;
+      z-index: 0;
+      background:
+        radial-gradient(circle at var(--mx) var(--my), rgba(214,155,82,.25), transparent 20rem),
+        radial-gradient(circle at 15% 70%, rgba(255,248,237,.08), transparent 28rem),
+        linear-gradient(180deg, #0c0c0a 0%, #17130f 52%, #0c0c0a 100%);
     }
 
-    .cursor-ring {
-      position: fixed;
-      width: 54px;
-      height: 54px;
-      left: 0;
-      top: 0;
-      border-radius: 50%;
-      border: 1px solid rgba(255,255,255,.56);
-      pointer-events: none;
-      z-index: 9998;
-      transform: translate(-50%, -50%);
-      transition: width .22s ease, height .22s ease, border .22s ease;
-    }
-
-    body.cursor-big .cursor { width: 34px; height: 34px; opacity: .82; }
-    body.cursor-big .cursor-ring { width: 82px; height: 82px; border-color: rgba(178,138,91,.65); }
-
-    .grain {
+    body::after {
+      content: "";
       position: fixed;
       inset: 0;
       z-index: 9997;
       pointer-events: none;
-      opacity: .10;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.45'/%3E%3C/svg%3E");
+      opacity: .11;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.45'/%3E%3C/svg%3E");
+      mix-blend-mode: soft-light;
     }
 
-    .skip-link {
-      position: absolute;
-      left: 18px;
-      top: -60px;
-      padding: 12px 16px;
-      border-radius: 999px;
-      background: var(--dark);
-      color: white;
+    a, button, input, select, textarea { font: inherit; }
+    a { color: inherit; }
+    ::selection { background: var(--gold); color: var(--ink); }
+
+    .container { width: min(var(--max), calc(100% - 44px)); margin: 0 auto; position: relative; z-index: 1; }
+
+    .cursor-dot, .cursor-ring {
+      position: fixed;
+      left: 0;
+      top: 0;
+      pointer-events: none;
+      border-radius: 50%;
       z-index: 10000;
-      transition: top .2s ease;
+      transform: translate(-50%, -50%);
     }
-    .skip-link:focus { top: 18px; }
+    .cursor-dot { width: 12px; height: 12px; background: var(--gold); mix-blend-mode: difference; }
+    .cursor-ring { width: 54px; height: 54px; border: 1px solid rgba(255,248,237,.55); transition: width .2s ease, height .2s ease, border .2s ease; }
+    body.cursor-big .cursor-ring { width: 92px; height: 92px; border-color: rgba(214,155,82,.72); }
+    body.cursor-big .cursor-dot { width: 22px; height: 22px; }
+
+    .loader {
+      position: fixed;
+      inset: 0;
+      z-index: 20000;
+      display: grid;
+      place-items: center;
+      background: var(--ink);
+      transition: transform 1s cubic-bezier(.77,0,.175,1), opacity .7s ease;
+    }
+    .loader.done { transform: translateY(-100%); opacity: .2; pointer-events: none; }
+    .loader-inner { text-align: center; }
+    .loader-button {
+      border: 1px solid var(--line);
+      background: var(--cream);
+      color: var(--ink);
+      padding: 18px 28px;
+      border-radius: 999px;
+      font-weight: 950;
+      text-transform: uppercase;
+      letter-spacing: .10em;
+      cursor: none;
+      box-shadow: 0 0 0 0 rgba(214,155,82,.3);
+      animation: pulse 1.5s ease infinite;
+    }
+    @keyframes pulse { 50% { box-shadow: 0 0 0 18px rgba(214,155,82,0); } }
+    .loader-title {
+      margin-top: 24px;
+      font-family: Georgia, serif;
+      font-size: clamp(40px, 9vw, 104px);
+      font-weight: 500;
+      line-height: .9;
+    }
+
+    .rotate-note {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 15000;
+      background: var(--ink);
+      color: var(--cream);
+      place-items: center;
+      text-align: center;
+      padding: 40px;
+    }
+    .rotate-note h2 { font-family: Georgia, serif; font-size: 42px; margin: 0 0 14px; }
+
+    .progress-rail {
+      position: fixed;
+      left: 28px;
+      top: 120px;
+      bottom: 36px;
+      width: 2px;
+      background: rgba(255,248,237,.12);
+      z-index: 70;
+    }
+    .progress-rail i {
+      display: block;
+      width: 100%;
+      height: calc(var(--scroll) * 1%);
+      background: linear-gradient(var(--gold), var(--cream));
+    }
+    .side-label {
+      position: fixed;
+      left: 18px;
+      bottom: 34px;
+      z-index: 72;
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      color: rgba(255,248,237,.48);
+      font-size: 11px;
+      letter-spacing: .22em;
+      text-transform: uppercase;
+    }
 
     .site-header {
       position: fixed;
-      top: 18px;
+      top: 22px;
       left: 0;
       width: 100%;
       z-index: 100;
       pointer-events: none;
     }
-
     .nav-shell {
       pointer-events: auto;
-      min-height: 76px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 18px;
+      min-height: 74px;
+      padding: 10px 12px 10px 20px;
+      border: 1px solid rgba(255,248,237,.14);
+      background: rgba(17,16,14,.58);
+      backdrop-filter: blur(18px);
+      border-radius: 999px;
+      box-shadow: 0 24px 80px rgba(0,0,0,.22);
+    }
+    .brand {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 20px;
-      padding: 12px 14px 12px 24px;
-      border-radius: 999px;
-      background: rgba(251,247,239,.70);
-      border: 1px solid rgba(33,31,28,.10);
-      box-shadow: 0 20px 70px rgba(34, 29, 24, .12);
-      backdrop-filter: blur(18px);
-    }
-
-    .brand {
+      gap: 12px;
       text-decoration: none;
       line-height: 1;
-      display: flex;
-      align-items: center;
-      gap: 14px;
     }
-
     .brand-mark {
-      width: 42px;
-      height: 42px;
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
       display: grid;
       place-items: center;
-      background: linear-gradient(135deg, var(--dark), #4b3c2f);
-      color: #f6e7d1;
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,.12);
+      background: var(--cream);
+      color: var(--ink);
       font-family: Georgia, serif;
-      font-size: 18px;
+      font-size: 20px;
     }
+    .brand strong { display: block; font-family: Georgia, serif; font-weight: 500; font-size: clamp(18px, 2vw, 28px); letter-spacing: -.04em; }
+    .brand span span { display: block; margin-top: 5px; color: rgba(255,248,237,.56); font-size: 10px; letter-spacing: .20em; text-transform: uppercase; }
 
-    .brand strong {
-      display: block;
-      font-family: Georgia, "Times New Roman", serif;
-      font-size: clamp(18px, 2.1vw, 27px);
-      font-weight: 500;
-      letter-spacing: -.04em;
-    }
-
-    .brand span {
-      display: block;
-      margin-top: 5px;
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: .22em;
-      color: var(--muted);
-    }
-
-    .main-nav {
+    .nav-center {
       display: flex;
       align-items: center;
-      gap: 4px;
-      background: rgba(255,255,255,.42);
-      border: 1px solid rgba(33,31,28,.08);
-      border-radius: 999px;
+      gap: 3px;
       padding: 5px;
+      border-radius: 999px;
+      background: rgba(255,248,237,.06);
+      border: 1px solid rgba(255,248,237,.08);
     }
-
-    .main-nav a {
+    .nav-center a {
       text-decoration: none;
-      padding: 11px 14px;
+      color: rgba(255,248,237,.72);
+      padding: 10px 13px;
       border-radius: 999px;
       font-size: 13px;
-      color: var(--muted);
-      transition: .2s ease;
+      transition: .22s ease;
     }
-
-    .main-nav a:hover { background: var(--ink); color: white; }
-
-    .right-actions { display: flex; align-items: center; gap: 8px; }
-
-    .lang-switch {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      background: rgba(255,255,255,.45);
-      border: 1px solid rgba(33,31,28,.09);
-      border-radius: 999px;
-      padding: 5px;
-    }
-
-    .lang-switch button {
-      border: 0;
-      background: transparent;
-      cursor: none;
-      color: var(--muted);
-      font-weight: 800;
-      font-size: 12px;
-      border-radius: 999px;
-      padding: 9px 11px;
-    }
-
-    .lang-switch button.active { background: var(--dark); color: white; }
-
-    .menu-toggle {
-      display: none;
-      border: 0;
-      width: 45px;
-      height: 45px;
-      border-radius: 50%;
-      background: var(--dark);
-      color: white;
-      cursor: none;
-    }
+    .nav-center a:hover { color: var(--ink); background: var(--cream); }
+    .nav-actions { display: flex; align-items: center; gap: 8px; }
+    .lang-switch { display: inline-flex; gap: 4px; padding: 5px; border-radius: 999px; background: rgba(255,248,237,.08); border: 1px solid rgba(255,248,237,.10); }
+    .lang-switch button { border: 0; padding: 8px 10px; border-radius: 999px; background: transparent; color: rgba(255,248,237,.62); font-weight: 900; font-size: 12px; cursor: none; }
+    .lang-switch button.active { color: var(--ink); background: var(--cream); }
+    .menu-toggle { display: none; border: 1px solid rgba(255,248,237,.12); background: rgba(255,248,237,.08); color: var(--cream); border-radius: 999px; width: 44px; height: 44px; cursor: none; }
 
     .btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      gap: 10px;
       min-height: 52px;
       padding: 14px 24px;
       border-radius: 999px;
-      text-decoration: none;
       border: 1px solid transparent;
+      text-decoration: none;
+      font-weight: 950;
       cursor: none;
-      font-weight: 800;
-      transition: transform .25s ease, box-shadow .25s ease, background .25s ease;
+      transition: transform .22s ease, box-shadow .22s ease, background .22s ease, color .22s ease;
       position: relative;
       overflow: hidden;
-      isolation: isolate;
     }
-
-    .btn::before {
+    .btn::after {
       content: "";
       position: absolute;
       inset: 0;
-      background: radial-gradient(circle at var(--bx,50%) var(--by,50%), rgba(255,255,255,.35), transparent 32%);
+      background: radial-gradient(circle at var(--bx,50%) var(--by,50%), rgba(255,255,255,.35), transparent 30%);
       opacity: 0;
       transition: opacity .2s ease;
-      z-index: -1;
     }
-
-    .btn:hover { transform: translateY(-3px); box-shadow: 0 18px 44px rgba(32,27,21,.18); }
-    .btn:hover::before { opacity: 1; }
-    .btn-dark { background: var(--dark); color: white; }
-    .btn-light { background: rgba(255,255,255,.52); border-color: var(--line); color: var(--ink); }
-    .btn-gold { background: linear-gradient(135deg, var(--gold), var(--gold2)); color: #20170f; }
+    .btn:hover { transform: translateY(-3px); box-shadow: 0 18px 50px rgba(0,0,0,.24); }
+    .btn:hover::after { opacity: 1; }
+    .btn-primary { background: var(--cream); color: var(--ink); }
+    .btn-outline { border-color: rgba(255,248,237,.22); color: var(--cream); background: rgba(255,248,237,.06); }
+    .btn-gold { background: linear-gradient(135deg, var(--gold), #f0c277); color: var(--ink); }
 
     .hero {
       min-height: 100svh;
-      padding: 150px 0 92px;
       display: grid;
       align-items: center;
+      padding: 146px 0 70px;
       position: relative;
     }
-
-    .hero::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background:
-        linear-gradient(90deg, rgba(255,255,255,.26) 1px, transparent 1px),
-        linear-gradient(180deg, rgba(255,255,255,.26) 1px, transparent 1px);
-      background-size: 70px 70px;
-      mask-image: radial-gradient(circle at 50% 50%, black 0%, transparent 68%);
-      opacity: .28;
-      pointer-events: none;
-    }
-
     .hero-grid {
       display: grid;
-      grid-template-columns: minmax(0, .95fr) minmax(400px, 1.05fr);
-      gap: 54px;
+      grid-template-columns: .78fr 1.22fr;
+      gap: 44px;
       align-items: center;
-      position: relative;
-      z-index: 1;
     }
-
     .eyebrow {
       display: inline-flex;
       align-items: center;
-      gap: 11px;
-      margin-bottom: 18px;
-      color: var(--gold);
+      gap: 10px;
       text-transform: uppercase;
       letter-spacing: .18em;
       font-size: 12px;
-      font-weight: 900;
+      font-weight: 950;
+      color: var(--gold);
+      margin-bottom: 18px;
     }
-
-    .eyebrow::before { content: ""; width: 36px; height: 1px; background: currentColor; }
-
-    h1, h2, h3 { margin: 0; letter-spacing: -.05em; color: var(--ink); }
-
+    .eyebrow::before { content: ""; width: 34px; height: 1px; background: currentColor; }
+    h1, h2, h3 { margin: 0; letter-spacing: -.055em; }
     h1 {
       font-family: Georgia, "Times New Roman", serif;
-      font-size: clamp(52px, 7.8vw, 106px);
-      line-height: .92;
+      font-size: clamp(58px, 8.6vw, 136px);
+      line-height: .86;
       font-weight: 500;
+      max-width: 780px;
     }
+    .lead { margin: 28px 0 0; color: rgba(255,248,237,.72); line-height: 1.65; font-size: clamp(17px, 2vw, 22px); max-width: 620px; }
+    .hero-ctas { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 34px; }
+    .offer-chip { margin-top: 26px; display: inline-flex; align-items: center; gap: 12px; padding: 12px 15px; border: 1px solid rgba(214,155,82,.24); background: rgba(214,155,82,.10); border-radius: 999px; color: rgba(255,248,237,.88); font-size: 14px; max-width: 660px; }
+    .offer-chip i { width: 10px; height: 10px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 7px rgba(214,155,82,.14); flex: 0 0 auto; }
 
-    .hero p.lead {
-      max-width: 680px;
-      margin: 28px 0 0;
-      font-size: clamp(18px, 2vw, 23px);
-      line-height: 1.68;
-      color: var(--muted);
-    }
-
-    .hero-ctas { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 34px; }
-
-    .hero-note {
-      margin-top: 28px;
-      display: inline-flex;
-      align-items: center;
-      gap: 12px;
-      max-width: 680px;
-      padding: 13px 16px;
-      border-radius: 999px;
-      background: rgba(251,247,239,.66);
-      border: 1px solid rgba(178,138,91,.25);
-      box-shadow: 0 20px 50px rgba(33,31,28,.08);
-      color: var(--ink);
-      font-size: 14px;
-    }
-
-    .pulse-dot {
-      flex: 0 0 auto;
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: var(--gold);
-      box-shadow: 0 0 0 6px rgba(178,138,91,.14);
-    }
-
-    .cinema-stage {
-      min-height: 650px;
-      perspective: 1200px;
+    .drive-stage {
       position: relative;
+      height: min(74vh, 760px);
+      min-height: 620px;
+      perspective: 1400px;
     }
-
-    .memory-room {
+    .drive-card {
       position: absolute;
       inset: 0;
-      border-radius: 44px;
+      border-radius: 46px;
       overflow: hidden;
       background:
-        radial-gradient(circle at var(--mx) var(--my), rgba(255,255,255,.27), transparent 20rem),
-        linear-gradient(145deg, #352f29, #171513 58%, #080807);
-      box-shadow: var(--shadow);
+        radial-gradient(circle at var(--mx) var(--my), rgba(255,248,237,.22), transparent 20rem),
+        linear-gradient(145deg, #2e2a25 0%, #12110f 52%, #090807 100%);
+      border: 1px solid rgba(255,248,237,.14);
+      box-shadow: 0 38px 120px rgba(0,0,0,.46);
       transform-style: preserve-3d;
-      transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+      transform: rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));
       transition: transform .12s linear;
-      border: 1px solid rgba(255,255,255,.12);
     }
-
-    .memory-room::before {
+    .drive-card::before {
       content: "";
       position: absolute;
-      inset: 28px;
-      border: 1px solid rgba(255,255,255,.12);
-      border-radius: 32px;
+      inset: 26px;
+      border: 1px solid rgba(255,248,237,.14);
+      border-radius: 34px;
+      z-index: 2;
       pointer-events: none;
     }
-
-    .room-grid {
+    .drive-grid {
       position: absolute;
       inset: 0;
       background:
-        linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px),
-        linear-gradient(180deg, rgba(255,255,255,.05) 1px, transparent 1px);
-      background-size: 54px 54px;
-      mask-image: linear-gradient(to bottom, transparent 0%, black 24%, black 80%, transparent 100%);
-      opacity: .65;
+        linear-gradient(90deg, rgba(255,248,237,.05) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(255,248,237,.05) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(circle at 50% 50%, black 0%, transparent 70%);
     }
-
-    .house-wrap {
+    .big-word {
       position: absolute;
-      inset: 70px 44px 170px;
+      left: -2vw;
+      top: 5%;
+      font-size: clamp(80px, 14vw, 210px);
+      line-height: .82;
+      color: rgba(255,248,237,.06);
+      text-transform: uppercase;
+      font-weight: 1000;
+      letter-spacing: -.08em;
+      transform: translateZ(-20px);
+      user-select: none;
+    }
+    .future-house {
+      position: absolute;
+      inset: 70px 46px 190px;
       display: grid;
       place-items: center;
-      transform: translateZ(55px);
+      transform: translateZ(90px);
     }
-
-    svg.house {
-      width: min(92%, 560px);
-      height: auto;
-      overflow: visible;
-      filter: drop-shadow(0 28px 38px rgba(0,0,0,.35));
-    }
-
-    .house path,
-    .house rect,
-    .house line,
-    .house polyline {
+    svg.house { width: min(92%, 620px); overflow: visible; filter: drop-shadow(0 26px 44px rgba(0,0,0,.45)); }
+    .house path, .house rect, .house line, .house polyline, .house circle {
       fill: none;
-      stroke: rgba(255,242,220,.88);
+      stroke: rgba(255,240,216,.92);
       stroke-width: 8;
       stroke-linecap: round;
       stroke-linejoin: round;
       stroke-dasharray: 1000;
-      stroke-dashoffset: calc(1000 - (var(--build, 0) * 10));
-      transition: stroke-dashoffset .25s ease;
+      stroke-dashoffset: calc(1000 - (var(--build, 12) * 10));
+      transition: stroke-dashoffset .22s ease;
     }
-
-    .house .thin { stroke-width: 5; opacity: .78; }
-    .house .gold { stroke: rgba(224,185,128,.95); }
-
-    .open-memory {
+    .house .thin { stroke-width: 5; opacity: .75; }
+    .house .gold { stroke: rgba(240,194,119,.98); }
+    .meter {
+      position: absolute;
+      left: 45px;
+      bottom: 52px;
+      width: 260px;
+      transform: translateZ(115px);
+      z-index: 3;
+    }
+    .meter span { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: .15em; color: rgba(255,248,237,.56); margin-bottom: 10px; }
+    .meter-line { height: 7px; border-radius: 999px; overflow: hidden; background: rgba(255,248,237,.13); }
+    .meter-line i { display: block; height: 100%; width: calc(var(--build, 12) * 1%); background: linear-gradient(90deg, var(--gold), var(--cream)); }
+    .capsule {
       position: absolute;
       right: 44px;
       bottom: 42px;
-      width: min(390px, calc(100% - 88px));
+      width: min(395px, calc(100% - 88px));
       padding: 24px;
       border-radius: 30px;
-      background: rgba(255,255,255,.12);
-      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,248,237,.12);
+      border: 1px solid rgba(255,248,237,.18);
       backdrop-filter: blur(18px);
-      color: white;
-      transform: translateZ(100px);
+      transform: translateZ(130px);
+      z-index: 4;
     }
+    .capsule h3 { color: var(--cream); font-size: 27px; margin-bottom: 10px; }
+    .capsule p { color: rgba(255,248,237,.68); line-height: 1.62; margin: 0 0 18px; }
+    .mini-menu { display: grid; gap: 10px; overflow: hidden; max-height: 0; transition: max-height .55s cubic-bezier(.2,.8,.2,1); }
+    .capsule.open .mini-menu { max-height: 270px; margin-top: 14px; }
+    .mini-menu a { text-decoration: none; padding: 13px 14px; border-radius: 16px; background: rgba(255,248,237,.10); border: 1px solid rgba(255,248,237,.12); display: flex; justify-content: space-between; color: var(--cream); }
+    .tap-lock { position: absolute; right: 42px; top: 40px; z-index: 4; color: rgba(255,248,237,.56); text-transform: uppercase; letter-spacing: .18em; font-size: 11px; }
 
-    .open-memory h3 { color: white; font-size: 25px; margin-bottom: 10px; }
-    .open-memory p { margin: 0 0 18px; color: rgba(255,255,255,.72); line-height: 1.65; }
-
-    .mini-menu {
-      display: grid;
-      gap: 10px;
-      max-height: 0;
-      overflow: hidden;
-      transition: max-height .5s cubic-bezier(.2,.8,.2,1);
-    }
-
-    .open-memory.active .mini-menu { max-height: 260px; }
-
-    .mini-menu a {
-      text-decoration: none;
-      color: white;
-      padding: 12px 14px;
-      border-radius: 16px;
-      background: rgba(255,255,255,.10);
-      border: 1px solid rgba(255,255,255,.12);
-      display: flex;
-      justify-content: space-between;
-    }
-
-    .build-meter {
-      position: absolute;
-      left: 44px;
-      bottom: 48px;
-      color: white;
-      width: 250px;
-      transform: translateZ(110px);
-    }
-
-    .build-meter span {
-      display: block;
-      color: rgba(255,255,255,.62);
-      font-size: 12px;
-      letter-spacing: .16em;
-      text-transform: uppercase;
-      margin-bottom: 10px;
-    }
-
-    .meter-line {
-      height: 7px;
-      background: rgba(255,255,255,.12);
-      border-radius: 999px;
-      overflow: hidden;
-    }
-
-    .meter-line i {
-      display: block;
-      width: calc(var(--build, 0) * 1%);
-      height: 100%;
-      background: linear-gradient(90deg, var(--gold), #fff0d5);
-      border-radius: inherit;
-      transition: width .25s ease;
-    }
-
-    section { padding: 105px 0; position: relative; }
-
-    .section-head { max-width: 850px; margin-bottom: 42px; }
+    section { padding: 110px 0; position: relative; z-index: 1; }
+    .section-head { max-width: 860px; margin-bottom: 44px; }
     .section-head.center { text-align: center; margin-left: auto; margin-right: auto; }
-    .section-head h2 { font-family: Georgia, "Times New Roman", serif; font-weight: 500; font-size: clamp(38px, 5vw, 72px); line-height: 1.02; }
-    .section-head p { color: var(--muted); font-size: 18px; line-height: 1.75; margin: 18px 0 0; }
+    .section-head h2 { font-family: Georgia, serif; font-weight: 500; font-size: clamp(42px, 6vw, 86px); line-height: .98; }
+    .section-head p { color: rgba(255,248,237,.68); line-height: 1.72; font-size: 18px; margin: 20px 0 0; }
 
-    .split {
-      display: grid;
-      grid-template-columns: .95fr 1.05fr;
-      gap: 36px;
-      align-items: center;
-    }
-
-    .panel {
-      border-radius: var(--radius);
-      border: 1px solid var(--line);
-      background: rgba(251,247,239,.58);
-      box-shadow: 0 22px 70px rgba(33,31,28,.08);
-      backdrop-filter: blur(12px);
-    }
-
-    .text-panel { padding: clamp(28px, 5vw, 52px); }
-    .text-panel p { color: var(--muted); line-height: 1.85; font-size: 17px; }
-
-    .team-orbit {
-      min-height: 520px;
+    .split { display: grid; grid-template-columns: .92fr 1.08fr; gap: 28px; align-items: center; }
+    .panel { border: 1px solid rgba(255,248,237,.13); border-radius: 34px; background: rgba(255,248,237,.07); backdrop-filter: blur(12px); box-shadow: 0 28px 90px rgba(0,0,0,.20); }
+    .text-panel { padding: clamp(28px, 5vw, 54px); }
+    .text-panel p { color: rgba(255,248,237,.68); line-height: 1.85; font-size: 17px; }
+    .orbit {
+      min-height: 560px;
       position: relative;
       overflow: hidden;
-      border-radius: 42px;
       background:
-        radial-gradient(circle at 50% 50%, rgba(224,185,128,.23), transparent 19rem),
-        linear-gradient(135deg, var(--dark2), #0f0e0d);
-      color: white;
-      padding: 34px;
+        radial-gradient(circle at 50% 50%, rgba(214,155,82,.28), transparent 16rem),
+        linear-gradient(135deg, #2b261f, #0d0c0b);
     }
-
-    .orbit-center {
-      position: absolute;
-      left: 50%; top: 50%;
-      width: 140px; height: 140px;
-      border-radius: 50%;
-      transform: translate(-50%, -50%);
-      display: grid;
-      place-items: center;
-      text-align: center;
-      background: rgba(255,255,255,.10);
-      border: 1px solid rgba(255,255,255,.18);
-      backdrop-filter: blur(14px);
-      font-family: Georgia, serif;
-      font-size: 42px;
-      color: #f5e3c6;
-    }
-
-    .orbit-card {
-      position: absolute;
-      width: 190px;
-      padding: 18px;
-      border-radius: 24px;
-      background: rgba(255,255,255,.09);
-      border: 1px solid rgba(255,255,255,.13);
-      backdrop-filter: blur(10px);
-      animation: floaty 5s ease-in-out infinite;
-    }
-
-    .orbit-card strong { display:block; margin-bottom: 6px; color:#fff; }
-    .orbit-card span { color: rgba(255,255,255,.68); line-height: 1.5; font-size: 14px; }
-    .orbit-card:nth-child(2) { left: 38px; top: 70px; }
-    .orbit-card:nth-child(3) { right: 48px; top: 78px; animation-delay: .7s; }
-    .orbit-card:nth-child(4) { left: 58px; bottom: 74px; animation-delay: 1.2s; }
-    .orbit-card:nth-child(5) { right: 48px; bottom: 72px; animation-delay: 1.8s; }
-
-    @keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+    .orbit-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); width: 150px; height: 150px; border-radius: 50%; display: grid; place-items: center; border: 1px solid rgba(255,248,237,.20); background: rgba(255,248,237,.10); font-family: Georgia, serif; font-size: 52px; color: var(--gold); }
+    .orbit-card { position: absolute; width: 205px; padding: 18px; border-radius: 24px; background: rgba(255,248,237,.10); border: 1px solid rgba(255,248,237,.14); animation: float 5s ease-in-out infinite; }
+    .orbit-card strong { display: block; color: var(--cream); margin-bottom: 6px; }
+    .orbit-card span { color: rgba(255,248,237,.62); line-height: 1.5; font-size: 14px; }
+    .orbit-card:nth-child(2) { left: 40px; top: 70px; }
+    .orbit-card:nth-child(3) { right: 48px; top: 76px; animation-delay: .7s; }
+    .orbit-card:nth-child(4) { left: 55px; bottom: 72px; animation-delay: 1.2s; }
+    .orbit-card:nth-child(5) { right: 44px; bottom: 72px; animation-delay: 1.8s; }
+    @keyframes float { 50% { transform: translateY(-16px); } }
 
     .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
-
     .card {
-      min-height: 245px;
-      padding: 27px;
+      min-height: 250px;
+      padding: 26px;
       border-radius: 30px;
-      background: rgba(251,247,239,.62);
-      border: 1px solid var(--line);
-      box-shadow: 0 20px 60px rgba(33,31,28,.07);
-      transition: transform .28s ease, box-shadow .28s ease, background .28s ease;
+      background: rgba(255,248,237,.075);
+      border: 1px solid rgba(255,248,237,.13);
+      transition: transform .28s ease, background .28s ease, box-shadow .28s ease;
       position: relative;
       overflow: hidden;
     }
+    .card::before { content:""; position:absolute; inset:auto -30% -60% -30%; height:80%; background: radial-gradient(circle, rgba(214,155,82,.22), transparent 62%); opacity:0; transition: opacity .25s ease; }
+    .card:hover { transform: translateY(-8px) rotateX(3deg); background: rgba(255,248,237,.11); box-shadow: 0 24px 80px rgba(0,0,0,.22); }
+    .card:hover::before { opacity:1; }
+    .icon { width: 48px; height: 48px; border-radius: 18px; display: grid; place-items: center; background: rgba(214,155,82,.14); color: var(--gold); font-size: 22px; margin-bottom: 18px; }
+    .card h3 { color: var(--cream); font-size: 22px; margin-bottom: 12px; }
+    .card p { color: rgba(255,248,237,.64); margin: 0; line-height: 1.65; }
 
-    .card::after {
-      content: "";
-      position: absolute;
-      inset: auto -20% -50% -20%;
-      height: 70%;
-      background: radial-gradient(circle, rgba(224,185,128,.18), transparent 65%);
-      opacity: 0;
-      transition: opacity .25s ease;
-    }
-
-    .card:hover { transform: translateY(-8px) rotateX(2deg); box-shadow: 0 28px 75px rgba(33,31,28,.14); background: rgba(255,253,249,.72); }
-    .card:hover::after { opacity: 1; }
-
-    .icon {
-      width: 46px; height: 46px;
-      border-radius: 18px;
-      display: grid;
-      place-items: center;
-      background: rgba(178,138,91,.13);
-      color: var(--gold);
-      font-size: 20px;
-      margin-bottom: 18px;
-    }
-
-    .card h3 { font-size: 21px; margin-bottom: 12px; }
-    .card p { color: var(--muted); margin: 0; line-height: 1.65; }
-
-    .timeline {
-      display: grid;
-      grid-template-columns: repeat(7, minmax(180px,1fr));
-      gap: 16px;
-      overflow-x: auto;
-      padding-bottom: 12px;
-    }
-
-    .step {
-      min-height: 235px;
-      border-radius: 30px;
-      padding: 24px;
-      border: 1px solid var(--line);
-      background: rgba(251,247,239,.62);
-    }
-
+    .timeline { display: grid; grid-template-columns: repeat(7, minmax(180px,1fr)); gap: 16px; overflow-x: auto; padding-bottom: 12px; }
+    .step { min-height: 240px; border-radius: 30px; padding: 24px; background: rgba(255,248,237,.075); border: 1px solid rgba(255,248,237,.13); }
     .step b { color: var(--gold); letter-spacing: .16em; font-size: 12px; }
-    .step h3 { margin-top: 18px; font-size: 21px; }
-    .step p { color: var(--muted); line-height:1.6; margin: 12px 0 0; }
+    .step h3 { color: var(--cream); margin-top: 16px; font-size: 22px; }
+    .step p { color: rgba(255,248,237,.64); line-height: 1.6; margin: 12px 0 0; }
 
-    .offer-box {
-      position: relative;
-      overflow: hidden;
-      border-radius: 52px;
-      padding: clamp(36px, 7vw, 78px);
-      background:
-        radial-gradient(circle at var(--mx) var(--my), rgba(224,185,128,.32), transparent 22rem),
-        linear-gradient(135deg, #302a24, #11100f 72%);
-      color: white;
-      box-shadow: var(--shadow);
-    }
+    .offer-box { position: relative; overflow: hidden; border-radius: 52px; padding: clamp(36px, 7vw, 82px); background: radial-gradient(circle at var(--mx) var(--my), rgba(255,248,237,.18), transparent 20rem), linear-gradient(135deg, #f0c277, #b57c38 46%, #2b2017); color: var(--ink); box-shadow: 0 38px 120px rgba(0,0,0,.38); }
+    .offer-box::before { content:""; position:absolute; inset:26px; border: 1px solid rgba(255,255,255,.24); border-radius: 38px; pointer-events:none; }
+    .offer-grid { position: relative; display: grid; grid-template-columns: 1.05fr .95fr; gap: 34px; align-items:center; }
+    .offer-box .eyebrow { color: var(--ink); }
+    .offer-box h2 { font-family: Georgia, serif; font-weight: 500; font-size: clamp(44px, 6vw, 86px); line-height: .96; color: var(--ink); }
+    .offer-box p { color: rgba(13,13,11,.70); font-size: 18px; line-height: 1.7; }
+    .included { display: grid; gap: 12px; }
+    .included div { padding: 15px 17px; border-radius: 18px; background: rgba(255,248,237,.35); border: 1px solid rgba(13,13,11,.12); font-weight: 800; }
 
-    .offer-box::before {
-      content:"";
-      position:absolute;
-      inset: 26px;
-      border-radius: 38px;
-      border: 1px solid rgba(255,255,255,.14);
-    }
-
-    .offer-grid { position:relative; display:grid; grid-template-columns: 1.06fr .94fr; gap: 38px; align-items:center; }
-    .offer-box h2 { color:white; font-family: Georgia, serif; font-weight: 500; font-size: clamp(40px, 5.8vw, 78px); line-height: 1; }
-    .offer-box p { color: rgba(255,255,255,.74); line-height:1.75; font-size:18px; }
-
-    .included { display:grid; gap:12px; }
-    .included div { padding: 15px 17px; border-radius: 18px; background: rgba(255,255,255,.09); border:1px solid rgba(255,255,255,.12); }
-
-    .booking { display:grid; grid-template-columns: .82fr 1.18fr; gap: 30px; align-items:start; }
-    .booking-note { padding: 34px; }
-    .booking-note p { color: var(--muted); line-height: 1.75; }
-
-    form {
-      padding: 30px;
-      border-radius: 36px;
-      background: rgba(251,247,239,.70);
-      border: 1px solid var(--line);
-      box-shadow: 0 25px 70px rgba(33,31,28,.08);
-    }
-
-    .form-grid { display:grid; grid-template-columns: repeat(2,1fr); gap: 16px; }
+    .light-section { background: var(--sand); color: var(--ink); }
+    .light-section .section-head h2, .light-section h2, .light-section h3 { color: var(--ink); }
+    .light-section .section-head p, .light-section p { color: var(--mutedDark); }
+    .booking { display: grid; grid-template-columns: .82fr 1.18fr; gap: 30px; align-items: start; }
+    .booking-note { padding: 34px; background: rgba(255,255,255,.35); border-color: rgba(13,13,11,.12); }
+    form { padding: 30px; border-radius: 36px; background: rgba(255,255,255,.42); border: 1px solid rgba(13,13,11,.13); box-shadow: 0 24px 70px rgba(31,24,18,.10); }
+    .form-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 16px; }
     .full { grid-column: 1 / -1; }
-    label { display:grid; gap:8px; font-weight: 800; font-size: 14px; color: var(--dark2); }
-    input, select, textarea {
-      width:100%;
-      border:1px solid rgba(33,31,28,.14);
-      border-radius: 18px;
-      background: rgba(255,255,255,.64);
-      padding: 14px 15px;
-      color: var(--ink);
-      outline: none;
-      transition: border .2s ease, box-shadow .2s ease;
-      cursor: none;
-    }
-    input:focus, select:focus, textarea:focus { border-color: rgba(178,138,91,.72); box-shadow: 0 0 0 5px rgba(178,138,91,.12); }
+    label { display: grid; gap: 8px; color: var(--ink); font-size: 14px; font-weight: 900; }
+    input, select, textarea { width: 100%; border: 1px solid rgba(13,13,11,.15); background: rgba(255,255,255,.60); border-radius: 18px; padding: 14px 15px; color: var(--ink); outline: none; cursor: none; }
+    input:focus, select:focus, textarea:focus { border-color: rgba(181,124,56,.65); box-shadow: 0 0 0 5px rgba(181,124,56,.12); }
     textarea { min-height: 120px; resize: vertical; }
-
-    .question-note {
-      display:none;
-      margin-top: 14px;
-      padding: 14px 16px;
-      border-radius: 18px;
-      background: rgba(178,138,91,.12);
-      color: var(--muted);
-      line-height:1.55;
-    }
-    .question-note.show { display:block; }
-    .checkline { display:flex; gap: 12px; align-items:flex-start; margin: 18px 0 22px; color:var(--muted); line-height:1.5; font-weight:600; }
+    .question-note { display: none; margin-top: 14px; padding: 14px 16px; border-radius: 18px; background: rgba(181,124,56,.13); color: var(--mutedDark); line-height: 1.55; }
+    .question-note.show { display: block; }
+    .checkline { display: flex; align-items: flex-start; gap: 12px; margin: 18px 0 22px; color: var(--mutedDark); font-weight: 650; line-height: 1.5; }
     .checkline input { width: 18px; height: 18px; margin-top: 3px; }
 
-    .gallery-grid { display:grid; grid-template-columns: 1.2fr .8fr .8fr; gap:18px; }
-    .gallery-item {
-      min-height: 260px;
-      border-radius: 34px;
-      padding: 26px;
-      color:white;
-      display:flex;
-      flex-direction:column;
-      justify-content:flex-end;
-      position:relative;
-      overflow:hidden;
-      background:
-        linear-gradient(180deg, rgba(0,0,0,.06), rgba(0,0,0,.46)),
-        linear-gradient(135deg, #e9d8c1, #a98c70 48%, #4f4740);
-      transform-style: preserve-3d;
-    }
-    .gallery-item.large { grid-row: span 2; min-height: 540px; }
-    .gallery-item::before { content:""; position:absolute; inset:20px; border-radius:24px; border:1px solid rgba(255,255,255,.20); }
-    .gallery-item strong, .gallery-item span { position:relative; }
-    .gallery-item strong { font-size: 23px; margin-bottom: 8px; }
-    .gallery-item span { color: rgba(255,255,255,.72); line-height:1.5; }
+    .gallery-grid { display: grid; grid-template-columns: 1.2fr .8fr .8fr; gap: 18px; }
+    .gallery-item { min-height: 265px; padding: 26px; border-radius: 34px; color: var(--cream); display: flex; flex-direction: column; justify-content: flex-end; position: relative; overflow: hidden; background: linear-gradient(180deg, rgba(0,0,0,.05), rgba(0,0,0,.56)), linear-gradient(135deg, #f1d4af, #a66f3c, #211914); border: 1px solid rgba(255,248,237,.14); }
+    .gallery-item.large { grid-row: span 2; min-height: 550px; }
+    .gallery-item::before { content:""; position:absolute; inset:20px; border: 1px solid rgba(255,248,237,.20); border-radius: 24px; }
+    .gallery-item strong, .gallery-item span { position: relative; }
+    .gallery-item strong { font-size: 24px; margin-bottom: 8px; }
+    .gallery-item span { color: rgba(255,248,237,.68); line-height: 1.5; }
 
-    .faq-list { max-width: 960px; margin: 0 auto; display:grid; gap:12px; }
-    .faq-item { border: 1px solid var(--line); border-radius: 24px; background: rgba(251,247,239,.64); overflow:hidden; }
-    .faq-button { width:100%; border:0; background:transparent; display:flex; justify-content:space-between; gap:20px; text-align:left; padding:22px 24px; font-weight:900; color:var(--ink); cursor:none; }
-    .faq-button span:last-child { color: var(--gold); font-size:22px; }
-    .faq-answer { max-height:0; overflow:hidden; transition:max-height .35s ease; }
-    .faq-answer p { margin:0; padding: 0 24px 24px; color:var(--muted); line-height:1.75; }
+    .faq-list { max-width: 960px; margin: 0 auto; display: grid; gap: 12px; }
+    .faq-item { border: 1px solid rgba(255,248,237,.13); border-radius: 24px; background: rgba(255,248,237,.075); overflow: hidden; }
+    .faq-button { width: 100%; border: 0; background: transparent; color: var(--cream); display: flex; justify-content: space-between; gap: 20px; text-align: left; padding: 22px 24px; font-weight: 950; cursor: none; }
+    .faq-button span:last-child { color: var(--gold); font-size: 22px; }
+    .faq-answer { max-height: 0; overflow: hidden; transition: max-height .35s ease; }
+    .faq-answer p { margin: 0; padding: 0 24px 24px; color: rgba(255,248,237,.64); line-height: 1.75; }
     .faq-item.open .faq-answer { max-height: 240px; }
 
-    .contact-grid { display:grid; grid-template-columns:.95fr 1.05fr; gap:30px; }
-    .contact-card { background: var(--dark); color:white; padding:34px; border-radius:36px; }
-    .contact-card h3 { color:white; font-size:34px; }
-    .contact-card p, .contact-card li { color:rgba(255,255,255,.72); line-height:1.75; }
-    .contact-links { display:grid; gap:12px; margin-top:24px; }
-    .contact-links a, .contact-links div { text-decoration:none; padding:14px 16px; border-radius:18px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12); color:rgba(255,255,255,.86); }
+    .contact-grid { display: grid; grid-template-columns: .95fr 1.05fr; gap: 30px; }
+    .contact-card { padding: 34px; border-radius: 36px; background: rgba(255,248,237,.075); border: 1px solid rgba(255,248,237,.13); }
+    .contact-card h3 { font-size: 34px; }
+    .contact-card p, .contact-card li { color: rgba(255,248,237,.66); line-height: 1.75; }
+    .contact-links { display: grid; gap: 12px; margin-top: 24px; }
+    .contact-links a, .contact-links div { text-decoration: none; padding: 14px 16px; border-radius: 18px; background: rgba(255,248,237,.08); border: 1px solid rgba(255,248,237,.12); color: rgba(255,248,237,.78); }
 
-    .legal-tabs { display:flex; flex-wrap:wrap; justify-content:center; gap:12px; margin-bottom:24px; }
-    .legal-tabs button { border:1px solid var(--line); background:rgba(251,247,239,.70); border-radius:999px; padding:12px 18px; font-weight:900; cursor:none; }
-    .legal-tabs button.active { background:var(--dark); color:white; }
-    .legal-box { display:none; max-width: 950px; margin:0 auto; padding:32px; border-radius:32px; background:rgba(251,247,239,.66); border:1px solid var(--line); }
-    .legal-box.active { display:block; }
-    .legal-box h3 { font-size: 28px; }
-    .legal-box p { color:var(--muted); line-height:1.75; }
+    .legal-tabs { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-bottom: 24px; }
+    .legal-tabs button { border: 1px solid rgba(255,248,237,.13); background: rgba(255,248,237,.08); color: var(--cream); border-radius: 999px; padding: 12px 18px; font-weight: 950; cursor: none; }
+    .legal-tabs button.active { background: var(--cream); color: var(--ink); }
+    .legal-box { display: none; max-width: 950px; margin: 0 auto; padding: 32px; border-radius: 32px; background: rgba(255,248,237,.075); border: 1px solid rgba(255,248,237,.13); }
+    .legal-box.active { display: block; }
+    .legal-box h3 { font-size: 29px; }
+    .legal-box p { color: rgba(255,248,237,.64); line-height: 1.75; }
 
-    footer { padding: 58px 0 34px; background:#171513; color:rgba(255,255,255,.70); }
-    .footer-grid { display:grid; grid-template-columns:1.2fr .8fr .8fr .8fr; gap:32px; margin-bottom:36px; }
-    footer h3, footer h4 { color:white; margin:0 0 14px; }
-    footer h3 { font-family:Georgia,serif; font-weight:500; font-size:34px; }
-    footer a { display:block; color:rgba(255,255,255,.70); text-decoration:none; margin:10px 0; }
-    footer a:hover { color:white; }
-    .footer-bottom { border-top:1px solid rgba(255,255,255,.12); padding-top:22px; display:flex; flex-wrap:wrap; justify-content:space-between; gap:18px; font-size:14px; }
+    footer { padding: 58px 0 34px; background: #080807; color: rgba(255,248,237,.62); position: relative; z-index: 1; }
+    .footer-grid { display: grid; grid-template-columns: 1.2fr .8fr .8fr .8fr; gap: 32px; margin-bottom: 36px; }
+    footer h3, footer h4 { color: var(--cream); margin: 0 0 14px; }
+    footer h3 { font-family: Georgia, serif; font-weight: 500; font-size: 36px; }
+    footer a { display: block; color: rgba(255,248,237,.62); text-decoration: none; margin: 10px 0; }
+    footer a:hover { color: var(--cream); }
+    .footer-bottom { border-top: 1px solid rgba(255,248,237,.12); padding-top: 22px; display: flex; justify-content: space-between; gap: 18px; flex-wrap: wrap; font-size: 14px; }
 
-    .reveal { opacity:0; transform:translateY(34px); transition: opacity .8s ease, transform .8s cubic-bezier(.2,.8,.2,1); }
-    .reveal.visible { opacity:1; transform:translateY(0); }
+    .reveal { opacity: 0; transform: translateY(36px); transition: opacity .8s ease, transform .8s cubic-bezier(.2,.8,.2,1); }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
 
-    @media (max-width: 1080px) {
+    @media (orientation: landscape) and (max-height: 500px) and (max-width: 930px) {
+      .rotate-note { display: grid; }
+    }
+    @media (max-width: 1100px) {
       body { cursor: auto; }
-      .cursor, .cursor-ring { display:none; }
+      .cursor-dot, .cursor-ring { display: none; }
       a, button, input, select, textarea { cursor: pointer; }
       .hero-grid, .split, .offer-grid, .booking, .contact-grid { grid-template-columns: 1fr; }
       .cards { grid-template-columns: repeat(2,1fr); }
       .gallery-grid { grid-template-columns: 1fr 1fr; }
       .gallery-item.large { grid-column: 1 / -1; grid-row: auto; }
       .footer-grid { grid-template-columns: 1fr 1fr; }
-      .cinema-stage { min-height: 590px; }
+      .drive-stage { height: 620px; }
     }
-
     @media (max-width: 820px) {
+      .progress-rail, .side-label { display: none; }
       .site-header { top: 12px; }
-      .nav-shell { border-radius: 30px; align-items:flex-start; }
-      .main-nav {
-        position: fixed;
-        left: 21px;
-        right: 21px;
-        top: 103px;
-        display:none;
-        flex-direction:column;
-        align-items:stretch;
-        padding:18px;
-        border-radius:26px;
-        box-shadow:var(--shadow);
-        background:rgba(251,247,239,.96);
-      }
-      .main-nav.open { display:flex; }
-      .menu-toggle { display:grid; place-items:center; }
-      .hero { padding-top: 135px; }
-      .cinema-stage { min-height: 540px; }
-      .house-wrap { inset: 60px 18px 180px; }
-      .open-memory { left: 22px; right: 22px; width:auto; bottom:24px; }
-      .build-meter { left: 24px; bottom: 185px; width: 210px; }
-      .cards, .form-grid, .gallery-grid, .footer-grid { grid-template-columns:1fr; }
-      .section-head.center { text-align:left; }
-      section { padding: 76px 0; }
+      .nav-shell { border-radius: 30px; align-items: flex-start; }
+      .nav-center { display: none; position: fixed; left: 22px; right: 22px; top: 98px; flex-direction: column; align-items: stretch; border-radius: 26px; padding: 16px; background: rgba(17,16,14,.96); box-shadow: 0 28px 90px rgba(0,0,0,.42); }
+      .nav-center.open { display: flex; }
+      .menu-toggle { display: grid; place-items: center; }
+      .hero { padding-top: 130px; }
+      .hero-grid { gap: 28px; }
+      .drive-stage { height: 560px; min-height: 560px; }
+      .future-house { inset: 66px 18px 190px; }
+      .capsule { left: 22px; right: 22px; width: auto; bottom: 24px; }
+      .meter { left: 26px; bottom: 190px; width: 210px; }
+      .tap-lock { display: none; }
+      .cards, .form-grid, .gallery-grid, .footer-grid { grid-template-columns: 1fr; }
+      .section-head.center { text-align: left; }
+      section { padding: 78px 0; }
     }
   </style>
 </head>
 <body>
-  <div class="grain" aria-hidden="true"></div>
-  <div class="cursor" aria-hidden="true"></div>
-  <div class="cursor-ring" aria-hidden="true"></div>
+  <div class="cursor-dot"></div>
+  <div class="cursor-ring"></div>
+  <div class="rotate-note"><div><h2 data-i18n="rotateTitle">Tournez votre téléphone</h2><p data-i18n="rotateText">Cette expérience est pensée verticalement.</p></div></div>
+  <div class="loader" id="loader"><div class="loader-inner"><button class="loader-button" id="loadBtn" data-i18n="loadBtn">Charger le futur</button><div class="loader-title" data-i18n="loadTitle">Message<br>pour Demain</div></div></div>
 
-  <a class="skip-link" href="#main" data-i18n="skip">Aller au contenu</a>
+  <div class="progress-rail"><i></i></div>
+  <div class="side-label" data-i18n="sideLabel">Mémoire · futur · famille</div>
 
   <header class="site-header">
     <div class="container nav-shell">
-      <a href="#top" class="brand magnetic" aria-label="Message pour Demain">
-        <!-- LOGO: replace this text logo with the final logo later -->
-        <span class="brand-mark">M</span>
-        <span>
-          <strong data-i18n="brandName">Message pour Demain</strong>
-          <span data-i18n="brandSub">Studio cinématographique de mémoire</span>
-        </span>
-      </a>
-
-      <nav class="main-nav" id="mainNav" aria-label="Navigation principale">
-        <a href="#concept" data-i18n="navConcept">Concept</a>
-        <a href="#services" data-i18n="navServices">Services</a>
-        <a href="#offer" data-i18n="navOffer">Offre</a>
-        <a href="#booking" data-i18n="navBooking">Réservation</a>
-        <a href="#faq" data-i18n="navFaq">FAQ</a>
+      <a href="#top" class="brand magnetic"><span class="brand-mark">M</span><span><strong data-i18n="brandName">Message pour Demain</strong><span data-i18n="brandSub">Studio de mémoire</span></span></a>
+      <nav class="nav-center" id="mainNav">
+        <a href="#concept" data-i18n="navConcept">Concept</a><a href="#services" data-i18n="navServices">Services</a><a href="#offer" data-i18n="navOffer">Offre</a><a href="#booking" data-i18n="navBooking">Réservation</a><a href="#faq" data-i18n="navFaq">FAQ</a>
       </nav>
-
-      <div class="right-actions">
-        <div class="lang-switch" aria-label="Language switcher">
-          <button type="button" data-lang="fr" class="active">FR</button>
-          <button type="button" data-lang="en">EN</button>
-        </div>
-        <button class="menu-toggle" id="menuToggle" aria-label="Menu" aria-expanded="false">☰</button>
-      </div>
+      <div class="nav-actions"><div class="lang-switch"><button type="button" data-lang="fr" class="active">FR</button><button type="button" data-lang="en">EN</button></div><button class="menu-toggle" id="menuToggle" aria-label="Menu">☰</button></div>
     </div>
   </header>
 
-  <main id="main">
+  <main>
     <section class="hero" id="top">
       <div class="container hero-grid">
-        <div class="hero-copy reveal">
+        <div class="reveal">
           <div class="eyebrow" data-i18n="heroEyebrow">France · Dijon · Nevers</div>
           <h1 data-i18n="heroTitle">Un film pour aujourd’hui. Un message pour demain.</h1>
           <p class="lead" data-i18n="heroText">Nous créons des vidéos cinématographiques qui relient votre histoire d’aujourd’hui à votre futur.</p>
-          <div class="hero-ctas">
-            <a class="btn btn-dark magnetic" href="#booking" data-i18n="heroCta1">Réserver une séance gratuite</a>
-            <a class="btn btn-light magnetic" href="#concept" data-i18n="heroCta2">Découvrir le concept</a>
-          </div>
-          <div class="hero-note"><span class="pulse-dot"></span><strong data-i18n="heroOffer">Offre de lancement : service complet gratuit pour les 5 premières familles.</strong></div>
+          <div class="hero-ctas"><a class="btn btn-primary" href="#booking" data-i18n="heroCta1">Réserver une séance gratuite</a><a class="btn btn-outline" href="#concept" data-i18n="heroCta2">Découvrir le concept</a></div>
+          <div class="offer-chip"><i></i><strong data-i18n="heroOffer">Offre de lancement : service complet gratuit pour les 5 premières familles.</strong></div>
         </div>
-
-        <div class="cinema-stage reveal" id="stage">
-          <div class="memory-room" id="memoryRoom">
-            <div class="room-grid"></div>
-            <div class="house-wrap">
-              <!-- Interactive house / memory room: the lines are built with mouse movement and scroll. -->
-              <svg class="house" viewBox="0 0 620 480" role="img" aria-label="Maison de souvenirs interactive">
-                <path class="gold" d="M100 260 L310 92 L520 260" />
-                <path d="M150 250 L150 420 L470 420 L470 250" />
-                <path class="thin" d="M220 420 L220 310 L295 310 L295 420" />
-                <rect class="thin" x="338" y="300" width="78" height="66" rx="8" />
-                <line class="thin" x1="377" y1="300" x2="377" y2="366" />
-                <line class="thin" x1="338" y1="333" x2="416" y2="333" />
-                <path class="gold thin" d="M266 210 C292 178 333 178 356 210 C388 256 310 292 310 292 C310 292 232 256 266 210Z" />
-                <polyline class="thin" points="112,420 512,420" />
-                <path class="thin" d="M470 250 C506 252 524 276 520 310" />
-                <path class="thin" d="M150 250 C113 252 96 276 100 310" />
+        <div class="drive-stage reveal" id="stage">
+          <div class="drive-card" id="driveCard">
+            <div class="drive-grid"></div><div class="big-word">FUTURE<br>DRIVE</div><div class="tap-lock" data-i18n="tapLock">tap to open</div>
+            <div class="future-house">
+              <svg class="house" viewBox="0 0 650 500" aria-label="Maison interactive">
+                <path class="gold" d="M88 275 L325 86 L562 275"/><path d="M145 268 L145 428 L505 428 L505 268"/><path class="thin" d="M230 428 L230 318 L310 318 L310 428"/><rect class="thin" x="360" y="310" width="86" height="72" rx="8"/><line class="thin" x1="403" y1="310" x2="403" y2="382"/><line class="thin" x1="360" y1="346" x2="446" y2="346"/><path class="gold thin" d="M279 206 C300 176 344 176 371 206 C411 253 325 300 325 300 C325 300 239 253 279 206Z"/><polyline class="thin" points="110,428 540,428"/><path class="thin" d="M505 268 C548 276 570 308 560 352"/><path class="thin" d="M145 268 C105 276 84 308 94 352"/><circle class="gold thin" cx="325" cy="250" r="150" opacity=".35"/>
               </svg>
             </div>
-
-            <div class="build-meter" aria-hidden="true">
-              <span data-i18n="buildLabel">Construisez le souvenir avec la souris</span>
-              <div class="meter-line"><i></i></div>
-            </div>
-
-            <div class="open-memory" id="openMemory">
-              <h3 data-i18n="memoryTitle">Ouvrir la capsule</h3>
-              <p data-i18n="memoryText">Bougez la souris : la maison se construit. Cliquez ici pour ouvrir les espaces du futur.</p>
-              <a class="btn btn-gold magnetic" href="javascript:void(0)" id="openCapsule" data-i18n="memoryCta">Voir les espaces</a>
-              <div class="mini-menu" id="miniMenu">
-                <a href="#services"><span data-i18n="mini1">Films de famille</span><b>→</b></a>
-                <a href="#process"><span data-i18n="mini2">Processus</span><b>→</b></a>
-                <a href="#offer"><span data-i18n="mini3">Offre gratuite</span><b>→</b></a>
-                <a href="#booking"><span data-i18n="mini4">Réserver</span><b>→</b></a>
-              </div>
-            </div>
+            <div class="meter"><span data-i18n="buildLabel">Construisez le souvenir avec la souris</span><div class="meter-line"><i></i></div></div>
+            <div class="capsule" id="capsule"><h3 data-i18n="memoryTitle">Ouvrir la capsule</h3><p data-i18n="memoryText">Bougez la souris : la maison se construit. Cliquez ici pour ouvrir les espaces du futur.</p><a class="btn btn-gold" href="javascript:void(0)" id="openCapsule" data-i18n="memoryCta">Voir les espaces</a><div class="mini-menu"><a href="#services"><span data-i18n="mini1">Films de famille</span><b>→</b></a><a href="#process"><span data-i18n="mini2">Processus</span><b>→</b></a><a href="#offer"><span data-i18n="mini3">Offre gratuite</span><b>→</b></a><a href="#booking"><span data-i18n="mini4">Réserver</span><b>→</b></a></div></div>
           </div>
         </div>
       </div>
     </section>
 
-    <section id="concept">
-      <div class="container split">
-        <div class="team-orbit reveal">
-          <div class="orbit-center">4</div>
-          <div class="orbit-card"><strong data-i18n="orbit1Title">Tournage</strong><span data-i18n="orbit1Text">Captation, lumière, son et cadre.</span></div>
-          <div class="orbit-card"><strong data-i18n="orbit2Title">Interview</strong><span data-i18n="orbit2Text">Questions, écoute et accompagnement.</span></div>
-          <div class="orbit-card"><strong data-i18n="orbit3Title">Montage</strong><span data-i18n="orbit3Text">Rythme, émotion et narration.</span></div>
-          <div class="orbit-card"><strong data-i18n="orbit4Title">Post-production</strong><span data-i18n="orbit4Text">Couleur, son et livraison finale.</span></div>
-        </div>
+    <section id="concept"><div class="container split"><div class="orbit panel reveal"><div class="orbit-center">4</div><div class="orbit-card"><strong data-i18n="orbit1Title">Tournage</strong><span data-i18n="orbit1Text">Captation, lumière, son et cadre.</span></div><div class="orbit-card"><strong data-i18n="orbit2Title">Interview</strong><span data-i18n="orbit2Text">Questions, écoute et accompagnement.</span></div><div class="orbit-card"><strong data-i18n="orbit3Title">Montage</strong><span data-i18n="orbit3Text">Rythme, émotion et narration.</span></div><div class="orbit-card"><strong data-i18n="orbit4Title">Post-production</strong><span data-i18n="orbit4Text">Couleur, son et livraison finale.</span></div></div><div class="panel text-panel reveal"><div class="eyebrow" data-i18n="conceptEyebrow">À propos</div><div class="section-head"><h2 data-i18n="conceptTitle">Nous ne filmons pas seulement votre présent. Nous vous connectons à votre futur.</h2><p data-i18n="conceptIntro">Message pour Demain transforme une conversation intime en film de mémoire, à revoir plus tard.</p></div><p data-i18n="conceptP1">Le service aide les familles, les couples et les personnes seules à enregistrer des souvenirs, des objectifs, des souhaits, des émotions et des messages pour leur futur.</p><p data-i18n="conceptP2">Un an plus tard, vous pouvez regarder la vidéo et voir ce qui a changé : vos rêves, vos priorités, votre famille, votre histoire.</p><p data-i18n="conceptP3">Le tournage se fait dans le lieu choisi par le client, de préférence en intérieur ou dans un espace calme pour un meilleur son et une meilleure image.</p></div></div></section>
 
-        <div class="panel text-panel reveal">
-          <div class="eyebrow" data-i18n="conceptEyebrow">À propos</div>
-          <div class="section-head">
-            <h2 data-i18n="conceptTitle">Nous ne filmons pas seulement votre présent. Nous vous connectons à votre futur.</h2>
-            <p data-i18n="conceptIntro">Message pour Demain transforme une conversation intime en film de mémoire, à revoir plus tard.</p>
-          </div>
-          <p data-i18n="conceptP1">Le service aide les familles, les couples et les personnes seules à enregistrer des souvenirs, des objectifs, des souhaits, des émotions et des messages pour leur futur.</p>
-          <p data-i18n="conceptP2">Un an plus tard, vous pouvez regarder la vidéo et voir ce qui a changé : vos rêves, vos priorités, votre famille, votre histoire.</p>
-          <p data-i18n="conceptP3">Le tournage se fait dans le lieu choisi par le client, de préférence en intérieur ou dans un espace calme pour un meilleur son et une meilleure image.</p>
-        </div>
-      </div>
-    </section>
+    <section id="services"><div class="container"><div class="section-head center reveal"><div class="eyebrow" data-i18n="servicesEyebrow">Services</div><h2 data-i18n="servicesTitle">Des formats pensés comme de petits films.</h2><p data-i18n="servicesIntro">Pas de style enfantin, pas de vidéo froide. Une esthétique calme, intime, cinématographique et humaine.</p></div><div class="cards"><article class="card reveal"><div class="icon">⌂</div><h3 data-i18n="service1Title">Films de mémoire familiale</h3><p data-i18n="service1Text">Des souvenirs filmés avec plusieurs membres de la famille.</p></article><article class="card reveal"><div class="icon">✦</div><h3 data-i18n="service2Title">Messages pour le futur</h3><p data-i18n="service2Text">Des paroles personnelles à revoir dans un an ou plus tard.</p></article><article class="card reveal"><div class="icon">◐</div><h3 data-i18n="service3Title">Interviews individuelles</h3><p data-i18n="service3Text">Une conversation calme pour raconter une histoire ou un objectif.</p></article><article class="card reveal"><div class="icon">♡</div><h3 data-i18n="service4Title">Vidéos de couple</h3><p data-i18n="service4Text">Un message à deux, pour garder un moment de votre relation.</p></article><article class="card reveal"><div class="icon">◌</div><h3 data-i18n="service5Title">Grandes familles</h3><p data-i18n="service5Text">Des formats adaptés aux familles nombreuses et aux générations.</p></article><article class="card reveal"><div class="icon">↻</div><h3 data-i18n="service6Title">Concept annuel</h3><p data-i18n="service6Text">Regarder la vidéo l’année suivante et faire le point.</p></article><article class="card reveal"><div class="icon">✂</div><h3 data-i18n="service7Title">Montage inclus</h3><p data-i18n="service7Text">Montage, rythme, ambiance, son et post-production inclus.</p></article><article class="card reveal"><div class="icon">▣</div><h3 data-i18n="service8Title">QR code ou USB</h3><p data-i18n="service8Text">La vidéo finale peut être livrée par QR code ou clé USB.</p></article></div></div></section>
 
-    <section id="services">
-      <div class="container">
-        <div class="section-head center reveal">
-          <div class="eyebrow" data-i18n="servicesEyebrow">Services</div>
-          <h2 data-i18n="servicesTitle">Des formats pensés comme de petits films.</h2>
-          <p data-i18n="servicesIntro">Pas de style enfantin, pas de vidéo froide. Une esthétique calme, intime, cinématographique et humaine.</p>
-        </div>
-        <div class="cards">
-          <article class="card reveal"><div class="icon">⌂</div><h3 data-i18n="service1Title">Films de mémoire familiale</h3><p data-i18n="service1Text">Des souvenirs filmés avec plusieurs membres de la famille.</p></article>
-          <article class="card reveal"><div class="icon">✦</div><h3 data-i18n="service2Title">Messages pour le futur</h3><p data-i18n="service2Text">Des paroles personnelles à revoir dans un an ou plus tard.</p></article>
-          <article class="card reveal"><div class="icon">◐</div><h3 data-i18n="service3Title">Interviews individuelles</h3><p data-i18n="service3Text">Une conversation calme pour raconter une histoire ou un objectif.</p></article>
-          <article class="card reveal"><div class="icon">♡</div><h3 data-i18n="service4Title">Vidéos de couple</h3><p data-i18n="service4Text">Un message à deux, pour garder un moment de votre relation.</p></article>
-          <article class="card reveal"><div class="icon">◌</div><h3 data-i18n="service5Title">Grandes familles</h3><p data-i18n="service5Text">Des formats adaptés aux familles nombreuses et aux générations.</p></article>
-          <article class="card reveal"><div class="icon">↻</div><h3 data-i18n="service6Title">Concept annuel</h3><p data-i18n="service6Text">Regarder la vidéo l’année suivante et faire le point.</p></article>
-          <article class="card reveal"><div class="icon">✂</div><h3 data-i18n="service7Title">Montage inclus</h3><p data-i18n="service7Text">Montage, rythme, ambiance, son et post-production inclus.</p></article>
-          <article class="card reveal"><div class="icon">▣</div><h3 data-i18n="service8Title">QR code ou USB</h3><p data-i18n="service8Text">La vidéo finale peut être livrée par QR code ou clé USB.</p></article>
-        </div>
-      </div>
-    </section>
+    <section id="process"><div class="container"><div class="section-head reveal"><div class="eyebrow" data-i18n="processEyebrow">Comment ça marche</div><h2 data-i18n="processTitle">Un chemin simple, de l’idée au souvenir.</h2></div><div class="timeline"><article class="step reveal"><b>01</b><h3 data-i18n="step1Title">Réserver</h3><p data-i18n="step1Text">Vous demandez une séance gratuite.</p></article><article class="step reveal"><b>02</b><h3 data-i18n="step2Title">Choisir le lieu</h3><p data-i18n="step2Text">Vous choisissez un lieu calme, idéalement intérieur.</p></article><article class="step reveal"><b>03</b><h3 data-i18n="step3Title">Préparer</h3><p data-i18n="step3Text">Vous préparez vos questions ou notre équipe vous aide.</p></article><article class="step reveal"><b>04</b><h3 data-i18n="step4Title">Filmer</h3><p data-i18n="step4Text">Notre équipe vient filmer et guider l’échange.</p></article><article class="step reveal"><b>05</b><h3 data-i18n="step5Title">Monter</h3><p data-i18n="step5Text">Nous faisons le montage et la post-production.</p></article><article class="step reveal"><b>06</b><h3 data-i18n="step6Title">Recevoir</h3><p data-i18n="step6Text">Vous recevez la vidéo par QR code ou USB.</p></article><article class="step reveal"><b>07</b><h3 data-i18n="step7Title">Revoir</h3><p data-i18n="step7Text">Un an après, vous retrouvez votre message.</p></article></div></div></section>
 
-    <section id="process">
-      <div class="container">
-        <div class="section-head reveal">
-          <div class="eyebrow" data-i18n="processEyebrow">Comment ça marche</div>
-          <h2 data-i18n="processTitle">Un chemin simple, de l’idée au souvenir.</h2>
-        </div>
-        <div class="timeline">
-          <article class="step reveal"><b>01</b><h3 data-i18n="step1Title">Réserver</h3><p data-i18n="step1Text">Vous demandez une séance gratuite.</p></article>
-          <article class="step reveal"><b>02</b><h3 data-i18n="step2Title">Choisir le lieu</h3><p data-i18n="step2Text">Vous choisissez un lieu calme, idéalement intérieur.</p></article>
-          <article class="step reveal"><b>03</b><h3 data-i18n="step3Title">Préparer</h3><p data-i18n="step3Text">Vous préparez vos questions ou notre équipe vous aide.</p></article>
-          <article class="step reveal"><b>04</b><h3 data-i18n="step4Title">Filmer</h3><p data-i18n="step4Text">Notre équipe vient filmer et guider l’échange.</p></article>
-          <article class="step reveal"><b>05</b><h3 data-i18n="step5Title">Monter</h3><p data-i18n="step5Text">Nous faisons le montage et la post-production.</p></article>
-          <article class="step reveal"><b>06</b><h3 data-i18n="step6Title">Recevoir</h3><p data-i18n="step6Text">Vous recevez la vidéo par QR code ou USB.</p></article>
-          <article class="step reveal"><b>07</b><h3 data-i18n="step7Title">Revoir</h3><p data-i18n="step7Text">Un an après, vous retrouvez votre message.</p></article>
-        </div>
-      </div>
-    </section>
+    <section id="offer"><div class="container"><div class="offer-box reveal"><div class="offer-grid"><div><div class="eyebrow" data-i18n="offerEyebrow">Offre de lancement</div><h2 data-i18n="offerTitle">Service complet gratuit pour les 5 premières familles.</h2><p data-i18n="offerText">Pour lancer le projet, les 5 premières familles bénéficient du service complet gratuitement, sans frais cachés.</p><a class="btn btn-primary" href="#booking" data-i18n="offerCta">Demander une place gratuite</a></div><div class="included"><div data-i18n="offerItem1">✓ Tournage inclus</div><div data-i18n="offerItem2">✓ Montage et post-production inclus</div><div data-i18n="offerItem3">✓ Livraison finale par QR code ou USB</div><div data-i18n="offerItem4">✓ Aucun extrait publié sans accord clair</div><div data-i18n="offerItem5">✓ Formulaire de consentement avant le tournage</div></div></div></div></div></section>
 
-    <section id="offer">
-      <div class="container">
-        <div class="offer-box reveal">
-          <div class="offer-grid">
-            <div>
-              <div class="eyebrow" data-i18n="offerEyebrow">Offre de lancement</div>
-              <h2 data-i18n="offerTitle">Service complet gratuit pour les 5 premières familles.</h2>
-              <p data-i18n="offerText">Pour lancer le projet, les 5 premières familles bénéficient du service complet gratuitement, sans frais cachés.</p>
-              <a class="btn btn-gold magnetic" href="#booking" data-i18n="offerCta">Demander une place gratuite</a>
-            </div>
-            <div class="included">
-              <div data-i18n="offerItem1">✓ Tournage inclus</div>
-              <div data-i18n="offerItem2">✓ Montage et post-production inclus</div>
-              <div data-i18n="offerItem3">✓ Livraison finale par QR code ou USB</div>
-              <div data-i18n="offerItem4">✓ Aucun extrait publié sans accord clair</div>
-              <div data-i18n="offerItem5">✓ Formulaire de consentement avant le tournage</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
+    <section class="light-section" id="booking"><div class="container booking"><div class="panel booking-note reveal"><div class="eyebrow" data-i18n="bookingEyebrow">Réservation</div><h2 data-i18n="bookingTitle">Préparer une première séance.</h2><p data-i18n="bookingText1">Le formulaire ne demande que les informations nécessaires pour vous recontacter et confirmer les détails.</p><p data-i18n="bookingText2">Vous pouvez préparer vos propres questions : jusqu’à 10 questions par personne. Si vous préférez, notre équipe peut aussi préparer des questions émotionnelles.</p><p data-i18n="bookingText3">Les forfaits payants seront disponibles plus tard. Pour le moment, l’offre gratuite concerne les 5 premières familles.</p></div><form class="reveal" id="bookingForm" action="#" method="post"><div class="form-grid"><label><span data-i18n="formName">Nom complet</span><input name="name" type="text" required></label><label><span data-i18n="formEmail">Email</span><input name="email" type="email" required></label><label><span data-i18n="formPhone">Téléphone</span><input name="phone" type="tel"></label><label><span data-i18n="formCity">Ville</span><input name="city" type="text" placeholder="Dijon, Nevers..."></label><label><span data-i18n="formPeople">Nombre de personnes à filmer</span><input name="people" type="number" min="1"></label><label><span data-i18n="formLang">Langue préférée</span><select name="language"><option>Français</option><option>English</option></select></label><label class="full"><span data-i18n="formLocation">Lieu préféré</span><input name="location" type="text"></label><label class="full"><span data-i18n="formDate">Date ou période souhaitée</span><input name="date" type="text"></label><label class="full"><span data-i18n="formQuestions">Voulez-vous préparer vos propres questions ?</span><select name="ownQuestions" id="ownQuestions"><option value="not-sure" data-i18n="formNotSure">Je ne sais pas encore</option><option value="yes" data-i18n="formYes">Oui</option><option value="no" data-i18n="formNo">Non</option></select></label></div><div class="question-note" id="questionNote" data-i18n="questionNote">Vous pouvez préparer jusqu’à 10 questions par personne. Nous pouvons aussi vous aider à les organiser.</div><label class="checkline"><input type="checkbox" required><span data-i18n="formConsent">J’accepte d’être contacté(e) pour confirmer les détails.</span></label><button class="btn btn-primary" type="submit" data-i18n="formSubmit">Envoyer la demande</button><p id="formMessage" style="display:none;color:var(--mutedDark);line-height:1.6;margin-top:18px;" data-i18n="formMessage">Merci. Le formulaire est prêt visuellement, mais il n’est pas encore connecté à un email.</p></form></div></section>
 
-    <section id="booking">
-      <div class="container booking">
-        <div class="panel booking-note reveal">
-          <div class="eyebrow" data-i18n="bookingEyebrow">Réservation</div>
-          <h2 data-i18n="bookingTitle">Préparer une première séance.</h2>
-          <p data-i18n="bookingText1">Le formulaire ne demande que les informations nécessaires pour vous recontacter et confirmer les détails.</p>
-          <p data-i18n="bookingText2">Vous pouvez préparer vos propres questions : jusqu’à 10 questions par personne. Si vous préférez, notre équipe peut aussi préparer des questions émotionnelles.</p>
-          <p data-i18n="bookingText3">Les forfaits payants seront disponibles plus tard. Pour le moment, l’offre gratuite concerne les 5 premières familles.</p>
-        </div>
+    <section id="gallery"><div class="container"><div class="section-head center reveal"><div class="eyebrow" data-i18n="galleryEyebrow">Galerie</div><h2 data-i18n="galleryTitle">Un espace pour les futurs exemples.</h2><p data-i18n="galleryIntro">Nos premiers exemples seront bientôt disponibles.</p></div><div class="gallery-grid"><article class="gallery-item large reveal"><strong data-i18n="gallery1Title">Vidéo exemple</strong><span data-i18n="gallery1Text">Espace réservé pour un futur extrait vidéo.</span></article><article class="gallery-item reveal"><strong data-i18n="gallery2Title">Photo de famille</strong><span data-i18n="gallery2Text">Espace réservé pour une image douce et élégante.</span></article><article class="gallery-item reveal"><strong data-i18n="gallery3Title">Coulisses</strong><span data-i18n="gallery3Text">Espace réservé pour le tournage.</span></article><article class="gallery-item reveal"><strong data-i18n="gallery4Title">Témoignage</strong><span data-i18n="gallery4Text">Espace réservé pour un futur avis client.</span></article></div></div></section>
 
-        <!-- FORM: currently no backend. Later connect it to Formspree, Netlify Forms, email service, or your own backend. -->
-        <form class="reveal" id="bookingForm" action="#" method="post">
-          <div class="form-grid">
-            <label><span data-i18n="formName">Nom complet</span><input name="name" type="text" required></label>
-            <label><span data-i18n="formEmail">Email</span><input name="email" type="email" required></label>
-            <label><span data-i18n="formPhone">Téléphone</span><input name="phone" type="tel"></label>
-            <label><span data-i18n="formCity">Ville</span><input name="city" type="text" placeholder="Dijon, Nevers..."></label>
-            <label><span data-i18n="formPeople">Nombre de personnes à filmer</span><input name="people" type="number" min="1"></label>
-            <label><span data-i18n="formLang">Langue préférée</span><select name="language"><option>Français</option><option>English</option></select></label>
-            <label class="full"><span data-i18n="formLocation">Lieu préféré</span><input name="location" type="text"></label>
-            <label class="full"><span data-i18n="formDate">Date ou période souhaitée</span><input name="date" type="text"></label>
-            <label class="full"><span data-i18n="formQuestions">Voulez-vous préparer vos propres questions ?</span>
-              <select name="ownQuestions" id="ownQuestions">
-                <option value="not-sure" data-i18n="formNotSure">Je ne sais pas encore</option>
-                <option value="yes" data-i18n="formYes">Oui</option>
-                <option value="no" data-i18n="formNo">Non</option>
-              </select>
-            </label>
-          </div>
-          <div class="question-note" id="questionNote" data-i18n="questionNote">Vous pouvez préparer jusqu’à 10 questions par personne. Nous pouvons aussi vous aider à les organiser.</div>
-          <label class="checkline"><input type="checkbox" required><span data-i18n="formConsent">J’accepte d’être contacté(e) pour confirmer les détails.</span></label>
-          <button class="btn btn-dark magnetic" type="submit" data-i18n="formSubmit">Envoyer la demande</button>
-          <p id="formMessage" style="display:none;color:var(--muted);line-height:1.6;margin-top:18px;" data-i18n="formMessage">Merci. Le formulaire est prêt visuellement, mais il n’est pas encore connecté à un email.</p>
-        </form>
-      </div>
-    </section>
+    <section id="faq"><div class="container"><div class="section-head center reveal"><div class="eyebrow" data-i18n="faqEyebrow">Questions fréquentes</div><h2 data-i18n="faqTitle">Avant de réserver.</h2></div><div class="faq-list" id="faqList"></div></div></section>
 
-    <section id="gallery">
-      <div class="container">
-        <div class="section-head center reveal">
-          <div class="eyebrow" data-i18n="galleryEyebrow">Galerie</div>
-          <h2 data-i18n="galleryTitle">Un espace pour les futurs exemples.</h2>
-          <p data-i18n="galleryIntro">Nos premiers exemples seront bientôt disponibles.</p>
-        </div>
-        <div class="gallery-grid">
-          <!-- Replace these placeholders with real videos, photos, behind-the-scenes images and testimonials later. -->
-          <article class="gallery-item large reveal"><strong data-i18n="gallery1Title">Vidéo exemple</strong><span data-i18n="gallery1Text">Espace réservé pour un futur extrait vidéo.</span></article>
-          <article class="gallery-item reveal"><strong data-i18n="gallery2Title">Photo de famille</strong><span data-i18n="gallery2Text">Espace réservé pour une image douce et élégante.</span></article>
-          <article class="gallery-item reveal"><strong data-i18n="gallery3Title">Coulisses</strong><span data-i18n="gallery3Text">Espace réservé pour le tournage.</span></article>
-          <article class="gallery-item reveal"><strong data-i18n="gallery4Title">Témoignage</strong><span data-i18n="gallery4Text">Espace réservé pour un futur avis client.</span></article>
-        </div>
-      </div>
-    </section>
+    <section id="contact"><div class="container contact-grid"><div class="contact-card reveal"><h3 data-i18n="contactTitle">Nous contacter</h3><p data-i18n="contactText">Le service est disponible en France, surtout à Dijon, Nevers et dans un rayon d’environ 70 km autour de ces villes.</p><ul><li data-i18n="contactArea">Zone : Dijon · Nevers · environ 70 km</li><li data-i18n="contactIndoor">Lieu conseillé : intérieur ou espace calme</li><li data-i18n="contactPrivacy">Confidentialité : aucun contenu publié sans permission</li></ul><div class="contact-links"><div data-i18n="emailPlaceholder">Email : à ajouter bientôt</div><div data-i18n="phonePlaceholder">Téléphone : à ajouter bientôt</div><a href="#" data-i18n="whatsappPlaceholder">WhatsApp : lien à ajouter bientôt</a><a href="#" data-i18n="socialPlaceholder">Instagram / TikTok : liens à ajouter bientôt</a></div></div><form class="reveal" action="#" method="post"><div class="form-grid"><label><span data-i18n="contactName">Nom</span><input type="text" required></label><label><span data-i18n="contactEmail">Email</span><input type="email" required></label><label class="full"><span data-i18n="contactSubject">Sujet</span><input type="text"></label><label class="full"><span data-i18n="contactMessage">Message</span><textarea required></textarea></label></div><button class="btn btn-primary" type="submit" data-i18n="contactSubmit">Envoyer</button></form></div></section>
 
-    <section id="faq">
-      <div class="container">
-        <div class="section-head center reveal"><div class="eyebrow" data-i18n="faqEyebrow">Questions fréquentes</div><h2 data-i18n="faqTitle">Avant de réserver.</h2></div>
-        <div class="faq-list" id="faqList"></div>
-      </div>
-    </section>
-
-    <section id="contact">
-      <div class="container contact-grid">
-        <div class="contact-card reveal">
-          <h3 data-i18n="contactTitle">Nous contacter</h3>
-          <p data-i18n="contactText">Le service est disponible en France, surtout à Dijon, Nevers et dans un rayon d’environ 70 km autour de ces villes.</p>
-          <ul>
-            <li data-i18n="contactArea">Zone : Dijon · Nevers · environ 70 km</li>
-            <li data-i18n="contactIndoor">Lieu conseillé : intérieur ou espace calme</li>
-            <li data-i18n="contactPrivacy">Confidentialité : aucun contenu publié sans permission</li>
-          </ul>
-          <div class="contact-links">
-            <!-- CONTACT: replace with real email, phone, WhatsApp and social links later. -->
-            <div data-i18n="emailPlaceholder">Email : à ajouter bientôt</div>
-            <div data-i18n="phonePlaceholder">Téléphone : à ajouter bientôt</div>
-            <a href="#" data-i18n="whatsappPlaceholder">WhatsApp : lien à ajouter bientôt</a>
-            <a href="#" data-i18n="socialPlaceholder">Instagram / TikTok : liens à ajouter bientôt</a>
-          </div>
-        </div>
-
-        <form class="reveal" action="#" method="post">
-          <div class="form-grid">
-            <label><span data-i18n="contactName">Nom</span><input type="text" required></label>
-            <label><span data-i18n="contactEmail">Email</span><input type="email" required></label>
-            <label class="full"><span data-i18n="contactSubject">Sujet</span><input type="text"></label>
-            <label class="full"><span data-i18n="contactMessage">Message</span><textarea required></textarea></label>
-          </div>
-          <button class="btn btn-dark magnetic" type="submit" data-i18n="contactSubmit">Envoyer</button>
-        </form>
-      </div>
-    </section>
-
-    <section id="legal">
-      <div class="container">
-        <div class="section-head center reveal"><div class="eyebrow" data-i18n="legalEyebrow">Informations légales</div><h2 data-i18n="legalTitle">Confidentialité et conditions.</h2></div>
-        <div class="legal-tabs reveal">
-          <button type="button" class="active" data-legal="privacy" data-i18n="privacyTab">Politique de confidentialité</button>
-          <button type="button" data-legal="terms" data-i18n="termsTab">Conditions générales</button>
-        </div>
-        <div class="legal-box active reveal" id="privacyBox"><h3 data-i18n="privacyTitle">Politique de confidentialité</h3><p data-i18n="privacyP1">Les données collectées via les formulaires servent uniquement à répondre aux demandes, organiser une séance et confirmer les détails pratiques.</p><p data-i18n="privacyP2">Les vidéos, images, sons et informations personnelles restent confidentiels. Aucun extrait ne sera publié sans autorisation claire et optionnelle.</p><p data-i18n="privacyP3">Avant le tournage, un accord de consentement sera signé. Refuser l’utilisation d’un extrait comme portfolio n’affecte pas le service.</p><p data-i18n="privacyP4">Vous pouvez demander la suppression de vos données en contactant l’équipe. Ce texte est une base informative et doit être vérifié par un professionnel avant publication.</p></div>
-        <div class="legal-box reveal" id="termsBox"><h3 data-i18n="termsTitle">Conditions générales</h3><p data-i18n="termsP1">La réservation permet d’échanger sur la demande et de confirmer les détails. L’offre de lancement est gratuite pour les 5 premières familles.</p><p data-i18n="termsP2">Un formulaire de consentement est signé avant le tournage. Le client choisit le lieu de tournage et doit s’assurer qu’il est adapté, calme et autorisé.</p><p data-i18n="termsP3">La livraison finale peut se faire par QR code ou USB. Aucune vidéo, photo ou extrait ne sera publié sans accord écrit.</p><p data-i18n="termsP4">Les annulations et reports doivent être communiqués dès que possible. Ces conditions sont une base informative et doivent être vérifiées avant publication.</p></div>
-      </div>
-    </section>
+    <section id="legal"><div class="container"><div class="section-head center reveal"><div class="eyebrow" data-i18n="legalEyebrow">Informations légales</div><h2 data-i18n="legalTitle">Confidentialité et conditions.</h2></div><div class="legal-tabs reveal"><button type="button" class="active" data-legal="privacy" data-i18n="privacyTab">Politique de confidentialité</button><button type="button" data-legal="terms" data-i18n="termsTab">Conditions générales</button></div><div class="legal-box active reveal" id="privacyBox"><h3 data-i18n="privacyTitle">Politique de confidentialité</h3><p data-i18n="privacyP1">Les données collectées via les formulaires servent uniquement à répondre aux demandes, organiser une séance et confirmer les détails pratiques.</p><p data-i18n="privacyP2">Les vidéos, images, sons et informations personnelles restent confidentiels. Aucun extrait ne sera publié sans autorisation claire et optionnelle.</p><p data-i18n="privacyP3">Avant le tournage, un accord de consentement sera signé. Refuser l’utilisation d’un extrait comme portfolio n’affecte pas le service.</p><p data-i18n="privacyP4">Vous pouvez demander la suppression de vos données en contactant l’équipe. Ce texte est une base informative et doit être vérifié par un professionnel avant publication.</p></div><div class="legal-box reveal" id="termsBox"><h3 data-i18n="termsTitle">Conditions générales</h3><p data-i18n="termsP1">La réservation permet d’échanger sur la demande et de confirmer les détails. L’offre de lancement est gratuite pour les 5 premières familles.</p><p data-i18n="termsP2">Un formulaire de consentement est signé avant le tournage. Le client choisit le lieu de tournage et doit s’assurer qu’il est adapté, calme et autorisé.</p><p data-i18n="termsP3">La livraison finale peut se faire par QR code ou USB. Aucune vidéo, photo ou extrait ne sera publié sans accord écrit.</p><p data-i18n="termsP4">Les annulations et reports doivent être communiqués dès que possible. Ces conditions sont une base informative et doivent être vérifiées avant publication.</p></div></div></section>
   </main>
 
-  <footer>
-    <div class="container">
-      <div class="footer-grid">
-        <div><h3 data-i18n="footerBrand">Message pour Demain</h3><p data-i18n="footerTagline">Un film pour aujourd’hui. Un message pour demain.</p></div>
-        <div><h4 data-i18n="footerNav">Navigation</h4><a href="#concept" data-i18n="navConcept">Concept</a><a href="#services" data-i18n="navServices">Services</a><a href="#booking" data-i18n="navBooking">Réservation</a><a href="#gallery" data-i18n="galleryEyebrow">Galerie</a></div>
-        <div><h4 data-i18n="footerContact">Contact</h4><a href="#contact" data-i18n="emailPlaceholder">Email : à ajouter bientôt</a><a href="#contact" data-i18n="phonePlaceholder">Téléphone : à ajouter bientôt</a><a href="#contact" data-i18n="socialPlaceholder">Instagram / TikTok : liens à ajouter bientôt</a></div>
-        <div><h4 data-i18n="footerLegal">Légal</h4><a href="#legal" data-i18n="privacyTab">Politique de confidentialité</a><a href="#legal" data-i18n="termsTab">Conditions générales</a><div class="lang-switch" style="margin-top:14px;width:max-content;"><button type="button" data-lang="fr" class="active">FR</button><button type="button" data-lang="en">EN</button></div></div>
-      </div>
-      <div class="footer-bottom"><span>© 2026 Message pour Demain. <span data-i18n="footerRights">Tous droits réservés.</span></span><span data-i18n="footerArea">France · Dijon · Nevers · 70 km autour</span></div>
-    </div>
-  </footer>
+  <footer><div class="container"><div class="footer-grid"><div><h3 data-i18n="footerBrand">Message pour Demain</h3><p data-i18n="footerTagline">Un film pour aujourd’hui. Un message pour demain.</p></div><div><h4 data-i18n="footerNav">Navigation</h4><a href="#concept" data-i18n="navConcept">Concept</a><a href="#services" data-i18n="navServices">Services</a><a href="#booking" data-i18n="navBooking">Réservation</a><a href="#gallery" data-i18n="galleryEyebrow">Galerie</a></div><div><h4 data-i18n="footerContact">Contact</h4><a href="#contact" data-i18n="emailPlaceholder">Email : à ajouter bientôt</a><a href="#contact" data-i18n="phonePlaceholder">Téléphone : à ajouter bientôt</a><a href="#contact" data-i18n="socialPlaceholder">Instagram / TikTok : liens à ajouter bientôt</a></div><div><h4 data-i18n="footerLegal">Légal</h4><a href="#legal" data-i18n="privacyTab">Politique de confidentialité</a><a href="#legal" data-i18n="termsTab">Conditions générales</a><div class="lang-switch" style="margin-top:14px;width:max-content;"><button type="button" data-lang="fr" class="active">FR</button><button type="button" data-lang="en">EN</button></div></div></div><div class="footer-bottom"><span>© 2026 Message pour Demain. <span data-i18n="footerRights">Tous droits réservés.</span></span><span data-i18n="footerArea">France · Dijon · Nevers · 70 km autour</span></div></div></footer>
 
   <script>
     const translations = {
       fr: {
-        skip: "Aller au contenu", brandName: "Message pour Demain", brandSub: "Studio cinématographique de mémoire", navConcept: "Concept", navServices: "Services", navOffer: "Offre", navBooking: "Réservation", navFaq: "FAQ", navContact: "Contact",
-        heroEyebrow: "France · Dijon · Nevers", heroTitle: "Un film pour aujourd’hui. Un message pour demain.", heroText: "Nous créons des vidéos cinématographiques qui relient votre histoire d’aujourd’hui à votre futur.", heroCta1: "Réserver une séance gratuite", heroCta2: "Découvrir le concept", heroOffer: "Offre de lancement : service complet gratuit pour les 5 premières familles.",
-        buildLabel: "Construisez le souvenir avec la souris", memoryTitle: "Ouvrir la capsule", memoryText: "Bougez la souris : la maison se construit. Cliquez ici pour ouvrir les espaces du futur.", memoryCta: "Voir les espaces", mini1: "Films de famille", mini2: "Processus", mini3: "Offre gratuite", mini4: "Réserver",
-        orbit1Title:"Tournage", orbit1Text:"Captation, lumière, son et cadre.", orbit2Title:"Interview", orbit2Text:"Questions, écoute et accompagnement.", orbit3Title:"Montage", orbit3Text:"Rythme, émotion et narration.", orbit4Title:"Post-production", orbit4Text:"Couleur, son et livraison finale.",
-        conceptEyebrow:"À propos", conceptTitle:"Nous ne filmons pas seulement votre présent. Nous vous connectons à votre futur.", conceptIntro:"Message pour Demain transforme une conversation intime en film de mémoire, à revoir plus tard.", conceptP1:"Le service aide les familles, les couples et les personnes seules à enregistrer des souvenirs, des objectifs, des souhaits, des émotions et des messages pour leur futur.", conceptP2:"Un an plus tard, vous pouvez regarder la vidéo et voir ce qui a changé : vos rêves, vos priorités, votre famille, votre histoire.", conceptP3:"Le tournage se fait dans le lieu choisi par le client, de préférence en intérieur ou dans un espace calme pour un meilleur son et une meilleure image.",
-        servicesEyebrow:"Services", servicesTitle:"Des formats pensés comme de petits films.", servicesIntro:"Pas de style enfantin, pas de vidéo froide. Une esthétique calme, intime, cinématographique et humaine.", service1Title:"Films de mémoire familiale", service1Text:"Des souvenirs filmés avec plusieurs membres de la famille.", service2Title:"Messages pour le futur", service2Text:"Des paroles personnelles à revoir dans un an ou plus tard.", service3Title:"Interviews individuelles", service3Text:"Une conversation calme pour raconter une histoire ou un objectif.", service4Title:"Vidéos de couple", service4Text:"Un message à deux, pour garder un moment de votre relation.", service5Title:"Grandes familles", service5Text:"Des formats adaptés aux familles nombreuses et aux générations.", service6Title:"Concept annuel", service6Text:"Regarder la vidéo l’année suivante et faire le point.", service7Title:"Montage inclus", service7Text:"Montage, rythme, ambiance, son et post-production inclus.", service8Title:"QR code ou USB", service8Text:"La vidéo finale peut être livrée par QR code ou clé USB.",
-        processEyebrow:"Comment ça marche", processTitle:"Un chemin simple, de l’idée au souvenir.", step1Title:"Réserver", step1Text:"Vous demandez une séance gratuite.", step2Title:"Choisir le lieu", step2Text:"Vous choisissez un lieu calme, idéalement intérieur.", step3Title:"Préparer", step3Text:"Vous préparez vos questions ou notre équipe vous aide.", step4Title:"Filmer", step4Text:"Notre équipe vient filmer et guider l’échange.", step5Title:"Monter", step5Text:"Nous faisons le montage et la post-production.", step6Title:"Recevoir", step6Text:"Vous recevez la vidéo par QR code ou USB.", step7Title:"Revoir", step7Text:"Un an après, vous retrouvez votre message.",
-        offerEyebrow:"Offre de lancement", offerTitle:"Service complet gratuit pour les 5 premières familles.", offerText:"Pour lancer le projet, les 5 premières familles bénéficient du service complet gratuitement, sans frais cachés.", offerCta:"Demander une place gratuite", offerItem1:"✓ Tournage inclus", offerItem2:"✓ Montage et post-production inclus", offerItem3:"✓ Livraison finale par QR code ou USB", offerItem4:"✓ Aucun extrait publié sans accord clair", offerItem5:"✓ Formulaire de consentement avant le tournage",
-        bookingEyebrow:"Réservation", bookingTitle:"Préparer une première séance.", bookingText1:"Le formulaire ne demande que les informations nécessaires pour vous recontacter et confirmer les détails.", bookingText2:"Vous pouvez préparer vos propres questions : jusqu’à 10 questions par personne. Si vous préférez, notre équipe peut aussi préparer des questions émotionnelles.", bookingText3:"Les forfaits payants seront disponibles plus tard. Pour le moment, l’offre gratuite concerne les 5 premières familles.",
-        formName:"Nom complet", formEmail:"Email", formPhone:"Téléphone", formCity:"Ville", formPeople:"Nombre de personnes à filmer", formLang:"Langue préférée", formLocation:"Lieu préféré", formDate:"Date ou période souhaitée", formQuestions:"Voulez-vous préparer vos propres questions ?", formNotSure:"Je ne sais pas encore", formYes:"Oui", formNo:"Non", questionNote:"Vous pouvez préparer jusqu’à 10 questions par personne. Nous pouvons aussi vous aider à les organiser.", formConsent:"J’accepte d’être contacté(e) pour confirmer les détails.", formSubmit:"Envoyer la demande", formMessage:"Merci. Le formulaire est prêt visuellement, mais il n’est pas encore connecté à un email.",
-        galleryEyebrow:"Galerie", galleryTitle:"Un espace pour les futurs exemples.", galleryIntro:"Nos premiers exemples seront bientôt disponibles.", gallery1Title:"Vidéo exemple", gallery1Text:"Espace réservé pour un futur extrait vidéo.", gallery2Title:"Photo de famille", gallery2Text:"Espace réservé pour une image douce et élégante.", gallery3Title:"Coulisses", gallery3Text:"Espace réservé pour le tournage.", gallery4Title:"Témoignage", gallery4Text:"Espace réservé pour un futur avis client.",
-        faqEyebrow:"Questions fréquentes", faqTitle:"Avant de réserver.", contactTitle:"Nous contacter", contactText:"Le service est disponible en France, surtout à Dijon, Nevers et dans un rayon d’environ 70 km autour de ces villes.", contactArea:"Zone : Dijon · Nevers · environ 70 km", contactIndoor:"Lieu conseillé : intérieur ou espace calme", contactPrivacy:"Confidentialité : aucun contenu publié sans permission", emailPlaceholder:"Email : à ajouter bientôt", phonePlaceholder:"Téléphone : à ajouter bientôt", whatsappPlaceholder:"WhatsApp : lien à ajouter bientôt", socialPlaceholder:"Instagram / TikTok : liens à ajouter bientôt", contactName:"Nom", contactEmail:"Email", contactSubject:"Sujet", contactMessage:"Message", contactSubmit:"Envoyer",
-        legalEyebrow:"Informations légales", legalTitle:"Confidentialité et conditions.", privacyTab:"Politique de confidentialité", termsTab:"Conditions générales", privacyTitle:"Politique de confidentialité", privacyP1:"Les données collectées via les formulaires servent uniquement à répondre aux demandes, organiser une séance et confirmer les détails pratiques.", privacyP2:"Les vidéos, images, sons et informations personnelles restent confidentiels. Aucun extrait ne sera publié sans autorisation claire et optionnelle.", privacyP3:"Avant le tournage, un accord de consentement sera signé. Refuser l’utilisation d’un extrait comme portfolio n’affecte pas le service.", privacyP4:"Vous pouvez demander la suppression de vos données en contactant l’équipe. Ce texte est une base informative et doit être vérifié par un professionnel avant publication.", termsTitle:"Conditions générales", termsP1:"La réservation permet d’échanger sur la demande et de confirmer les détails. L’offre de lancement est gratuite pour les 5 premières familles.", termsP2:"Un formulaire de consentement est signé avant le tournage. Le client choisit le lieu de tournage et doit s’assurer qu’il est adapté, calme et autorisé.", termsP3:"La livraison finale peut se faire par QR code ou USB. Aucune vidéo, photo ou extrait ne sera publié sans accord écrit.", termsP4:"Les annulations et reports doivent être communiqués dès que possible. Ces conditions sont une base informative et doivent être vérifiées avant publication.",
-        footerBrand:"Message pour Demain", footerTagline:"Un film pour aujourd’hui. Un message pour demain.", footerNav:"Navigation", footerContact:"Contact", footerLegal:"Légal", footerRights:"Tous droits réservés.", footerArea:"France · Dijon · Nevers · 70 km autour"
+        loadBtn:"Charger le futur", loadTitle:"Message<br>pour Demain", rotateTitle:"Tournez votre téléphone", rotateText:"Cette expérience est pensée verticalement.", sideLabel:"Mémoire · futur · famille", brandName:"Message pour Demain", brandSub:"Studio de mémoire", navConcept:"Concept", navServices:"Services", navOffer:"Offre", navBooking:"Réservation", navFaq:"FAQ", navContact:"Contact", heroEyebrow:"France · Dijon · Nevers", heroTitle:"Un film pour aujourd’hui. Un message pour demain.", heroText:"Nous créons des vidéos cinématographiques qui relient votre histoire d’aujourd’hui à votre futur.", heroCta1:"Réserver une séance gratuite", heroCta2:"Découvrir le concept", heroOffer:"Offre de lancement : service complet gratuit pour les 5 premières familles.", tapLock:"tap to open", buildLabel:"Construisez le souvenir avec la souris", memoryTitle:"Ouvrir la capsule", memoryText:"Bougez la souris : la maison se construit. Cliquez ici pour ouvrir les espaces du futur.", memoryCta:"Voir les espaces", mini1:"Films de famille", mini2:"Processus", mini3:"Offre gratuite", mini4:"Réserver", orbit1Title:"Tournage", orbit1Text:"Captation, lumière, son et cadre.", orbit2Title:"Interview", orbit2Text:"Questions, écoute et accompagnement.", orbit3Title:"Montage", orbit3Text:"Rythme, émotion et narration.", orbit4Title:"Post-production", orbit4Text:"Couleur, son et livraison finale.", conceptEyebrow:"À propos", conceptTitle:"Nous ne filmons pas seulement votre présent. Nous vous connectons à votre futur.", conceptIntro:"Message pour Demain transforme une conversation intime en film de mémoire, à revoir plus tard.", conceptP1:"Le service aide les familles, les couples et les personnes seules à enregistrer des souvenirs, des objectifs, des souhaits, des émotions et des messages pour leur futur.", conceptP2:"Un an plus tard, vous pouvez regarder la vidéo et voir ce qui a changé : vos rêves, vos priorités, votre famille, votre histoire.", conceptP3:"Le tournage se fait dans le lieu choisi par le client, de préférence en intérieur ou dans un espace calme pour un meilleur son et une meilleure image.", servicesEyebrow:"Services", servicesTitle:"Des formats pensés comme de petits films.", servicesIntro:"Pas de style enfantin, pas de vidéo froide. Une esthétique calme, intime, cinématographique et humaine.", service1Title:"Films de mémoire familiale", service1Text:"Des souvenirs filmés avec plusieurs membres de la famille.", service2Title:"Messages pour le futur", service2Text:"Des paroles personnelles à revoir dans un an ou plus tard.", service3Title:"Interviews individuelles", service3Text:"Une conversation calme pour raconter une histoire ou un objectif.", service4Title:"Vidéos de couple", service4Text:"Un message à deux, pour garder un moment de votre relation.", service5Title:"Grandes familles", service5Text:"Des formats adaptés aux familles nombreuses et aux générations.", service6Title:"Concept annuel", service6Text:"Regarder la vidéo l’année suivante et faire le point.", service7Title:"Montage inclus", service7Text:"Montage, rythme, ambiance, son et post-production inclus.", service8Title:"QR code ou USB", service8Text:"La vidéo finale peut être livrée par QR code ou clé USB.", processEyebrow:"Comment ça marche", processTitle:"Un chemin simple, de l’idée au souvenir.", step1Title:"Réserver", step1Text:"Vous demandez une séance gratuite.", step2Title:"Choisir le lieu", step2Text:"Vous choisissez un lieu calme, idéalement intérieur.", step3Title:"Préparer", step3Text:"Vous préparez vos questions ou notre équipe vous aide.", step4Title:"Filmer", step4Text:"Notre équipe vient filmer et guider l’échange.", step5Title:"Monter", step5Text:"Nous faisons le montage et la post-production.", step6Title:"Recevoir", step6Text:"Vous recevez la vidéo par QR code ou USB.", step7Title:"Revoir", step7Text:"Un an après, vous retrouvez votre message.", offerEyebrow:"Offre de lancement", offerTitle:"Service complet gratuit pour les 5 premières familles.", offerText:"Pour lancer le projet, les 5 premières familles bénéficient du service complet gratuitement, sans frais cachés.", offerCta:"Demander une place gratuite", offerItem1:"✓ Tournage inclus", offerItem2:"✓ Montage et post-production inclus", offerItem3:"✓ Livraison finale par QR code ou USB", offerItem4:"✓ Aucun extrait publié sans accord clair", offerItem5:"✓ Formulaire de consentement avant le tournage", bookingEyebrow:"Réservation", bookingTitle:"Préparer une première séance.", bookingText1:"Le formulaire ne demande que les informations nécessaires pour vous recontacter et confirmer les détails.", bookingText2:"Vous pouvez préparer vos propres questions : jusqu’à 10 questions par personne. Si vous préférez, notre équipe peut aussi préparer des questions émotionnelles.", bookingText3:"Les forfaits payants seront disponibles plus tard. Pour le moment, l’offre gratuite concerne les 5 premières familles.", formName:"Nom complet", formEmail:"Email", formPhone:"Téléphone", formCity:"Ville", formPeople:"Nombre de personnes à filmer", formLang:"Langue préférée", formLocation:"Lieu préféré", formDate:"Date ou période souhaitée", formQuestions:"Voulez-vous préparer vos propres questions ?", formNotSure:"Je ne sais pas encore", formYes:"Oui", formNo:"Non", questionNote:"Vous pouvez préparer jusqu’à 10 questions par personne. Nous pouvons aussi vous aider à les organiser.", formConsent:"J’accepte d’être contacté(e) pour confirmer les détails.", formSubmit:"Envoyer la demande", formMessage:"Merci. Le formulaire est prêt visuellement, mais il n’est pas encore connecté à un email.", galleryEyebrow:"Galerie", galleryTitle:"Un espace pour les futurs exemples.", galleryIntro:"Nos premiers exemples seront bientôt disponibles.", gallery1Title:"Vidéo exemple", gallery1Text:"Espace réservé pour un futur extrait vidéo.", gallery2Title:"Photo de famille", gallery2Text:"Espace réservé pour une image douce et élégante.", gallery3Title:"Coulisses", gallery3Text:"Espace réservé pour le tournage.", gallery4Title:"Témoignage", gallery4Text:"Espace réservé pour un futur avis client.", faqEyebrow:"Questions fréquentes", faqTitle:"Avant de réserver.", contactTitle:"Nous contacter", contactText:"Le service est disponible en France, surtout à Dijon, Nevers et dans un rayon d’environ 70 km autour de ces villes.", contactArea:"Zone : Dijon · Nevers · environ 70 km", contactIndoor:"Lieu conseillé : intérieur ou espace calme", contactPrivacy:"Confidentialité : aucun contenu publié sans permission", emailPlaceholder:"Email : à ajouter bientôt", phonePlaceholder:"Téléphone : à ajouter bientôt", whatsappPlaceholder:"WhatsApp : lien à ajouter bientôt", socialPlaceholder:"Instagram / TikTok : liens à ajouter bientôt", contactName:"Nom", contactEmail:"Email", contactSubject:"Sujet", contactMessage:"Message", contactSubmit:"Envoyer", legalEyebrow:"Informations légales", legalTitle:"Confidentialité et conditions.", privacyTab:"Politique de confidentialité", termsTab:"Conditions générales", privacyTitle:"Politique de confidentialité", privacyP1:"Les données collectées via les formulaires servent uniquement à répondre aux demandes, organiser une séance et confirmer les détails pratiques.", privacyP2:"Les vidéos, images, sons et informations personnelles restent confidentiels. Aucun extrait ne sera publié sans autorisation claire et optionnelle.", privacyP3:"Avant le tournage, un accord de consentement sera signé. Refuser l’utilisation d’un extrait comme portfolio n’affecte pas le service.", privacyP4:"Vous pouvez demander la suppression de vos données en contactant l’équipe. Ce texte est une base informative et doit être vérifié par un professionnel avant publication.", termsTitle:"Conditions générales", termsP1:"La réservation permet d’échanger sur la demande et de confirmer les détails. L’offre de lancement est gratuite pour les 5 premières familles.", termsP2:"Un formulaire de consentement est signé avant le tournage. Le client choisit le lieu de tournage et doit s’assurer qu’il est adapté, calme et autorisé.", termsP3:"La livraison finale peut se faire par QR code ou USB. Aucune vidéo, photo ou extrait ne sera publié sans accord écrit.", termsP4:"Les annulations et reports doivent être communiqués dès que possible. Ces conditions sont une base informative et doivent être vérifiées avant publication.", footerBrand:"Message pour Demain", footerTagline:"Un film pour aujourd’hui. Un message pour demain.", footerNav:"Navigation", footerContact:"Contact", footerLegal:"Légal", footerRights:"Tous droits réservés.", footerArea:"France · Dijon · Nevers · 70 km autour"
       },
       en: {
-        skip:"Skip to content", brandName:"Message pour Demain", brandSub:"Cinematic memory studio", navConcept:"Concept", navServices:"Services", navOffer:"Offer", navBooking:"Booking", navFaq:"FAQ", navContact:"Contact",
-        heroEyebrow:"France · Dijon · Nevers", heroTitle:"A film for today. A message for tomorrow.", heroText:"We create cinematic videos that connect today’s story with your future.", heroCta1:"Book a free session", heroCta2:"Discover the concept", heroOffer:"Launch offer: the complete service is free for the first 5 families.",
-        buildLabel:"Build the memory with your mouse", memoryTitle:"Open the capsule", memoryText:"Move the mouse: the house is built. Click here to open the future spaces.", memoryCta:"View spaces", mini1:"Family films", mini2:"Process", mini3:"Free offer", mini4:"Book",
-        orbit1Title:"Filming", orbit1Text:"Camera, light, sound and framing.", orbit2Title:"Interview", orbit2Text:"Questions, listening and guidance.", orbit3Title:"Editing", orbit3Text:"Rhythm, emotion and storytelling.", orbit4Title:"Post-production", orbit4Text:"Color, sound and final delivery.",
-        conceptEyebrow:"About", conceptTitle:"We do not only film your present. We connect you with your future.", conceptIntro:"Message pour Demain turns an intimate conversation into a memory film to watch later.", conceptP1:"The service helps families, couples and individuals record memories, goals, wishes, emotions and messages for their future.", conceptP2:"One year later, you can watch the video and see what changed: your dreams, your priorities, your family, your story.", conceptP3:"Filming takes place at the location chosen by the client, preferably indoors or in a calm space for better sound and image.",
-        servicesEyebrow:"Services", servicesTitle:"Formats designed like small films.", servicesIntro:"No childish style, no cold video. A calm, intimate, cinematic and human aesthetic.", service1Title:"Family memory films", service1Text:"Filmed memories with several family members.", service2Title:"Future messages", service2Text:"Personal words to watch in one year or later.", service3Title:"Individual interviews", service3Text:"A calm conversation to tell a story or a goal.", service4Title:"Couple videos", service4Text:"A message for two, to keep a moment of your relationship.", service5Title:"Larger families", service5Text:"Formats adapted to larger families and generations.", service6Title:"Annual concept", service6Text:"Watch the video again next year and reflect.", service7Title:"Editing included", service7Text:"Editing, rhythm, atmosphere, sound and post-production included.", service8Title:"QR code or USB", service8Text:"The final video can be delivered by QR code or USB drive.",
-        processEyebrow:"How it works", processTitle:"A simple path from idea to memory.", step1Title:"Book", step1Text:"You request a free session.", step2Title:"Choose location", step2Text:"You choose a calm location, ideally indoors.", step3Title:"Prepare", step3Text:"You prepare your questions or our team helps you.", step4Title:"Film", step4Text:"Our team films and guides the conversation.", step5Title:"Edit", step5Text:"We handle editing and post-production.", step6Title:"Receive", step6Text:"You receive the video by QR code or USB.", step7Title:"Watch again", step7Text:"One year later, you reconnect with your message.",
-        offerEyebrow:"Launch offer", offerTitle:"Complete service free for the first 5 families.", offerText:"To launch the project, the first 5 families receive the complete service for free, with no hidden fee.", offerCta:"Request a free place", offerItem1:"✓ Filming included", offerItem2:"✓ Editing and post-production included", offerItem3:"✓ Final delivery by QR code or USB", offerItem4:"✓ No extract published without clear permission", offerItem5:"✓ Consent form before filming",
-        bookingEyebrow:"Booking", bookingTitle:"Prepare a first session.", bookingText1:"The form only asks for the information needed to contact you and confirm the details.", bookingText2:"You can prepare your own questions: up to 10 questions per person. If you prefer, our team can also prepare emotional questions.", bookingText3:"Paid packages will be available later. For now, the free offer is limited to the first 5 families.",
-        formName:"Full name", formEmail:"Email", formPhone:"Phone number", formCity:"City", formPeople:"Number of people to be filmed", formLang:"Preferred language", formLocation:"Preferred location", formDate:"Preferred date or period", formQuestions:"Do you want to prepare your own questions?", formNotSure:"Not sure yet", formYes:"Yes", formNo:"No", questionNote:"You can prepare up to 10 questions per person. We can also help you organize them.", formConsent:"I agree to be contacted to confirm the details.", formSubmit:"Send request", formMessage:"Thank you. The form is visually ready, but it is not connected to email yet.",
-        galleryEyebrow:"Gallery", galleryTitle:"A space for future examples.", galleryIntro:"Our first examples will be available soon.", gallery1Title:"Sample video", gallery1Text:"Reserved space for a future video extract.", gallery2Title:"Family photo", gallery2Text:"Reserved space for a soft elegant image.", gallery3Title:"Behind the scenes", gallery3Text:"Reserved space for filming moments.", gallery4Title:"Testimonial", gallery4Text:"Reserved space for a future client review.",
-        faqEyebrow:"FAQ", faqTitle:"Before booking.", contactTitle:"Contact us", contactText:"The service is available in France, especially in Dijon, Nevers and within around 70 km of these cities.", contactArea:"Area: Dijon · Nevers · around 70 km", contactIndoor:"Recommended location: indoor or quiet space", contactPrivacy:"Privacy: no content published without permission", emailPlaceholder:"Email: to be added soon", phonePlaceholder:"Phone: to be added soon", whatsappPlaceholder:"WhatsApp: link to be added soon", socialPlaceholder:"Instagram / TikTok: links to be added soon", contactName:"Name", contactEmail:"Email", contactSubject:"Subject", contactMessage:"Message", contactSubmit:"Send",
-        legalEyebrow:"Legal information", legalTitle:"Privacy and terms.", privacyTab:"Privacy Policy", termsTab:"Terms and Conditions", privacyTitle:"Privacy Policy", privacyP1:"Data collected through the forms is only used to answer requests, organize a session and confirm practical details.", privacyP2:"Videos, images, sounds and personal information are kept confidential. No extract will be published without clear and optional permission.", privacyP3:"Before filming, a consent agreement will be signed. Refusing portfolio use does not affect the service.", privacyP4:"You can request deletion of your data by contacting the team. This text is an informational draft and should be reviewed by a professional before publication.", termsTitle:"Terms and Conditions", termsP1:"Booking allows us to discuss the request and confirm details. The launch offer is free for the first 5 families.", termsP2:"A consent form is signed before filming. The client chooses the filming location and must ensure it is suitable, calm and authorized.", termsP3:"Final delivery can be by QR code or USB. No video, photo or extract will be published without written consent.", termsP4:"Cancellations and rescheduling should be communicated as early as possible. These terms are an informational draft and should be reviewed before publication.",
-        footerBrand:"Message pour Demain", footerTagline:"A film for today. A message for tomorrow.", footerNav:"Navigation", footerContact:"Contact", footerLegal:"Legal", footerRights:"All rights reserved.", footerArea:"France · Dijon · Nevers · 70 km around"
+        loadBtn:"Load Tomorrow", loadTitle:"Message<br>for Tomorrow", rotateTitle:"Rotate your phone", rotateText:"This experience is designed vertically.", sideLabel:"memory · future · family", brandName:"Message pour Demain", brandSub:"Memory studio", navConcept:"Concept", navServices:"Services", navOffer:"Offer", navBooking:"Booking", navFaq:"FAQ", navContact:"Contact", heroEyebrow:"France · Dijon · Nevers", heroTitle:"A film for today. A message for tomorrow.", heroText:"We create cinematic videos that connect today’s story with your future.", heroCta1:"Book a free session", heroCta2:"Discover the concept", heroOffer:"Launch offer: the complete service is free for the first 5 families.", tapLock:"tap to open", buildLabel:"Build the memory with your mouse", memoryTitle:"Open the capsule", memoryText:"Move the mouse: the house is built. Click here to open the future spaces.", memoryCta:"View spaces", mini1:"Family films", mini2:"Process", mini3:"Free offer", mini4:"Book", orbit1Title:"Filming", orbit1Text:"Camera, light, sound and framing.", orbit2Title:"Interview", orbit2Text:"Questions, listening and guidance.", orbit3Title:"Editing", orbit3Text:"Rhythm, emotion and storytelling.", orbit4Title:"Post-production", orbit4Text:"Color, sound and final delivery.", conceptEyebrow:"About", conceptTitle:"We do not only film your present. We connect you with your future.", conceptIntro:"Message pour Demain turns an intimate conversation into a memory film to watch later.", conceptP1:"The service helps families, couples and individuals record memories, goals, wishes, emotions and messages for their future.", conceptP2:"One year later, you can watch the video and see what changed: your dreams, your priorities, your family, your story.", conceptP3:"Filming takes place at the location chosen by the client, preferably indoors or in a calm space for better sound and image.", servicesEyebrow:"Services", servicesTitle:"Formats designed like small films.", servicesIntro:"No childish style, no cold video. A calm, intimate, cinematic and human aesthetic.", service1Title:"Family memory films", service1Text:"Filmed memories with several family members.", service2Title:"Future messages", service2Text:"Personal words to watch in one year or later.", service3Title:"Individual interviews", service3Text:"A calm conversation to tell a story or a goal.", service4Title:"Couple videos", service4Text:"A message for two, to keep a moment of your relationship.", service5Title:"Larger families", service5Text:"Formats adapted to larger families and generations.", service6Title:"Annual concept", service6Text:"Watch the video again next year and reflect.", service7Title:"Editing included", service7Text:"Editing, rhythm, atmosphere, sound and post-production included.", service8Title:"QR code or USB", service8Text:"The final video can be delivered by QR code or USB drive.", processEyebrow:"How it works", processTitle:"A simple path from idea to memory.", step1Title:"Book", step1Text:"You request a free session.", step2Title:"Choose location", step2Text:"You choose a calm location, ideally indoors.", step3Title:"Prepare", step3Text:"You prepare your questions or our team helps you.", step4Title:"Film", step4Text:"Our team films and guides the conversation.", step5Title:"Edit", step5Text:"We handle editing and post-production.", step6Title:"Receive", step6Text:"You receive the video by QR code or USB.", step7Title:"Watch again", step7Text:"One year later, you reconnect with your message.", offerEyebrow:"Launch offer", offerTitle:"Complete service free for the first 5 families.", offerText:"To launch the project, the first 5 families receive the complete service for free, with no hidden fee.", offerCta:"Request a free place", offerItem1:"✓ Filming included", offerItem2:"✓ Editing and post-production included", offerItem3:"✓ Final delivery by QR code or USB", offerItem4:"✓ No extract published without clear permission", offerItem5:"✓ Consent form before filming", bookingEyebrow:"Booking", bookingTitle:"Prepare a first session.", bookingText1:"The form only asks for the information needed to contact you and confirm the details.", bookingText2:"You can prepare your own questions: up to 10 questions per person. If you prefer, our team can also prepare emotional questions.", bookingText3:"Paid packages will be available later. For now, the free offer is limited to the first 5 families.", formName:"Full name", formEmail:"Email", formPhone:"Phone number", formCity:"City", formPeople:"Number of people to be filmed", formLang:"Preferred language", formLocation:"Preferred location", formDate:"Preferred date or period", formQuestions:"Do you want to prepare your own questions?", formNotSure:"Not sure yet", formYes:"Yes", formNo:"No", questionNote:"You can prepare up to 10 questions per person. We can also help you organize them.", formConsent:"I agree to be contacted to confirm the details.", formSubmit:"Send request", formMessage:"Thank you. The form is visually ready, but it is not connected to email yet.", galleryEyebrow:"Gallery", galleryTitle:"A space for future examples.", galleryIntro:"Our first examples will be available soon.", gallery1Title:"Sample video", gallery1Text:"Reserved space for a future video extract.", gallery2Title:"Family photo", gallery2Text:"Reserved space for a soft elegant image.", gallery3Title:"Behind the scenes", gallery3Text:"Reserved space for filming moments.", gallery4Title:"Testimonial", gallery4Text:"Reserved space for a future client review.", faqEyebrow:"FAQ", faqTitle:"Before booking.", contactTitle:"Contact us", contactText:"The service is available in France, especially in Dijon, Nevers and within around 70 km of these cities.", contactArea:"Area: Dijon · Nevers · around 70 km", contactIndoor:"Recommended location: indoor or quiet space", contactPrivacy:"Privacy: no content published without permission", emailPlaceholder:"Email: to be added soon", phonePlaceholder:"Phone: to be added soon", whatsappPlaceholder:"WhatsApp: link to be added soon", socialPlaceholder:"Instagram / TikTok: links to be added soon", contactName:"Name", contactEmail:"Email", contactSubject:"Subject", contactMessage:"Message", contactSubmit:"Send", legalEyebrow:"Legal information", legalTitle:"Privacy and terms.", privacyTab:"Privacy Policy", termsTab:"Terms and Conditions", privacyTitle:"Privacy Policy", privacyP1:"Data collected through the forms is only used to answer requests, organize a session and confirm practical details.", privacyP2:"Videos, images, sounds and personal information are kept confidential. No extract will be published without clear and optional permission.", privacyP3:"Before filming, a consent agreement will be signed. Refusing portfolio use does not affect the service.", privacyP4:"You can request deletion of your data by contacting the team. This text is an informational draft and should be reviewed by a professional before publication.", termsTitle:"Terms and Conditions", termsP1:"Booking allows us to discuss the request and confirm details. The launch offer is free for the first 5 families.", termsP2:"A consent form is signed before filming. The client chooses the filming location and must ensure it is suitable, calm and authorized.", termsP3:"Final delivery can be by QR code or USB. No video, photo or extract will be published without written consent.", termsP4:"Cancellations and rescheduling should be communicated as early as possible. These terms are an informational draft and should be reviewed before publication.", footerBrand:"Message pour Demain", footerTagline:"A film for today. A message for tomorrow.", footerNav:"Navigation", footerContact:"Contact", footerLegal:"Legal", footerRights:"All rights reserved.", footerArea:"France · Dijon · Nevers · 70 km around"
       }
     };
 
     const faqData = {
-      fr: [
-        ["Le service est-il vraiment gratuit pour les 5 premières familles ?", "Oui. L’offre de lancement inclut le tournage, le montage, la post-production et la livraison finale, sans frais cachés."],
-        ["Où filmez-vous ?", "Nous nous déplaçons surtout à Dijon, Nevers et dans un rayon d’environ 70 km autour de ces villes."],
-        ["Pouvons-nous choisir les questions ?", "Oui. Vous pouvez préparer vos propres questions avant la séance."],
-        ["Pouvez-vous préparer les questions pour nous ?", "Oui. Notre équipe peut préparer des questions simples, humaines et émotionnelles."],
-        ["Combien de questions pouvons-nous préparer ?", "Jusqu’à 10 questions par personne si vous préparez les questions vous-même."],
-        ["Une personne seule peut-elle réserver ?", "Oui. Le service est ouvert aux familles, couples, individus et grandes familles."],
-        ["Publiez-vous notre vidéo ?", "Non. Aucune vidéo, photo ou extrait n’est publié sans votre permission claire."],
-        ["Notre vie privée est-elle protégée ?", "Oui. Les souvenirs familiaux sont privés et confidentiels."],
-        ["Comment recevons-nous la vidéo finale ?", "La vidéo finale peut être livrée par QR code ou clé USB, selon votre choix."],
-        ["Faut-il signer une autorisation ?", "Oui. Un formulaire de consentement sera signé avant le tournage."],
-        ["Quelles villes couvrez-vous ?", "Dijon, Nevers et environ 70 km autour, selon disponibilité."]
-      ],
-      en: [
-        ["Is the service really free for the first 5 families?", "Yes. The launch offer includes filming, editing, post-production and final delivery with no hidden fee."],
-        ["Where do you film?", "We mainly cover Dijon, Nevers and within around 70 km of these cities."],
-        ["Can we choose the questions?", "Yes. You can prepare your own questions before the session."],
-        ["Can you prepare the questions for us?", "Yes. Our team can prepare simple, human and emotional questions."],
-        ["How many questions can we prepare?", "Up to 10 questions per person if you prepare the questions yourself."],
-        ["Can individuals book this service?", "Yes. The service is open to families, couples, individuals and larger families."],
-        ["Do you publish our video?", "No. No video, photo or extract is published without your clear permission."],
-        ["Is our privacy protected?", "Yes. Family memories are private and confidential."],
-        ["How do we receive the final video?", "The final video can be delivered by QR code or USB drive, depending on your choice."],
-        ["Do we need to sign a consent form?", "Yes. A consent form will be signed before filming."],
-        ["What cities do you cover?", "Dijon, Nevers and around 70 km nearby, depending on availability."]
-      ]
+      fr: [["Le service est-il vraiment gratuit pour les 5 premières familles ?","Oui. L’offre inclut le tournage, le montage, la post-production et la livraison finale, sans frais cachés."],["Où filmez-vous ?","Nous nous déplaçons surtout à Dijon, Nevers et dans un rayon d’environ 70 km autour de ces villes."],["Pouvons-nous choisir les questions ?","Oui. Vous pouvez préparer vos propres questions avant la séance."],["Pouvez-vous préparer les questions pour nous ?","Oui. Notre équipe peut préparer des questions simples, humaines et émotionnelles."],["Combien de questions pouvons-nous préparer ?","Jusqu’à 10 questions par personne."],["Une personne seule peut-elle réserver ?","Oui. Le service est ouvert aux familles, couples, individus et grandes familles."],["Publiez-vous notre vidéo ?","Non. Aucune vidéo, photo ou extrait n’est publié sans votre permission claire."],["Notre vie privée est-elle protégée ?","Oui. Les souvenirs familiaux sont privés et confidentiels."],["Comment recevons-nous la vidéo finale ?","Par QR code ou clé USB, selon votre choix."],["Faut-il signer une autorisation ?","Oui. Un formulaire de consentement sera signé avant le tournage."],["Quelles villes couvrez-vous ?","Dijon, Nevers et environ 70 km autour, selon disponibilité."]],
+      en: [["Is the service really free for the first 5 families?","Yes. The offer includes filming, editing, post-production and final delivery with no hidden fee."],["Where do you film?","We mainly cover Dijon, Nevers and within around 70 km of these cities."],["Can we choose the questions?","Yes. You can prepare your own questions before the session."],["Can you prepare the questions for us?","Yes. Our team can prepare simple, human and emotional questions."],["How many questions can we prepare?","Up to 10 questions per person."],["Can individuals book this service?","Yes. The service is open to families, couples, individuals and larger families."],["Do you publish our video?","No. No video, photo or extract is published without your clear permission."],["Is our privacy protected?","Yes. Family memories are private and confidential."],["How do we receive the final video?","By QR code or USB drive, depending on your choice."],["Do we need to sign a consent form?","Yes. A consent form will be signed before filming."],["What cities do you cover?","Dijon, Nevers and around 70 km nearby, depending on availability."]]
     };
 
     let currentLang = localStorage.getItem("mpd_lang") || "fr";
+    const loader = document.getElementById("loader");
+    document.getElementById("loadBtn").addEventListener("click", () => loader.classList.add("done"));
+    setTimeout(() => loader.classList.add("done"), 1800);
 
-    function applyLanguage(lang) {
-      currentLang = lang;
-      localStorage.setItem("mpd_lang", lang);
-      document.documentElement.lang = lang;
-      document.querySelectorAll("[data-i18n]").forEach(el => {
-        const key = el.getAttribute("data-i18n");
-        if (translations[lang][key]) el.textContent = translations[lang][key];
-      });
-      document.querySelectorAll("[data-lang]").forEach(btn => btn.classList.toggle("active", btn.getAttribute("data-lang") === lang));
-      renderFaq(lang);
-    }
+    function applyLanguage(lang){currentLang=lang;localStorage.setItem("mpd_lang",lang);document.documentElement.lang=lang;document.querySelectorAll("[data-i18n]").forEach(el=>{const key=el.getAttribute("data-i18n");if(translations[lang][key]) el.innerHTML=translations[lang][key];});document.querySelectorAll("[data-lang]").forEach(btn=>btn.classList.toggle("active",btn.getAttribute("data-lang")===lang));renderFaq(lang);} 
+    function renderFaq(lang){const list=document.getElementById("faqList");list.innerHTML="";faqData[lang].forEach(([q,a],i)=>{const item=document.createElement("article");item.className="faq-item"+(i===0?" open":"");item.innerHTML=`<button class="faq-button" type="button" aria-expanded="${i===0}"><span>${q}</span><span>${i===0?"−":"+"}</span></button><div class="faq-answer"><p>${a}</p></div>`;const btn=item.querySelector("button"),sign=item.querySelector(".faq-button span:last-child");btn.addEventListener("click",()=>{const open=item.classList.toggle("open");btn.setAttribute("aria-expanded",open);sign.textContent=open?"−":"+";});list.appendChild(item);});}
+    document.querySelectorAll("[data-lang]").forEach(btn=>btn.addEventListener("click",()=>applyLanguage(btn.getAttribute("data-lang"))));
 
-    function renderFaq(lang) {
-      const list = document.getElementById("faqList");
-      list.innerHTML = "";
-      faqData[lang].forEach(([q, a], index) => {
-        const item = document.createElement("article");
-        item.className = "faq-item" + (index === 0 ? " open" : "");
-        item.innerHTML = `<button class="faq-button" type="button" aria-expanded="${index === 0 ? "true" : "false"}"><span>${q}</span><span>${index === 0 ? "−" : "+"}</span></button><div class="faq-answer"><p>${a}</p></div>`;
-        const btn = item.querySelector("button");
-        const sign = item.querySelector(".faq-button span:last-child");
-        btn.addEventListener("click", () => {
-          const open = item.classList.toggle("open");
-          btn.setAttribute("aria-expanded", open ? "true" : "false");
-          sign.textContent = open ? "−" : "+";
-        });
-        list.appendChild(item);
-      });
-    }
+    const cursor=document.querySelector(".cursor-dot"), ring=document.querySelector(".cursor-ring");let mx=innerWidth/2,my=innerHeight/2,rx=mx,ry=my;function cursorLoop(){rx+=(mx-rx)*.13;ry+=(my-ry)*.13;if(cursor)cursor.style.transform=`translate(${mx}px,${my}px) translate(-50%,-50%)`;if(ring)ring.style.transform=`translate(${rx}px,${ry}px) translate(-50%,-50%)`;requestAnimationFrame(cursorLoop)}cursorLoop();
+    addEventListener("mousemove",e=>{mx=e.clientX;my=e.clientY;document.documentElement.style.setProperty("--mx",`${e.clientX/innerWidth*100}%`);document.documentElement.style.setProperty("--my",`${e.clientY/innerHeight*100}%`);});
+    document.querySelectorAll("a,button,input,select,textarea,.card,.gallery-item").forEach(el=>{el.addEventListener("mouseenter",()=>document.body.classList.add("cursor-big"));el.addEventListener("mouseleave",()=>document.body.classList.remove("cursor-big"));});
+    document.querySelectorAll(".btn").forEach(btn=>btn.addEventListener("mousemove",e=>{const r=btn.getBoundingClientRect();btn.style.setProperty("--bx",`${e.clientX-r.left}px`);btn.style.setProperty("--by",`${e.clientY-r.top}px`);}));
 
-    document.querySelectorAll("[data-lang]").forEach(btn => btn.addEventListener("click", () => applyLanguage(btn.getAttribute("data-lang"))));
-
-    const cursor = document.querySelector(".cursor");
-    const ring = document.querySelector(".cursor-ring");
-    let mouseX = window.innerWidth / 2, mouseY = window.innerHeight / 2;
-    let ringX = mouseX, ringY = mouseY;
-
-    function animateCursor() {
-      ringX += (mouseX - ringX) * .14;
-      ringY += (mouseY - ringY) * .14;
-      if (cursor) cursor.style.transform = `translate(${mouseX}px, ${mouseY}px) translate(-50%, -50%)`;
-      if (ring) ring.style.transform = `translate(${ringX}px, ${ringY}px) translate(-50%, -50%)`;
-      requestAnimationFrame(animateCursor);
-    }
-    animateCursor();
-
-    window.addEventListener("mousemove", (e) => {
-      mouseX = e.clientX; mouseY = e.clientY;
-      document.documentElement.style.setProperty("--mx", `${(e.clientX / innerWidth) * 100}%`);
-      document.documentElement.style.setProperty("--my", `${(e.clientY / innerHeight) * 100}%`);
-    });
-
-    document.querySelectorAll("a, button, input, select, textarea, .card, .gallery-item").forEach(el => {
-      el.addEventListener("mouseenter", () => document.body.classList.add("cursor-big"));
-      el.addEventListener("mouseleave", () => document.body.classList.remove("cursor-big"));
-    });
-
-    document.querySelectorAll(".btn").forEach(btn => {
-      btn.addEventListener("mousemove", e => {
-        const r = btn.getBoundingClientRect();
-        btn.style.setProperty("--bx", `${e.clientX - r.left}px`);
-        btn.style.setProperty("--by", `${e.clientY - r.top}px`);
-      });
-    });
-
-    const menuToggle = document.getElementById("menuToggle");
-    const mainNav = document.getElementById("mainNav");
-    menuToggle.addEventListener("click", () => {
-      const open = mainNav.classList.toggle("open");
-      menuToggle.setAttribute("aria-expanded", String(open));
-    });
-    mainNav.querySelectorAll("a").forEach(a => a.addEventListener("click", () => { mainNav.classList.remove("open"); menuToggle.setAttribute("aria-expanded", "false"); }));
-
-    const room = document.getElementById("memoryRoom");
-    const stage = document.getElementById("stage");
-    const openMemory = document.getElementById("openMemory");
-    const openCapsule = document.getElementById("openCapsule");
-
-    function setBuild(value) {
-      const v = Math.max(0, Math.min(100, value));
-      room.style.setProperty("--build", v.toFixed(0));
-    }
-
-    stage.addEventListener("mousemove", (e) => {
-      const r = stage.getBoundingClientRect();
-      const x = (e.clientX - r.left) / r.width;
-      const y = (e.clientY - r.top) / r.height;
-      room.style.setProperty("--ry", `${(x - .5) * 13}deg`);
-      room.style.setProperty("--rx", `${-(y - .5) * 10}deg`);
-      setBuild(25 + x * 55 + y * 20);
-    });
-    stage.addEventListener("mouseleave", () => { room.style.setProperty("--rx", "0deg"); room.style.setProperty("--ry", "0deg"); });
-    openCapsule.addEventListener("click", () => openMemory.classList.toggle("active"));
-
-    const question = document.getElementById("ownQuestions");
-    const questionNote = document.getElementById("questionNote");
-    question.addEventListener("change", () => questionNote.classList.toggle("show", question.value === "yes"));
-
-    document.querySelectorAll("form").forEach(form => form.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const msg = form.querySelector("#formMessage");
-      if (msg) msg.style.display = "block";
-    }));
-
-    document.querySelectorAll("[data-legal]").forEach(btn => btn.addEventListener("click", () => {
-      const target = btn.getAttribute("data-legal");
-      document.querySelectorAll("[data-legal]").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      document.getElementById("privacyBox").classList.toggle("active", target === "privacy");
-      document.getElementById("termsBox").classList.toggle("active", target === "terms");
-    }));
-
-    const revealObserver = new IntersectionObserver(entries => {
-      entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add("visible"); });
-    }, { threshold: .12 });
-    document.querySelectorAll(".reveal").forEach(el => revealObserver.observe(el));
-
-    window.addEventListener("scroll", () => {
-      const max = Math.max(1, document.documentElement.scrollHeight - innerHeight);
-      const progress = Math.min(100, (scrollY / max) * 130);
-      if (!stage.matches(":hover")) setBuild(progress);
-    }, { passive: true });
-
-    applyLanguage(currentLang);
-    setBuild(16);
+    const menuToggle=document.getElementById("menuToggle"), nav=document.getElementById("mainNav");menuToggle.addEventListener("click",()=>nav.classList.toggle("open"));nav.querySelectorAll("a").forEach(a=>a.addEventListener("click",()=>nav.classList.remove("open")));
+    const stage=document.getElementById("stage"), card=document.getElementById("driveCard"), capsule=document.getElementById("capsule");function setBuild(v){card.style.setProperty("--build",Math.max(8,Math.min(100,v)).toFixed(0));}
+    stage.addEventListener("mousemove",e=>{const r=stage.getBoundingClientRect();const x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height;card.style.setProperty("--ry",`${(x-.5)*14}deg`);card.style.setProperty("--rx",`${-(y-.5)*10}deg`);setBuild(18+x*58+y*24);});stage.addEventListener("mouseleave",()=>{card.style.setProperty("--rx","0deg");card.style.setProperty("--ry","0deg");});document.getElementById("openCapsule").addEventListener("click",()=>capsule.classList.toggle("open"));
+    const question=document.getElementById("ownQuestions"), qNote=document.getElementById("questionNote");question.addEventListener("change",()=>qNote.classList.toggle("show",question.value==="yes"));document.querySelectorAll("form").forEach(form=>form.addEventListener("submit",e=>{e.preventDefault();const msg=form.querySelector("#formMessage");if(msg)msg.style.display="block";}));
+    document.querySelectorAll("[data-legal]").forEach(btn=>btn.addEventListener("click",()=>{const t=btn.getAttribute("data-legal");document.querySelectorAll("[data-legal]").forEach(b=>b.classList.remove("active"));btn.classList.add("active");document.getElementById("privacyBox").classList.toggle("active",t==="privacy");document.getElementById("termsBox").classList.toggle("active",t==="terms");}));
+    const obs=new IntersectionObserver(entries=>entries.forEach(en=>{if(en.isIntersecting)en.target.classList.add("visible")}),{threshold:.12});document.querySelectorAll(".reveal").forEach(el=>obs.observe(el));
+    addEventListener("scroll",()=>{const max=document.documentElement.scrollHeight-innerHeight;const p=Math.max(0,Math.min(100,scrollY/max*100));document.documentElement.style.setProperty("--scroll",p.toFixed(1));if(!stage.matches(":hover"))setBuild(12+p*1.1);},{passive:true});
+    applyLanguage(currentLang);setBuild(14);
   </script>
 </body>
 </html>

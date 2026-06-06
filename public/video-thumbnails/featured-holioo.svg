@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Holioo featured film poster</title>
+  <desc id="desc">Warm cinematic abstract poster for a family film video placeholder.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#171411"/>
+      <stop offset="0.55" stop-color="#475b53"/>
+      <stop offset="1" stop-color="#c6a66e"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="38%" cy="28%" r="55%">
+      <stop stop-color="#fffaf3" stop-opacity="0.7"/>
+      <stop offset="0.42" stop-color="#c6a66e" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#171411" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <rect width="1600" height="900" fill="url(#glow)"/>
+  <g opacity="0.24" fill="none" stroke="#fffaf3" stroke-width="2">
+    <path d="M120 690 C 360 590, 520 650, 760 520 S 1200 340, 1480 460"/>
+    <path d="M180 270 C 420 360, 610 250, 780 360 S 1120 560, 1440 330"/>
+  </g>
+  <g transform="translate(720 350)">
+    <circle cx="80" cy="80" r="88" fill="#fffaf3" opacity="0.82"/>
+    <path d="M54 35 L54 125 L132 80 Z" fill="#171411"/>
+  </g>
+  <text x="96" y="735" fill="#fffaf3" font-family="Georgia, serif" font-size="72">Holioo</text>
+  <text x="100" y="792" fill="#fffaf3" fill-opacity="0.72" font-family="Arial, sans-serif" font-size="26" letter-spacing="7">FEATURED FAMILY FILM</text>
+</svg>

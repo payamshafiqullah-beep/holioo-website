@@ -1,331 +1,285 @@
+import { useMemo, useState } from 'react'
 import './App.css'
 
-const contactEmail = 'r.joyanda97@gmail.com'
+const contactEmail = 'holioofamily@gmail.com'
 
-const filmMoments = [
+const copy = {
+  fr: {
+    nav: ['A propos', 'Pourquoi', 'Processus', 'Videos', 'Contact'],
+    hero: {
+      eyebrow: 'Studio familial cinematographique',
+      title: 'Your family story, beautifully filmed every year.',
+      subtitle:
+        'A cinematic yearly film for your family - memories, dreams, growth, and messages to your future selves.',
+      primary: 'Book your session',
+      secondary: 'Discover how it works',
+      note: 'Les 5 premieres familles participent gratuitement.',
+    },
+    aboutTitle: 'Holioo transforme une annee de famille en film intime.',
+    about:
+      'Chaque annee, nous venons chez vous pour filmer les visages, les voix, les souvenirs et les reves qui racontent votre famille. Le film devient une capsule temporelle: un moment calme a revoir plus tard, avec emotion.',
+    whyTitle: 'La vie change vite. Les souvenirs les plus vrais disparaissent doucement.',
+    why:
+      'Les enfants grandissent, les parents changent, les maisons evoluent. Les photos gardent les images, mais elles ne gardent pas toujours les voix, les silences, les rires, les reves et les messages.',
+    stepsTitle: 'Un processus simple, humain, et fait pour durer.',
+    steps: [
+      ['We visit your home', 'Une seance naturelle dans l endroit ou votre vie existe vraiment.'],
+      ['We film your family', 'Parents, enfants, gestes, regards, pieces et details du quotidien.'],
+      ['We capture your memories and messages', 'Des questions simples font remonter souvenirs, emotions et messages au futur.'],
+      ['One year later, you watch your story again and continue it', 'Vous revoyez le film, comparez la vie qui a change, puis commencez le chapitre suivant.'],
+    ],
+    videosTitle: 'Deux espaces prets pour vos videos Holioo.',
+    videosText: 'Remplacez les fichiers dans public/videos/ et public/video-thumbnails/ quand vos films sont prets.',
+    captureTitle: 'Les details qui deviennent votre archive vivante.',
+    offerTitle: 'First 5 families free.',
+    offer:
+      'Pour lancer Holioo avec soin, les 5 premieres familles peuvent participer gratuitement. Une offre fondatrice, privee et realisee avec confiance.',
+    contactTitle: 'Demandez votre premiere seance Holioo.',
+    contact:
+      'Le formulaire est pret pour Formspree. Vous pouvez aussi nous ecrire directement par email.',
+    form: ['Full name', 'Email', 'City', 'Preferred language', 'Preferred filming period', 'Message'],
+    submit: 'Request a session',
+    privacy: 'We never publish family videos without permission.',
+    footer: 'Premium yearly family films for the future.',
+  },
+  en: {
+    nav: ['About', 'Why', 'Process', 'Videos', 'Contact'],
+    hero: {
+      eyebrow: 'Cinematic family studio',
+      title: 'Your family story, beautifully filmed every year.',
+      subtitle:
+        'A cinematic yearly film for your family - memories, dreams, growth, and messages to your future selves.',
+      primary: 'Book your session',
+      secondary: 'Discover how it works',
+      note: 'The first 5 families can participate for free.',
+    },
+    aboutTitle: 'Holioo turns one year of family life into an intimate film.',
+    about:
+      'Every year, we visit your home to film the faces, voices, memories, and dreams that tell the truth of your family. The film becomes a time capsule: something calm and emotional to reopen later.',
+    whyTitle: 'Life changes fast. The truest memories disappear quietly.',
+    why:
+      'Children grow, parents change, homes evolve. Photos preserve images, but they do not always preserve voices, pauses, laughter, dreams, and the messages we wish we could hear again.',
+    stepsTitle: 'A simple, human process designed to become more meaningful each year.',
+    steps: [
+      ['We visit your home', 'A calm session in the place where your family life actually happens.'],
+      ['We film your family', 'Parents, children, gestures, rooms, and small details.'],
+      ['We capture your memories and messages', 'Simple questions bring out memories, emotions, dreams, and future messages.'],
+      ['One year later, you watch your story again and continue it', 'You watch, compare what changed, and begin the next chapter.'],
+    ],
+    videosTitle: 'Two polished spaces ready for your Holioo videos.',
+    videosText: 'Replace files in public/videos/ and public/video-thumbnails/ when your films are ready.',
+    captureTitle: 'The details that become your living archive.',
+    offerTitle: 'First 5 families free.',
+    offer:
+      'To launch Holioo with care, the first 5 families can participate for free. A private founding offer created with trust.',
+    contactTitle: 'Request your first Holioo session.',
+    contact:
+      'The form is prepared for Formspree. You can also contact us directly by email.',
+    form: ['Full name', 'Email', 'City', 'Preferred language', 'Preferred filming period', 'Message'],
+    submit: 'Request a session',
+    privacy: 'We never publish family videos without permission.',
+    footer: 'Premium yearly family films for the future.',
+  },
+}
+
+const captureItems = [
   'Children growth',
   'Parents messages',
   'Family dreams',
-  'Goals for next year',
+  'Yearly memories',
   'Home atmosphere',
-  'Real emotions and voices',
+  'Real voices and emotions',
+  'Messages to the future',
 ]
 
-const steps = [
-  {
-    title: 'We visit your home',
-    text: 'A calm, natural filming session in the place where your family life actually happens.',
-  },
-  {
-    title: 'We film each family member',
-    text: 'Parents, children, siblings, little gestures, favorite corners, and the voices you want to remember.',
-  },
-  {
-    title: 'You answer simple emotional questions',
-    text: 'Warm prompts help every person share memories, dreams, and messages to their future self.',
-  },
-  {
-    title: 'Next year, you watch and compare',
-    text: 'You receive a new chapter and see how everyone has grown, changed, hoped, and become.',
-  },
-]
-
-const questions = [
-  'What made you happy this year?',
-  'What do you want to remember forever?',
-  'What is your dream for next year?',
-  'What message do you want to send to your future self?',
-]
-
-function Header() {
+function Header({ language, setLanguage, t }) {
   return (
-    <header className="site-header" aria-label="Primary navigation">
-      <a className="brand-mark" href="#top" aria-label="Family Year Film home">
-        <span className="brand-symbol">FY</span>
-        <span>
-          Family Year Film
-          <small>cinematic memory studio</small>
-        </span>
+    <header className="site-header">
+      <a className="brand" href="#top" aria-label="Holioo home">
+        <span>H</span>
+        <strong>Holioo</strong>
       </a>
-      <nav className="nav-links" aria-label="Page sections">
-        <a href="#why">Why</a>
-        <a href="#process">How</a>
-        <a href="#free">Free places</a>
-        <a href="#contact">Contact</a>
+      <nav aria-label="Page sections">
+        {['about', 'why', 'process', 'videos', 'contact'].map((id, index) => (
+          <a key={id} href={`#${id}`}>
+            {t.nav[index]}
+          </a>
+        ))}
       </nav>
+      <div className="language-switcher" aria-label="Language switcher">
+        {['fr', 'en'].map((code) => (
+          <button
+            key={code}
+            type="button"
+            className={language === code ? 'active' : ''}
+            onClick={() => setLanguage(code)}
+          >
+            {code.toUpperCase()}
+          </button>
+        ))}
+      </div>
     </header>
   )
 }
 
-function HeroVisual() {
+function Hero({ t }) {
   return (
-    <div className="hero-visual" aria-label="Animated family film memory cards">
-      <div className="film-stage">
-        <div className="memory-card memory-card-main">
-          <span className="card-kicker">Chapter 01</span>
-          <strong>Home, this year</strong>
-          <p>Small voices, big dreams, honest moments.</p>
-          <div className="frame-window">
-            <span />
-            <span />
-            <span />
-          </div>
-        </div>
-        <div className="memory-card memory-card-top">
-          <span className="record-dot" />
-          <strong>Future message</strong>
-          <p>Open in one year</p>
-        </div>
-        <div className="memory-card memory-card-bottom">
-          <span>2026</span>
-          <strong>Watch together</strong>
-        </div>
-        <div className="film-strip" aria-hidden="true">
-          <span />
-          <span />
-          <span />
-          <span />
-          <span />
-          <span />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function Hero() {
-  return (
-    <section className="hero-section section-shell" id="top">
+    <section className="hero section-shell" id="top">
       <div className="hero-copy reveal">
-        <p className="eyebrow">First 5 families can participate for free</p>
-        <h1>Your family story, beautifully filmed every year.</h1>
-        <p className="hero-subtitle">
-          A cinematic yearly film for your family - memories, dreams, growth,
-          and messages to your future selves.
-        </p>
-        <div className="hero-actions">
-          <a className="btn btn-primary" href="#contact">
-            Join the first 5 free families
+        <p className="eyebrow">{t.hero.eyebrow}</p>
+        <h1>{t.hero.title}</h1>
+        <p>{t.hero.subtitle}</p>
+        <div className="actions">
+          <a className="button primary" href="#contact">
+            {t.hero.primary}
           </a>
-          <a className="btn btn-secondary" href="#process">
-            How it works
+          <a className="button ghost" href="#process">
+            {t.hero.secondary}
           </a>
         </div>
-        <div className="hero-proof" aria-label="Service highlights">
-          <span>At-home filming</span>
-          <span>Yearly tradition</span>
-          <span>Private family keepsake</span>
-        </div>
+        <span className="founding-note">{t.hero.note}</span>
       </div>
-      <HeroVisual />
-    </section>
-  )
-}
-
-function WhySection() {
-  return (
-    <section className="why-section section-shell" id="why">
-      <div className="section-heading reveal">
-        <p className="eyebrow">Why this exists</p>
-        <h2>Life changes quietly. Most families only notice it later.</h2>
-      </div>
-      <div className="why-grid">
-        <article className="story-panel reveal">
-          <p>
-            Children grow into new voices. Parents carry new hopes. Homes shift,
-            routines change, and the little things that once felt ordinary
-            become priceless.
-          </p>
-          <p>
-            Family Year Film captures the real atmosphere of your life once a
-            year, so your future family can return to the emotions, dreams, and
-            honest words of this exact season.
-          </p>
-        </article>
-        <div className="mini-bento reveal">
-          <div>
-            <strong>Real voices</strong>
-            <span>not posed perfection</span>
-          </div>
-          <div>
-            <strong>Year by year</strong>
-            <span>a living archive</span>
-          </div>
-          <div>
-            <strong>At home</strong>
-            <span>where the story breathes</span>
-          </div>
-        </div>
+      <div className="camera-stage reveal" aria-label="Premium cinema camera on tripod">
+        <img src="/images/holioo-cinema-camera.svg" alt="Premium cinema camera mounted on a tripod" />
       </div>
     </section>
   )
 }
 
-function ProcessSection() {
+function VideoCard({ label, title, poster, src }) {
   return (
-    <section className="process-section section-shell" id="process">
-      <div className="section-heading reveal">
-        <p className="eyebrow">How it works</p>
-        <h2>A simple ritual, designed to become more meaningful every year.</h2>
+    <article className="video-card reveal">
+      <div className="video-frame">
+        {/* Replace this poster with your own thumbnail in public/video-thumbnails/. */}
+        <video controls preload="none" poster={poster} aria-label={title}>
+          {/* Replace this source with your real video file in public/videos/. */}
+          <source src={src} type="video/mp4" />
+        </video>
+        <span>Play</span>
       </div>
-      <div className="steps-grid">
-        {steps.map((step, index) => (
-          <article className="step-card reveal" key={step.title}>
-            <span>{String(index + 1).padStart(2, '0')}</span>
-            <h3>{step.title}</h3>
-            <p>{step.text}</p>
-          </article>
-        ))}
-      </div>
-    </section>
+      <small>{label}</small>
+      <h3>{title}</h3>
+    </article>
   )
 }
 
-function WhatWeFilm() {
+function Contact({ t, language }) {
   return (
-    <section className="bento-section section-shell" id="moments">
-      <div className="section-heading reveal">
-        <p className="eyebrow">What we film</p>
-        <h2>The emotional details that become your family time capsule.</h2>
-      </div>
-      <div className="bento-grid">
-        {filmMoments.map((moment, index) => (
-          <article
-            className={`bento-card reveal ${index === 0 ? 'bento-large' : ''}`}
-            key={moment}
-          >
-            <span className="bento-index">{String(index + 1).padStart(2, '0')}</span>
-            <h3>{moment}</h3>
-          </article>
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function FreeFamilies() {
-  return (
-    <section className="free-section section-shell" id="free">
-      <div className="free-card reveal">
-        <div>
-          <p className="eyebrow">Founding family offer</p>
-          <h2>First 5 families free.</h2>
-          <p>
-            We are opening the first chapter with a small group of families who
-            want to help shape this experience. No pressure, no gimmicks - just
-            an intimate cinematic session created with care.
-          </p>
-        </div>
-        <div className="free-counter" aria-label="Five founding family places">
-          <span>01</span>
-          <span>02</span>
-          <span>03</span>
-          <span>04</span>
-          <span>05</span>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function QuestionsSection() {
-  return (
-    <section className="questions-section section-shell">
-      <div className="section-heading reveal">
-        <p className="eyebrow">Example questions</p>
-        <h2>Gentle prompts that bring out real memories.</h2>
-      </div>
-      <div className="questions-list">
-        {questions.map((question) => (
-          <article className="question-card reveal" key={question}>
-            <span>Question</span>
-            <h3>{question}</h3>
-          </article>
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function StorySection() {
-  return (
-    <section className="story-section">
-      <div className="story-cinematic reveal">
-        <p className="eyebrow">One year later</p>
-        <h2>
-          Imagine sitting together next year, watching the people you love speak
-          from the past.
-        </h2>
-        <p>
-          The same sofa. A different year. A child who sounds a little older. A
-          parent who remembers what mattered. A dream that came true, or changed
-          into something better. The film becomes more than a memory - it
-          becomes proof that your family is growing in ways worth noticing.
-        </p>
-      </div>
-    </section>
-  )
-}
-
-function ContactSection() {
-  return (
-    <section className="contact-section section-shell" id="contact">
-      <div className="contact-copy reveal">
-        <p className="eyebrow">Start your first film</p>
-        <h2>Tell us about your family and the year you want to remember.</h2>
-        <p>
-          The form is a visual guide for now. To apply for one of the first 5
-          free family places, send a short email and we will reply personally.
-        </p>
-        <a className="btn btn-primary" href={`mailto:${contactEmail}?subject=Family Year Film - first 5 free families`}>
-          Email {contactEmail}
+    <section className="contact section-shell" id="contact">
+      <div className="section-title reveal">
+        <p className="eyebrow">Booking</p>
+        <h2>{t.contactTitle}</h2>
+        <p>{t.contact}</p>
+        <a className="button primary" href={`mailto:${contactEmail}?subject=Holioo booking request`}>
+          Email Holioo
         </a>
+        <p className="privacy">{t.privacy}</p>
       </div>
-      <form className="contact-form reveal" aria-label="Contact form preview">
-        <label>
-          Your name
-          <input type="text" placeholder="Full name" />
-        </label>
-        <label>
-          Email
-          <input type="email" placeholder="you@example.com" />
-        </label>
-        <label>
-          Family story
-          <textarea placeholder="Tell us who you are, where you live, and why this film matters." />
-        </label>
-        <a className="form-submit" href={`mailto:${contactEmail}?subject=Family Year Film inquiry`}>
-          Send by email
-        </a>
+      {/* Paste your real Formspree endpoint in the action below, replacing /f/your-form-id. */}
+      <form className="booking-form reveal" action="https://formspree.io/f/your-form-id" method="POST">
+        <label>{t.form[0]}<input name="name" type="text" autoComplete="name" required /></label>
+        <label>{t.form[1]}<input name="email" type="email" autoComplete="email" required /></label>
+        <label>{t.form[2]}<input name="city" type="text" autoComplete="address-level2" /></label>
+        <label>{t.form[3]}<select name="preferred_language" defaultValue={language}><option value="fr">Francais</option><option value="en">English</option></select></label>
+        <label>{t.form[4]}<input name="preferred_period" type="text" placeholder="Spring 2026" /></label>
+        <label className="wide">{t.form[5]}<textarea name="message" rows="5" required /></label>
+        <button type="submit">{t.submit}</button>
       </form>
     </section>
   )
 }
 
-function Footer() {
-  return (
-    <footer className="site-footer">
-      <p>Family Year Film</p>
-      <span>Cinematic memories for your future.</span>
-    </footer>
-  )
-}
-
 export default function App() {
+  const [language, setLanguage] = useState('fr')
+  const t = useMemo(() => copy[language], [language])
+
   return (
     <>
-      <Header />
+      <Header language={language} setLanguage={setLanguage} t={t} />
       <main>
-        <Hero />
-        <WhySection />
-        <ProcessSection />
-        <WhatWeFilm />
-        <FreeFamilies />
-        <QuestionsSection />
-        <StorySection />
-        <ContactSection />
+        <Hero t={t} />
+
+        <section className="split section-shell" id="about">
+          <div className="section-title reveal">
+            <p className="eyebrow">About Holioo</p>
+            <h2>{t.aboutTitle}</h2>
+          </div>
+          <article className="glass reveal"><p>{t.about}</p></article>
+        </section>
+
+        <section className="split section-shell" id="why">
+          <div className="section-title reveal">
+            <p className="eyebrow">Why this matters</p>
+            <h2>{t.whyTitle}</h2>
+            <p>{t.why}</p>
+          </div>
+          <div className="mini-grid">
+            {['Real voices', 'Annual dreams', 'Home atmosphere', 'Private archive'].map((item) => (
+              <article className="mini-card reveal" key={item}>{item}</article>
+            ))}
+          </div>
+        </section>
+
+        <section className="section-shell" id="process">
+          <div className="section-title reveal">
+            <p className="eyebrow">How it works</p>
+            <h2>{t.stepsTitle}</h2>
+          </div>
+          <div className="steps">
+            {t.steps.map(([title, text], index) => (
+              <article className="step-card reveal" key={title}>
+                <span>{String(index + 1).padStart(2, '0')}</span>
+                <h3>{title}</h3>
+                <p>{text}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="section-shell" id="videos">
+          <div className="section-title reveal">
+            <p className="eyebrow">Films</p>
+            <h2>{t.videosTitle}</h2>
+            <p>{t.videosText}</p>
+          </div>
+          <div className="videos">
+            <VideoCard label="01" title="Featured film" poster="/video-thumbnails/featured-holioo.svg" src="/videos/featured-family-film.mp4" />
+            <VideoCard label="02" title="Second excerpt" poster="/video-thumbnails/second-holioo.svg" src="/videos/second-family-film.mp4" />
+          </div>
+        </section>
+
+        <section className="section-shell">
+          <div className="section-title reveal">
+            <p className="eyebrow">What we capture</p>
+            <h2>{t.captureTitle}</h2>
+          </div>
+          <div className="bento">
+            {captureItems.map((item, index) => (
+              <article className={`bento-card reveal ${index === 0 ? 'large' : ''}`} key={item}>
+                <span>{String(index + 1).padStart(2, '0')}</span>
+                <h3>{item}</h3>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="section-shell offer">
+          <div className="offer-card reveal">
+            <p className="eyebrow">Founding offer</p>
+            <h2>{t.offerTitle}</h2>
+            <p>{t.offer}</p>
+            <div>{[1, 2, 3, 4, 5].map((slot) => <span key={slot}>{String(slot).padStart(2, '0')}</span>)}</div>
+          </div>
+        </section>
+
+        <Contact t={t} language={language} />
       </main>
-      <Footer />
+      <footer className="site-footer">
+        <strong>Holioo</strong>
+        <span>{t.footer}</span>
+        <a href="#contact">Booking</a>
+        <a href={`mailto:${contactEmail}`}>{contactEmail}</a>
+      </footer>
     </>
   )
 }

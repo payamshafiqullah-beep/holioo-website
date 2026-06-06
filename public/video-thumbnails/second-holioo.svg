@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" role="img" aria-labelledby="title desc">
+  <title id="title">Holioo second film poster</title>
+  <desc id="desc">Soft premium abstract poster for a second family film video placeholder.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#fffaf3"/>
+      <stop offset="0.48" stop-color="#d7d2ca"/>
+      <stop offset="1" stop-color="#475b53"/>
+    </linearGradient>
+    <radialGradient id="lens" cx="50%" cy="48%" r="42%">
+      <stop stop-color="#fffaf3"/>
+      <stop offset="0.42" stop-color="#c6a66e" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#171411" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="800" fill="url(#bg)"/>
+  <circle cx="790" cy="250" r="270" fill="url(#lens)" opacity="0.68"/>
+  <rect x="110" y="110" width="980" height="580" rx="54" fill="#171411" opacity="0.12"/>
+  <rect x="155" y="155" width="890" height="490" rx="36" fill="#fffaf3" opacity="0.24"/>
+  <circle cx="600" cy="400" r="70" fill="#fffaf3" opacity="0.78"/>
+  <path d="M577 357 L577 443 L652 400 Z" fill="#171411"/>
+  <text x="100" y="710" fill="#171411" font-family="Georgia, serif" font-size="58">Second excerpt</text>
+</svg>

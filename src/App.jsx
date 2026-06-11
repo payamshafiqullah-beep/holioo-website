@@ -126,7 +126,6 @@ function ScrollScrubVideo() {
   const videoRef = useRef(null)
   const progressRef = useRef(0)
   const frameRef = useRef(0)
-  const [duration, setDuration] = useState(10)
   const [progress, setProgress] = useState(0)
 
   useEffect(() => {
@@ -163,7 +162,7 @@ function ScrollScrubVideo() {
 
     const handleMetadata = () => {
       if (video?.duration && Number.isFinite(video.duration)) {
-        setDuration(video.duration)
+        video.pause()
         video.currentTime = progressRef.current * video.duration
       }
     }
@@ -192,7 +191,10 @@ function ScrollScrubVideo() {
         muted
         playsInline
         preload="auto"
-        poster="/video-thumbnails/featured-holioo.svg"
+        aria-hidden="true"
+        controlsList="nodownload nofullscreen noremoteplayback"
+        disablePictureInPicture
+        disableRemotePlayback
       >
         <source src="/videos/story-scroll.mp4" type="video/mp4" />
       </video>
@@ -201,9 +203,6 @@ function ScrollScrubVideo() {
       <div className="scroll-cinema-grain" />
       <div className="scroll-cinema-progress">
         <span style={{ transform: `scaleX(${progress})` }} />
-      </div>
-      <div className="scroll-cinema-timecode">
-        {Math.round(progress * duration).toString().padStart(2, '0')}s / {Math.round(duration).toString().padStart(2, '0')}s
       </div>
     </div>
   )

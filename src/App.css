@@ -90,6 +90,16 @@ main {
   transform: scale(1.045);
 }
 
+.scroll-cinema-video::-webkit-media-controls,
+.scroll-cinema-video::-webkit-media-controls-panel,
+.scroll-cinema-video::-webkit-media-controls-play-button,
+.scroll-cinema-video::-webkit-media-controls-start-playback-button {
+  display: none !important;
+  opacity: 0;
+  pointer-events: none;
+  -webkit-appearance: none;
+}
+
 .scroll-cinema-grade {
   background:
     linear-gradient(90deg, rgba(12, 10, 9, 0.92), rgba(27, 22, 18, 0.48) 48%, rgba(13, 11, 10, 0.86)),
@@ -136,17 +146,6 @@ main {
   box-shadow: 0 0 22px rgba(232, 201, 137, 0.58);
 }
 
-.scroll-cinema-timecode {
-  position: fixed;
-  right: clamp(18px, 3vw, 42px);
-  bottom: clamp(25px, 3vw, 43px);
-  z-index: 3;
-  color: rgba(255, 250, 243, 0.58);
-  font-size: 0.68rem;
-  font-weight: 820;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
 
 .section-shell,
 .site-header,
@@ -944,9 +943,6 @@ p {
       linear-gradient(180deg, rgba(10, 9, 8, 0.78), rgba(10, 9, 8, 0.24) 38%, rgba(10, 9, 8, 0.9));
   }
 
-  .scroll-cinema-timecode {
-    display: none;
-  }
 
   .section-shell,
   .site-header,

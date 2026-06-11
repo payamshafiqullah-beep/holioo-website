@@ -125,6 +125,10 @@ function Header({ language, setLanguage, t }) {
 function Hero({ t }) {
   return (
     <section className="hero section-shell" id="top">
+      <video className="hero-background-video" autoPlay muted loop playsInline aria-hidden="true">
+        <source src="/videos/hero.mp4" type="video/mp4" />
+      </video>
+      <div className="hero-video-overlay" aria-hidden="true" />
       <div className="hero-copy reveal">
         <p className="eyebrow">{t.hero.eyebrow}</p>
         <h1>{t.hero.title}</h1>

@@ -124,31 +124,31 @@ function Header({ language, setLanguage, t }) {
 
 function ScrollScrubVideo() {
   const videoRef = useRef(null)
+  const progressBarRef = useRef(null)
   const progressRef = useRef(0)
   const frameRef = useRef(0)
-  const [progress, setProgress] = useState(0)
+  const hasMetadataRef = useRef(false)
 
   useEffect(() => {
     const video = videoRef.current
-    let lastProgress = -1
 
     const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
+
+    const applyProgress = (nextProgress) => {
+      progressRef.current = nextProgress
+      progressBarRef.current?.style.setProperty('--scroll-progress', nextProgress.toFixed(4))
+    }
 
     const updateVideoTime = () => {
       frameRef.current = 0
       const maxScroll = Math.max(document.documentElement.scrollHeight - window.innerHeight, 1)
       const nextProgress = clamp(window.scrollY / maxScroll, 0, 1)
-      progressRef.current = nextProgress
+      applyProgress(nextProgress)
 
-      if (Math.abs(nextProgress - lastProgress) > 0.001) {
-        lastProgress = nextProgress
-        setProgress(nextProgress)
-      }
+      if (video && hasMetadataRef.current) {
+        const targetTime = nextProgress <= 0 ? 0.01 : nextProgress * video.duration
 
-      if (video?.duration && Number.isFinite(video.duration)) {
-        const targetTime = nextProgress * video.duration
-
-        if (Math.abs(video.currentTime - targetTime) > 0.035) {
+        if (Math.abs(video.currentTime - targetTime) > 0.025) {
           video.currentTime = targetTime
         }
       }
@@ -163,7 +163,9 @@ function ScrollScrubVideo() {
     const handleMetadata = () => {
       if (video?.duration && Number.isFinite(video.duration)) {
         video.pause()
-        video.currentTime = progressRef.current * video.duration
+        hasMetadataRef.current = true
+        video.currentTime = 0.01
+        requestUpdate()
       }
     }
 
@@ -201,8 +203,8 @@ function ScrollScrubVideo() {
       <div className="scroll-cinema-grade" />
       <div className="scroll-cinema-vignette" />
       <div className="scroll-cinema-grain" />
-      <div className="scroll-cinema-progress">
-        <span style={{ transform: `scaleX(${progress})` }} />
+      <div className="scroll-cinema-progress" ref={progressBarRef}>
+        <span />
       </div>
     </div>
   )
@@ -287,11 +289,10 @@ function VideoCard({ label, title, poster, src }) {
     <article className="video-card reveal">
       <div className="video-frame">
         {/* Replace this poster with your own thumbnail in public/video-thumbnails/. */}
-        <video controls preload="none" poster={poster} aria-label={title}>
+        <video muted playsInline preload="metadata" poster={poster} aria-label={title}>
           {/* Replace this source with your real video file in public/videos/. */}
           <source src={src} type="video/mp4" />
         </video>
-        <span>Play</span>
       </div>
       <small>{label}</small>
       <h3>{title}</h3>

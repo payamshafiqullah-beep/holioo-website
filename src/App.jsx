@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 
 const contactEmail = 'holioofamily@gmail.com'
@@ -124,6 +124,55 @@ function Header({ language, setLanguage, t }) {
 
 function Hero({ t }) {
   const heroRef = useRef(null)
+  const animationFrameRef = useRef(null)
+  const pendingMouseRef = useRef({ x: 0, y: 0 })
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
+
+  useEffect(() => {
+    return () => {
+      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current)
+    }
+  }, [])
+
+  const heroStyle = useMemo(() => {
+    const { x, y } = mousePosition
+
+    return {
+      '--mouse-x': x,
+      '--mouse-y': y,
+      '--glow-x': `${50 + x * 60}%`,
+      '--glow-y': `${50 + y * 60}%`,
+      '--hero-video-x': `${x * -12}px`,
+      '--hero-video-y': `${y * -10}px`,
+      '--aurora-one-x': `${x * 34}px`,
+      '--aurora-one-y': `${y * 22}px`,
+      '--aurora-two-x': `${x * -30}px`,
+      '--aurora-two-y': `${y * -18}px`,
+      '--copy-x': `${x * -12}px`,
+      '--copy-y': `${y * -8}px`,
+      '--visual-x': `${x * 18}px`,
+      '--visual-y': `${y * 10}px`,
+      '--frame-rotate-x': `${y * -9}deg`,
+      '--frame-rotate-y': `${x * 12}deg`,
+      '--float-top-x': `${x * -34}px`,
+      '--float-top-y': `${y * -24}px`,
+      '--float-bottom-x': `${x * 28}px`,
+      '--float-bottom-y': `${y * 22}px`,
+    }
+  }, [mousePosition])
+
+  const commitMousePosition = () => {
+    animationFrameRef.current = null
+    setMousePosition(pendingMouseRef.current)
+  }
+
+  const scheduleMousePosition = (position) => {
+    pendingMouseRef.current = position
+
+    if (!animationFrameRef.current) {
+      animationFrameRef.current = requestAnimationFrame(commitMousePosition)
+    }
+  }
 
   const handlePointerMove = (event) => {
     const hero = heroRef.current
@@ -131,50 +180,21 @@ function Hero({ t }) {
     if (!hero) return
 
     const rect = hero.getBoundingClientRect()
-    const x = (event.clientX - rect.left) / rect.width - 0.5
-    const y = (event.clientY - rect.top) / rect.height - 0.5
 
-    hero.style.setProperty('--hero-video-x', `${x * -12}px`)
-    hero.style.setProperty('--hero-video-y', `${y * -10}px`)
-    hero.style.setProperty('--aurora-one-x', `${x * 34}px`)
-    hero.style.setProperty('--aurora-one-y', `${y * 22}px`)
-    hero.style.setProperty('--aurora-two-x', `${x * -30}px`)
-    hero.style.setProperty('--aurora-two-y', `${y * -18}px`)
-    hero.style.setProperty('--copy-x', `${x * -12}px`)
-    hero.style.setProperty('--copy-y', `${y * -8}px`)
-    hero.style.setProperty('--visual-x', `${x * 18}px`)
-    hero.style.setProperty('--visual-y', `${y * 10}px`)
-    hero.style.setProperty('--frame-rotate-x', `${y * -9}deg`)
-    hero.style.setProperty('--frame-rotate-y', `${x * 12}deg`)
-    hero.style.setProperty('--float-top-x', `${x * -34}px`)
-    hero.style.setProperty('--float-top-y', `${y * -24}px`)
-    hero.style.setProperty('--float-bottom-x', `${x * 28}px`)
-    hero.style.setProperty('--float-bottom-y', `${y * 22}px`)
+    scheduleMousePosition({
+      x: (event.clientX - rect.left) / rect.width - 0.5,
+      y: (event.clientY - rect.top) / rect.height - 0.5,
+    })
   }
 
   const resetPointer = () => {
-    const hero = heroRef.current
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current)
+      animationFrameRef.current = null
+    }
 
-    if (!hero) return
-
-    ;[
-      '--hero-video-x',
-      '--hero-video-y',
-      '--aurora-one-x',
-      '--aurora-one-y',
-      '--aurora-two-x',
-      '--aurora-two-y',
-      '--copy-x',
-      '--copy-y',
-      '--visual-x',
-      '--visual-y',
-      '--frame-rotate-x',
-      '--frame-rotate-y',
-      '--float-top-x',
-      '--float-top-y',
-      '--float-bottom-x',
-      '--float-bottom-y',
-    ].forEach((property) => hero.style.removeProperty(property))
+    pendingMouseRef.current = { x: 0, y: 0 }
+    setMousePosition({ x: 0, y: 0 })
   }
 
   return (
@@ -184,6 +204,7 @@ function Hero({ t }) {
       id="top"
       onPointerMove={handlePointerMove}
       onPointerLeave={resetPointer}
+      style={heroStyle}
     >
       <div className="hero-cinema-bg" aria-hidden="true">
         <video className="hero-background-video" autoPlay muted loop playsInline>

@@ -220,6 +220,10 @@ p {
 }
 
 .hero {
+  --mouse-x: 0;
+  --mouse-y: 0;
+  --glow-x: 50%;
+  --glow-y: 50%;
   --hero-video-x: 0px;
   --hero-video-y: 0px;
   --aurora-one-x: 0px;
@@ -282,6 +286,7 @@ p {
 .hero-video-overlay {
   z-index: 2;
   background:
+    radial-gradient(circle at var(--glow-x) var(--glow-y), rgba(246, 226, 186, 0.18), transparent 18rem),
     radial-gradient(circle at 18% 22%, rgba(221, 184, 124, 0.22), transparent 32rem),
     radial-gradient(circle at 82% 28%, rgba(255, 250, 243, 0.12), transparent 24rem),
     linear-gradient(100deg, rgba(15, 13, 11, 0.94) 0%, rgba(25, 20, 17, 0.72) 42%, rgba(15, 13, 11, 0.9) 100%),

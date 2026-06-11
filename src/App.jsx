@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 
 const contactEmail = 'holioofamily@gmail.com'
@@ -122,6 +122,93 @@ function Header({ language, setLanguage, t }) {
   )
 }
 
+function ScrollScrubVideo() {
+  const videoRef = useRef(null)
+  const progressRef = useRef(0)
+  const frameRef = useRef(0)
+  const [duration, setDuration] = useState(10)
+  const [progress, setProgress] = useState(0)
+
+  useEffect(() => {
+    const video = videoRef.current
+    let lastProgress = -1
+
+    const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
+
+    const updateVideoTime = () => {
+      frameRef.current = 0
+      const maxScroll = Math.max(document.documentElement.scrollHeight - window.innerHeight, 1)
+      const nextProgress = clamp(window.scrollY / maxScroll, 0, 1)
+      progressRef.current = nextProgress
+
+      if (Math.abs(nextProgress - lastProgress) > 0.001) {
+        lastProgress = nextProgress
+        setProgress(nextProgress)
+      }
+
+      if (video?.duration && Number.isFinite(video.duration)) {
+        const targetTime = nextProgress * video.duration
+
+        if (Math.abs(video.currentTime - targetTime) > 0.035) {
+          video.currentTime = targetTime
+        }
+      }
+    }
+
+    const requestUpdate = () => {
+      if (!frameRef.current) {
+        frameRef.current = window.requestAnimationFrame(updateVideoTime)
+      }
+    }
+
+    const handleMetadata = () => {
+      if (video?.duration && Number.isFinite(video.duration)) {
+        setDuration(video.duration)
+        video.currentTime = progressRef.current * video.duration
+      }
+    }
+
+    video?.addEventListener('loadedmetadata', handleMetadata)
+    window.addEventListener('scroll', requestUpdate, { passive: true })
+    window.addEventListener('resize', requestUpdate)
+    requestUpdate()
+
+    return () => {
+      video?.removeEventListener('loadedmetadata', handleMetadata)
+      window.removeEventListener('scroll', requestUpdate)
+      window.removeEventListener('resize', requestUpdate)
+
+      if (frameRef.current) {
+        window.cancelAnimationFrame(frameRef.current)
+      }
+    }
+  }, [])
+
+  return (
+    <div className="scroll-cinema" aria-hidden="true">
+      <video
+        ref={videoRef}
+        className="scroll-cinema-video"
+        muted
+        playsInline
+        preload="auto"
+        poster="/video-thumbnails/featured-holioo.svg"
+      >
+        <source src="/videos/story-scroll.mp4" type="video/mp4" />
+      </video>
+      <div className="scroll-cinema-grade" />
+      <div className="scroll-cinema-vignette" />
+      <div className="scroll-cinema-grain" />
+      <div className="scroll-cinema-progress">
+        <span style={{ transform: `scaleX(${progress})` }} />
+      </div>
+      <div className="scroll-cinema-timecode">
+        {Math.round(progress * duration).toString().padStart(2, '0')}s / {Math.round(duration).toString().padStart(2, '0')}s
+      </div>
+    </div>
+  )
+}
+
 function Hero({ t }) {
   const [pointer, setPointer] = useState({ x: 0, y: 0 })
 
@@ -148,9 +235,6 @@ function Hero({ t }) {
       onMouseLeave={() => setPointer({ x: 0, y: 0 })}
       style={heroStyle}
     >
-      <video className="hero-background-video" autoPlay muted loop playsInline aria-hidden="true">
-        <source src="/videos/hero.mp4" type="video/mp4" />
-      </video>
       <div className="hero-video-overlay" aria-hidden="true" />
       <div className="hero-cursor-glow" aria-hidden="true" />
 
@@ -173,14 +257,12 @@ function Hero({ t }) {
         <div className="hero-visual-orbit" aria-hidden="true" />
         <div className="hero-film-card">
           <div className="hero-film-screen">
-            <video autoPlay muted loop playsInline aria-hidden="true">
-              <source src="/videos/hero.mp4" type="video/mp4" />
-            </video>
+            <div className="film-scrub-pulse" aria-hidden="true" />
             <div className="hero-film-vignette" />
           </div>
           <div className="hero-film-meta">
             <span>Holioo archive</span>
-            <strong>01: Future memory</strong>
+            <strong>Scroll to reveal the story</strong>
           </div>
         </div>
 
@@ -250,6 +332,7 @@ export default function App() {
 
   return (
     <>
+      <ScrollScrubVideo />
       <Header language={language} setLanguage={setLanguage} t={t} />
       <main>
         <Hero t={t} />

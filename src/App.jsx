@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import './App.css'
 
 const contactEmail = 'holioofamily@gmail.com'
@@ -123,12 +123,95 @@ function Header({ language, setLanguage, t }) {
 }
 
 function Hero({ t }) {
+  const heroRef = useRef(null)
+
+  const handlePointerMove = (event) => {
+    const hero = heroRef.current
+
+    if (!hero) return
+
+    const rect = hero.getBoundingClientRect()
+    const x = (event.clientX - rect.left) / rect.width - 0.5
+    const y = (event.clientY - rect.top) / rect.height - 0.5
+
+    hero.style.setProperty('--hero-video-x', `${x * -12}px`)
+    hero.style.setProperty('--hero-video-y', `${y * -10}px`)
+    hero.style.setProperty('--aurora-one-x', `${x * 34}px`)
+    hero.style.setProperty('--aurora-one-y', `${y * 22}px`)
+    hero.style.setProperty('--aurora-two-x', `${x * -30}px`)
+    hero.style.setProperty('--aurora-two-y', `${y * -18}px`)
+    hero.style.setProperty('--copy-x', `${x * -12}px`)
+    hero.style.setProperty('--copy-y', `${y * -8}px`)
+    hero.style.setProperty('--visual-x', `${x * 18}px`)
+    hero.style.setProperty('--visual-y', `${y * 10}px`)
+    hero.style.setProperty('--frame-rotate-x', `${y * -9}deg`)
+    hero.style.setProperty('--frame-rotate-y', `${x * 12}deg`)
+    hero.style.setProperty('--float-top-x', `${x * -34}px`)
+    hero.style.setProperty('--float-top-y', `${y * -24}px`)
+    hero.style.setProperty('--float-bottom-x', `${x * 28}px`)
+    hero.style.setProperty('--float-bottom-y', `${y * 22}px`)
+  }
+
+  const resetPointer = () => {
+    const hero = heroRef.current
+
+    if (!hero) return
+
+    ;[
+      '--hero-video-x',
+      '--hero-video-y',
+      '--aurora-one-x',
+      '--aurora-one-y',
+      '--aurora-two-x',
+      '--aurora-two-y',
+      '--copy-x',
+      '--copy-y',
+      '--visual-x',
+      '--visual-y',
+      '--frame-rotate-x',
+      '--frame-rotate-y',
+      '--float-top-x',
+      '--float-top-y',
+      '--float-bottom-x',
+      '--float-bottom-y',
+    ].forEach((property) => hero.style.removeProperty(property))
+  }
+
   return (
-    <section className="hero section-shell" id="top">
+    <section
+      ref={heroRef}
+      className="hero section-shell"
+      id="top"
+      onPointerMove={handlePointerMove}
+      onPointerLeave={resetPointer}
+    >
+      <div className="hero-cinema-bg" aria-hidden="true">
+        <video className="hero-background-video" autoPlay muted loop playsInline>
+          <source src="/videos/hero.mp4" type="video/mp4" />
+        </video>
+        <div className="hero-film-grain" />
+        <div className="hero-video-overlay" />
+        <div className="hero-aurora hero-aurora-one" />
+        <div className="hero-aurora hero-aurora-two" />
+      </div>
+
+      <div className="hero-particles" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+        <span />
+        <span />
+      </div>
+
       <div className="hero-copy reveal">
         <p className="eyebrow">{t.hero.eyebrow}</p>
         <h1>{t.hero.title}</h1>
         <p>{t.hero.subtitle}</p>
+        <div className="hero-proof-row" aria-label="Holioo experience highlights">
+          <span>Yearly archive</span>
+          <span>Real voices</span>
+          <span>Private cinema</span>
+        </div>
         <div className="actions">
           <a className="button primary" href="#contact">
             {t.hero.primary}
@@ -139,8 +222,46 @@ function Hero({ t }) {
         </div>
         <span className="founding-note">{t.hero.note}</span>
       </div>
-      <div className="camera-stage reveal" aria-label="Premium cinema camera on tripod">
-        <img src="/images/holioo-cinema-camera.svg" alt="Premium cinema camera mounted on a tripod" />
+
+      <div className="hero-visual reveal" aria-label="A cinematic family memory archive preview">
+        <div className="floating-card floating-card-top">
+          <small>Message to 2035</small>
+          <strong>“Remember this laugh.”</strong>
+        </div>
+        <div className="floating-card floating-card-bottom">
+          <small>Chapter 01</small>
+          <strong>Home, voices, dreams</strong>
+        </div>
+
+        <div className="memory-frame">
+          <div className="memory-frame-glow" />
+          <div className="memory-screen">
+            <div className="memory-video-strip">
+              <video autoPlay muted loop playsInline aria-hidden="true">
+                <source src="/videos/hero.mp4" type="video/mp4" />
+              </video>
+            </div>
+            <div className="memory-card-stack">
+              <article className="memory-card memory-card-large">
+                <span>Annual film</span>
+                <strong>Family story</strong>
+              </article>
+              <article className="memory-card memory-card-soft">
+                <span>Voice note</span>
+                <strong>For tomorrow</strong>
+              </article>
+              <article className="memory-card memory-card-photo">
+                <span>Dreams</span>
+                <strong>2026</strong>
+              </article>
+            </div>
+            <div className="memory-timeline">
+              <span />
+              <span />
+              <span />
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   )

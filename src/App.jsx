@@ -123,12 +123,37 @@ function Header({ language, setLanguage, t }) {
 }
 
 function Hero({ t }) {
+  const [pointer, setPointer] = useState({ x: 0, y: 0 })
+
+  const handlePointerMove = (event) => {
+    const bounds = event.currentTarget.getBoundingClientRect()
+    const x = (event.clientX - bounds.left) / bounds.width - 0.5
+    const y = (event.clientY - bounds.top) / bounds.height - 0.5
+
+    setPointer({ x, y })
+  }
+
+  const heroStyle = {
+    '--hero-x': `${pointer.x.toFixed(4)}`,
+    '--hero-y': `${pointer.y.toFixed(4)}`,
+    '--glow-x': `${(pointer.x + 0.5) * 100}%`,
+    '--glow-y': `${(pointer.y + 0.5) * 100}%`,
+  }
+
   return (
-    <section className="hero section-shell" id="top">
+    <section
+      className="hero section-shell"
+      id="top"
+      onMouseMove={handlePointerMove}
+      onMouseLeave={() => setPointer({ x: 0, y: 0 })}
+      style={heroStyle}
+    >
       <video className="hero-background-video" autoPlay muted loop playsInline aria-hidden="true">
         <source src="/videos/hero.mp4" type="video/mp4" />
       </video>
       <div className="hero-video-overlay" aria-hidden="true" />
+      <div className="hero-cursor-glow" aria-hidden="true" />
+
       <div className="hero-copy reveal">
         <p className="eyebrow">{t.hero.eyebrow}</p>
         <h1>{t.hero.title}</h1>
@@ -143,8 +168,34 @@ function Hero({ t }) {
         </div>
         <span className="founding-note">{t.hero.note}</span>
       </div>
-      <div className="camera-stage reveal" aria-label="Premium cinema camera on tripod">
-        <img src="/images/holioo-cinema-camera.svg" alt="Premium cinema camera mounted on a tripod" />
+
+      <div className="hero-visual reveal" aria-label="Cinematic family memory preview">
+        <div className="hero-visual-orbit" aria-hidden="true" />
+        <div className="hero-film-card">
+          <div className="hero-film-screen">
+            <video autoPlay muted loop playsInline aria-hidden="true">
+              <source src="/videos/hero.mp4" type="video/mp4" />
+            </video>
+            <div className="hero-film-vignette" />
+          </div>
+          <div className="hero-film-meta">
+            <span>Holioo archive</span>
+            <strong>01: Future memory</strong>
+          </div>
+        </div>
+
+        <div className="memory-card memory-card-one">
+          <span>Voice</span>
+          <strong>Real laughter</strong>
+        </div>
+        <div className="memory-card memory-card-two">
+          <span>Year</span>
+          <strong>2025 chapter</strong>
+        </div>
+        <div className="memory-card memory-card-three">
+          <span>Private</span>
+          <strong>Family film</strong>
+        </div>
       </div>
     </section>
   )

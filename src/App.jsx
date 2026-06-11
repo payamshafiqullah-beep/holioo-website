@@ -181,9 +181,12 @@ function Hero({ t }) {
 
     const rect = hero.getBoundingClientRect()
 
+    const x = (event.clientX - rect.left) / rect.width - 0.5
+    const y = (event.clientY - rect.top) / rect.height - 0.5
+
     scheduleMousePosition({
-      x: (event.clientX - rect.left) / rect.width - 0.5,
-      y: (event.clientY - rect.top) / rect.height - 0.5,
+      x: Math.max(-0.5, Math.min(0.5, x)),
+      y: Math.max(-0.5, Math.min(0.5, y)),
     })
   }
 
@@ -204,6 +207,7 @@ function Hero({ t }) {
       id="top"
       onPointerMove={handlePointerMove}
       onPointerLeave={resetPointer}
+      onPointerCancel={resetPointer}
       style={heroStyle}
     >
       <div className="hero-cinema-bg" aria-hidden="true">

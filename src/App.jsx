@@ -125,28 +125,24 @@ function Header({ language, setLanguage, t }) {
 function ScrollScrubVideo() {
   const videoRef = useRef(null)
   const progressBarRef = useRef(null)
-  const progressRef = useRef(0)
   const frameRef = useRef(0)
-  const hasMetadataRef = useRef(false)
+  const durationRef = useRef(0)
 
   useEffect(() => {
     const video = videoRef.current
 
-    const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
+    const clamp = (value) => Math.min(Math.max(value, 0), 1)
 
-    const applyProgress = (nextProgress) => {
-      progressRef.current = nextProgress
-      progressBarRef.current?.style.setProperty('--scroll-progress', nextProgress.toFixed(4))
-    }
-
-    const updateVideoTime = () => {
+    const updateScrollFrame = () => {
       frameRef.current = 0
-      const maxScroll = Math.max(document.documentElement.scrollHeight - window.innerHeight, 1)
-      const nextProgress = clamp(window.scrollY / maxScroll, 0, 1)
-      applyProgress(nextProgress)
 
-      if (video && hasMetadataRef.current) {
-        const targetTime = nextProgress <= 0 ? 0.01 : nextProgress * video.duration
+      const maxScroll = Math.max(document.documentElement.scrollHeight - window.innerHeight, 1)
+      const progress = clamp(window.scrollY / maxScroll)
+
+      progressBarRef.current?.style.setProperty('--scroll-progress', progress.toFixed(4))
+
+      if (video && durationRef.current) {
+        const targetTime = progress * durationRef.current
 
         if (Math.abs(video.currentTime - targetTime) > 0.025) {
           video.currentTime = targetTime
@@ -154,30 +150,37 @@ function ScrollScrubVideo() {
       }
     }
 
-    const requestUpdate = () => {
+    const requestScrollFrame = () => {
       if (!frameRef.current) {
-        frameRef.current = window.requestAnimationFrame(updateVideoTime)
+        frameRef.current = window.requestAnimationFrame(updateScrollFrame)
       }
     }
 
     const handleMetadata = () => {
-      if (video?.duration && Number.isFinite(video.duration)) {
-        video.pause()
-        hasMetadataRef.current = true
-        video.currentTime = 0.01
-        requestUpdate()
+      if (!video || !Number.isFinite(video.duration) || video.duration <= 0) {
+        return
       }
+
+      video.pause()
+      durationRef.current = video.duration
+      video.currentTime = 0.01
+      requestScrollFrame()
     }
 
     video?.addEventListener('loadedmetadata', handleMetadata)
-    window.addEventListener('scroll', requestUpdate, { passive: true })
-    window.addEventListener('resize', requestUpdate)
-    requestUpdate()
+    window.addEventListener('scroll', requestScrollFrame, { passive: true })
+    window.addEventListener('resize', requestScrollFrame)
+
+    if (video?.readyState >= 1) {
+      handleMetadata()
+    }
+
+    requestScrollFrame()
 
     return () => {
       video?.removeEventListener('loadedmetadata', handleMetadata)
-      window.removeEventListener('scroll', requestUpdate)
-      window.removeEventListener('resize', requestUpdate)
+      window.removeEventListener('scroll', requestScrollFrame)
+      window.removeEventListener('resize', requestScrollFrame)
 
       if (frameRef.current) {
         window.cancelAnimationFrame(frameRef.current)
@@ -186,27 +189,30 @@ function ScrollScrubVideo() {
   }, [])
 
   return (
-    <div className="scroll-cinema" aria-hidden="true">
-      <video
-        ref={videoRef}
-        className="scroll-cinema-video"
-        muted
-        playsInline
-        preload="auto"
-        aria-hidden="true"
-        controlsList="nodownload nofullscreen noremoteplayback"
-        disablePictureInPicture
-        disableRemotePlayback
-      >
-        <source src="/videos/story-scroll.mp4" type="video/mp4" />
-      </video>
-      <div className="scroll-cinema-grade" />
-      <div className="scroll-cinema-vignette" />
-      <div className="scroll-cinema-grain" />
-      <div className="scroll-cinema-progress" ref={progressBarRef}>
+    <>
+      <div className="scroll-cinema" aria-hidden="true">
+        <video
+          ref={videoRef}
+          className="scroll-cinema-video"
+          muted
+          playsInline
+          preload="auto"
+          aria-hidden="true"
+          tabIndex="-1"
+          controlsList="nodownload nofullscreen noremoteplayback"
+          disablePictureInPicture
+          disableRemotePlayback
+        >
+          <source src="/videos/story-scroll.mp4" type="video/mp4" />
+        </video>
+        <div className="scroll-cinema-grade" />
+        <div className="scroll-cinema-vignette" />
+        <div className="scroll-cinema-grain" />
+      </div>
+      <div className="scroll-cinema-progress" ref={progressBarRef} aria-hidden="true">
         <span />
       </div>
-    </div>
+    </>
   )
 }
 

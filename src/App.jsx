@@ -124,53 +124,51 @@ function Header({ language, setLanguage, t }) {
 
 function Hero({ t }) {
   const heroRef = useRef(null)
-  const animationFrameRef = useRef(null)
-  const pendingMouseRef = useRef({ x: 0, y: 0 })
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
+  const frameRef = useRef(null)
+  const pendingPointerRef = useRef({ x: 0, y: 0 })
+  const [pointer, setPointer] = useState({ x: 0, y: 0 })
 
   useEffect(() => {
     return () => {
-      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current)
+      if (frameRef.current) cancelAnimationFrame(frameRef.current)
     }
   }, [])
 
-  const heroStyle = useMemo(() => {
-    const { x, y } = mousePosition
+  const heroMotionStyle = useMemo(() => {
+    const { x, y } = pointer
 
     return {
       '--mouse-x': x,
       '--mouse-y': y,
-      '--glow-x': `${50 + x * 60}%`,
-      '--glow-y': `${50 + y * 60}%`,
-      '--hero-video-x': `${x * -12}px`,
-      '--hero-video-y': `${y * -10}px`,
-      '--aurora-one-x': `${x * 34}px`,
-      '--aurora-one-y': `${y * 22}px`,
-      '--aurora-two-x': `${x * -30}px`,
-      '--aurora-two-y': `${y * -18}px`,
-      '--copy-x': `${x * -12}px`,
-      '--copy-y': `${y * -8}px`,
-      '--visual-x': `${x * 18}px`,
-      '--visual-y': `${y * 10}px`,
-      '--frame-rotate-x': `${y * -9}deg`,
-      '--frame-rotate-y': `${x * 12}deg`,
-      '--float-top-x': `${x * -34}px`,
-      '--float-top-y': `${y * -24}px`,
-      '--float-bottom-x': `${x * 28}px`,
-      '--float-bottom-y': `${y * 22}px`,
+      '--glow-x': `${50 + x * 62}%`,
+      '--glow-y': `${50 + y * 58}%`,
+      '--video-shift-x': `${x * -10}px`,
+      '--video-shift-y': `${y * -8}px`,
+      '--copy-shift-x': `${x * -10}px`,
+      '--copy-shift-y': `${y * -7}px`,
+      '--visual-shift-x': `${x * 16}px`,
+      '--visual-shift-y': `${y * 10}px`,
+      '--frame-rotate-x': `${y * -8}deg`,
+      '--frame-rotate-y': `${x * 11}deg`,
+      '--card-a-x': `${x * -28}px`,
+      '--card-a-y': `${y * -22}px`,
+      '--card-b-x': `${x * 24}px`,
+      '--card-b-y': `${y * 18}px`,
+      '--card-c-x': `${x * 16}px`,
+      '--card-c-y': `${y * -14}px`,
     }
-  }, [mousePosition])
+  }, [pointer])
 
-  const commitMousePosition = () => {
-    animationFrameRef.current = null
-    setMousePosition(pendingMouseRef.current)
+  const commitPointer = () => {
+    frameRef.current = null
+    setPointer(pendingPointerRef.current)
   }
 
-  const scheduleMousePosition = (position) => {
-    pendingMouseRef.current = position
+  const schedulePointer = (nextPointer) => {
+    pendingPointerRef.current = nextPointer
 
-    if (!animationFrameRef.current) {
-      animationFrameRef.current = requestAnimationFrame(commitMousePosition)
+    if (!frameRef.current) {
+      frameRef.current = requestAnimationFrame(commitPointer)
     }
   }
 
@@ -180,24 +178,23 @@ function Hero({ t }) {
     if (!hero) return
 
     const rect = hero.getBoundingClientRect()
-
     const x = (event.clientX - rect.left) / rect.width - 0.5
     const y = (event.clientY - rect.top) / rect.height - 0.5
 
-    scheduleMousePosition({
+    schedulePointer({
       x: Math.max(-0.5, Math.min(0.5, x)),
       y: Math.max(-0.5, Math.min(0.5, y)),
     })
   }
 
   const resetPointer = () => {
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current)
-      animationFrameRef.current = null
+    if (frameRef.current) {
+      cancelAnimationFrame(frameRef.current)
+      frameRef.current = null
     }
 
-    pendingMouseRef.current = { x: 0, y: 0 }
-    setMousePosition({ x: 0, y: 0 })
+    pendingPointerRef.current = { x: 0, y: 0 }
+    setPointer({ x: 0, y: 0 })
   }
 
   return (
@@ -208,21 +205,18 @@ function Hero({ t }) {
       onPointerMove={handlePointerMove}
       onPointerLeave={resetPointer}
       onPointerCancel={resetPointer}
-      style={heroStyle}
+      style={heroMotionStyle}
     >
-      <div className="hero-cinema-bg" aria-hidden="true">
+      <div className="hero-cinema" aria-hidden="true">
         <video className="hero-background-video" autoPlay muted loop playsInline>
           <source src="/videos/hero.mp4" type="video/mp4" />
         </video>
-        <div className="hero-film-grain" />
-        <div className="hero-video-overlay" />
-        <div className="hero-aurora hero-aurora-one" />
-        <div className="hero-aurora hero-aurora-two" />
+        <div className="hero-cursor-glow" />
+        <div className="hero-gradient" />
+        <div className="hero-grain" />
       </div>
 
-      <div className="hero-particles" aria-hidden="true">
-        <span />
-        <span />
+      <div className="hero-light-spots" aria-hidden="true">
         <span />
         <span />
         <span />
@@ -233,9 +227,9 @@ function Hero({ t }) {
         <h1>{t.hero.title}</h1>
         <p>{t.hero.subtitle}</p>
         <div className="hero-proof-row" aria-label="Holioo experience highlights">
-          <span>Yearly archive</span>
-          <span>Real voices</span>
-          <span>Private cinema</span>
+          <span>Yearly film</span>
+          <span>Private archive</span>
+          <span>Future messages</span>
         </div>
         <div className="actions">
           <a className="button primary" href="#contact">
@@ -248,39 +242,42 @@ function Hero({ t }) {
         <span className="founding-note">{t.hero.note}</span>
       </div>
 
-      <div className="hero-visual reveal" aria-label="A cinematic family memory archive preview">
-        <div className="floating-card floating-card-top">
-          <small>Message to 2035</small>
-          <strong>“Remember this laugh.”</strong>
+      <div className="hero-memory-stage reveal" aria-label="Interactive cinematic family memory preview">
+        <div className="memory-orbit-card memory-orbit-card-a">
+          <small>Voice capsule</small>
+          <strong>Messages for tomorrow</strong>
         </div>
-        <div className="floating-card floating-card-bottom">
-          <small>Chapter 01</small>
-          <strong>Home, voices, dreams</strong>
+        <div className="memory-orbit-card memory-orbit-card-b">
+          <small>Annual chapter</small>
+          <strong>Home, growth, dreams</strong>
+        </div>
+        <div className="memory-orbit-card memory-orbit-card-c">
+          <small>Private film</small>
+          <strong>Real voices kept safe</strong>
         </div>
 
-        <div className="memory-frame">
-          <div className="memory-frame-glow" />
-          <div className="memory-screen">
-            <div className="memory-video-strip">
+        <div className="memory-device">
+          <div className="memory-device-inner">
+            <div className="memory-video-panel">
               <video autoPlay muted loop playsInline aria-hidden="true">
                 <source src="/videos/hero.mp4" type="video/mp4" />
               </video>
             </div>
-            <div className="memory-card-stack">
-              <article className="memory-card memory-card-large">
-                <span>Annual film</span>
+            <div className="memory-card-grid">
+              <article>
+                <span>01</span>
                 <strong>Family story</strong>
               </article>
-              <article className="memory-card memory-card-soft">
-                <span>Voice note</span>
-                <strong>For tomorrow</strong>
+              <article>
+                <span>02</span>
+                <strong>Future note</strong>
               </article>
-              <article className="memory-card memory-card-photo">
-                <span>Dreams</span>
-                <strong>2026</strong>
+              <article>
+                <span>03</span>
+                <strong>Yearly archive</strong>
               </article>
             </div>
-            <div className="memory-timeline">
+            <div className="memory-progress">
               <span />
               <span />
               <span />

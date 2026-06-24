@@ -65,18 +65,18 @@ function Header() {
 
 function HeroVisual() {
   return (
-    <div className="hero-visual" role="img" aria-label="Warm family scene at home with a camera on a tripod">
-      <div className="sun-glow" />
-      <div className="family-card">
-        <div className="portrait portrait-large" />
-        <div className="portrait portrait-small" />
-        <div className="sofa" />
-      </div>
-      <div className="camera">
-        <div className="camera-body" />
-        <div className="camera-lens" />
-        <div className="tripod" />
-      </div>
+    <div className="hero-visual">
+      <video
+        className="hero-video"
+        autoPlay
+        loop
+        muted
+        playsInline
+        aria-hidden="true"
+        preload="auto"
+      >
+        <source src="/videos/hero-camera-explode.mp4" type="video/mp4" />
+      </video>
     </div>
   )
 }

@@ -54,19 +54,13 @@ p { color: var(--muted); line-height: 1.75; font-size: 1.03rem; }
 
 .hero { min-height: calc(100vh - 76px); padding-top: clamp(3rem, 7vw, 6rem); }
 .hero-subtitle { max-width: 650px; font-size: 1.18rem; }
-.hero-visual { position: relative; min-height: 440px; border-radius: 2rem; background: linear-gradient(145deg, #f6e5d0, #d3ad85); box-shadow: var(--shadow); overflow: hidden; }
-.sun-glow { position: absolute; width: 18rem; height: 18rem; right: 8%; top: 8%; border-radius: 50%; background: rgba(255,255,255,.38); filter: blur(10px); }
-.family-card { position: absolute; left: 8%; bottom: 13%; width: 68%; height: 58%; border-radius: 1.5rem; background: rgba(255,250,242,.62); border: 1px solid rgba(255,255,255,.48); }
-.portrait { position: absolute; bottom: 35%; border-radius: 999px 999px 45% 45%; background: linear-gradient(180deg, #80543d, #c08a63); }
-.portrait-large { left: 22%; width: 5.3rem; height: 8.8rem; }
-.portrait-small { left: 48%; width: 4.3rem; height: 7rem; background: linear-gradient(180deg, #a7684c, #e1a778); }
-.sofa { position: absolute; left: 12%; right: 12%; bottom: 15%; height: 4.5rem; border-radius: 2rem; background: #c5906f; }
-.camera { position: absolute; right: 12%; bottom: 15%; width: 5rem; height: 13rem; }
-.camera-body { width: 4.6rem; height: 3rem; border-radius: .7rem; background: var(--ink); }
-.camera-lens { position: absolute; top: .65rem; left: -1rem; width: 1.8rem; height: 1.8rem; border-radius: 50%; background: #58443a; border: .35rem solid #2f2924; }
-.tripod, .tripod:before, .tripod:after { position: absolute; top: 3rem; left: 2.1rem; width: .22rem; height: 9rem; background: var(--ink); transform-origin: top; content: ''; }
-.tripod:before { transform: rotate(18deg); }
-.tripod:after { transform: rotate(-18deg); }
+.hero-visual { position: relative; width: min(100%, 560px); aspect-ratio: 16 / 10; min-height: 420px; justify-self: end; border-radius: 2rem; background: linear-gradient(145deg, #efe3d2, #dcc7ad); box-shadow: var(--shadow); overflow: hidden; }
+.hero-video { width: 100%; height: 100%; display: block; object-fit: cover; object-position: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-visual { background: linear-gradient(145deg, #efe3d2, #f7efe4); }
+  .hero-video { display: none; }
+}
 
 .problem { background: #fff; border-block: 1px solid var(--line); }
 .image-panel { min-height: 420px; border-radius: 2rem; background: linear-gradient(135deg, rgba(47,41,36,.15), transparent), url('/images/holioo-cinema-camera.svg') center/42% no-repeat, #eadcc9; box-shadow: var(--shadow); }
@@ -106,5 +100,5 @@ textarea { resize: vertical; }
 @media (max-width: 560px) {
   .site-header { align-items: flex-start; }
   .button-small { display: none; }
-  .hero-visual { min-height: 330px; border-radius: 1.4rem; }
+  .hero-visual { width: 100%; min-height: 0; aspect-ratio: 16 / 11; justify-self: stretch; border-radius: 1.4rem; }
 }

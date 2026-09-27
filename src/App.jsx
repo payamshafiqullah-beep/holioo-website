@@ -58,7 +58,10 @@ function Header() {
         <a href="#about">About</a>
         <a href="#faq">FAQ</a>
       </nav>
-      <a className="button button-small" href="#contact">Book a Session</a>
+      <div style={{display:'flex', gap:'.6rem', alignItems:'center'}}>
+        <a className="button button-secondary button-small" href="./app/">Open Study App</a>
+        <a className="button button-small" href="#contact">Book a Session</a>
+      </div>
     </header>
   )
 }

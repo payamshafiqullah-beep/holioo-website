@@ -11,6 +11,7 @@ on:
       - website-open-holioo-app
       - fix-camera-zoom-duplicate
       - remove-camera-zoom-hint
+      - camera-cleanup-r4
       - camera-modern-v3
 
 permissions:

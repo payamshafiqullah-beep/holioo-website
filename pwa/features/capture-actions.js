@@ -268,7 +268,12 @@ async function renderCaptureGalleryRail(){
       captureRailUrls.push(preview);
       lastBtn.innerHTML=`<img src="${preview}" alt="Dernière photo">`;
     }else{
-      lastBtn.innerHTML='<span>▧</span>';
+      lastBtn.innerHTML=`<svg class="camera-v3-gallery-icon" viewBox="0 0 24 24" aria-hidden="true">
+  <rect x="3.5" y="4.5" width="17" height="15" rx="3"></rect>
+  <circle cx="9" cy="9.5" r="1.6"></circle>
+  <path d="M5.8 16.5l4.2-4.1a1.35 1.35 0 0 1 1.9 0l2.1 2.1"></path>
+  <path d="M13 15.6l2.1-2.1a1.35 1.35 0 0 1 1.9 0l1.3 1.3"></path>
+</svg>`;
     }
   }
 }

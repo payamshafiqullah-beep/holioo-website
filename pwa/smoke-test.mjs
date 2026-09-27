@@ -25,7 +25,7 @@ const drive=read('./drive.js');
 const html=read('./index.html');
 const sw=read('./sw.js');
 const manifest=JSON.parse(read('./manifest.webmanifest'));
-if(!html.includes('20260927-camera-v3-r3'))throw new Error('Asset cache-bust version missing');
+if(!html.includes('20260927-camera-v3-r4'))throw new Error('Asset cache-bust version missing');
 
 const required=[
   'Capture rapide','Diviser le lot','Organiser les photos','Inbox','Section personnalisée','Nouvelle séance',
@@ -34,6 +34,8 @@ const required=[
   'openPdfViewer','renderPdfViewer','Partager','Synchroniser vers Drive','Recadrer','setupPinchZoom','openCropEditor','captureGalleryRail','camera-v3-filmstrip','camera-v3-shutter'
 ];
 for(const s of required)if(!app.includes(s))throw new Error(`Flow missing: ${s}`);
+if(app.includes('Pincez pour zoomer'))throw new Error('Old pinch zoom hint still present');
+if(!app.includes('camera-v3-gallery-icon'))throw new Error('Modern gallery icon missing');
 
 for(const p of [...pageFiles,...featureFiles,'./db.js','./drive.js','./core.js','./app.js','./manifest.webmanifest']){
   const htmlPath=p.replace('./','./');

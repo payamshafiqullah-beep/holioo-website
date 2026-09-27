@@ -2,59 +2,80 @@ function renderCapture(){
   if(!state.captureDraft){state.captureDraft={id:uid(),photoIds:[],createdAt:now()};saveState()}
   captureIds=[...state.captureDraft.photoIds];
 
-  app.innerHTML=`<div class="capture-screen pro-camera">
-    <div class="capture-head pro-camera-head">
-      <button id="closeCam" class="camera-icon-btn" aria-label="Fermer">×</button>
-      <div class="capture-title-wrap">
-        <div class="capture-title">Capture</div>
-        <div class="capture-subtitle">Local-first • classement après</div>
-      </div>
-      <span class="capture-counter" id="captureCount">0</span>
-    </div>
-
-    <div class="camera-stage pro-camera-stage" id="cameraStage">
+  app.innerHTML=`<div class="capture-screen camera-v3">
+    <div class="camera-v3-viewfinder" id="cameraStage">
       <video id="cameraVideo" autoplay playsinline muted></video>
 
-      <div class="camera-grid" aria-hidden="true">
+      <div class="camera-v3-grid" aria-hidden="true">
         <span></span><span></span><span></span><span></span>
       </div>
 
-      <div class="camera-status-pill" id="cameraStatus">Prêt</div>
-      <div class="camera-zoom-pill" id="pinchZoomLabel">1.0×</div>
+      <div class="camera-v3-top">
+        <button id="closeCam" class="camera-v3-circle" aria-label="Fermer">×</button>
 
-      <aside class="capture-gallery-rail" aria-label="Photos de cette capture">
-        <button class="rail-import" id="galleryRailImport" aria-label="Importer depuis la galerie">＋</button>
-        <div class="rail-thumbs" id="captureGalleryRail"></div>
+        <div class="camera-v3-status">
+          <span class="camera-v3-live-dot"></span>
+          <span id="cameraStatus">Prêt</span>
+        </div>
+
+        <div class="camera-v3-top-actions">
+          <button class="camera-v3-circle" id="torchBtn" aria-label="Torche">
+            <span>ϟ</span><small>Flash</small>
+          </button>
+          <button class="camera-v3-circle" id="cropLastBtn" aria-label="Recadrer la dernière photo">
+            <span>⌗</span><small>Crop</small>
+          </button>
+        </div>
+      </div>
+
+      <div class="camera-v3-counter" aria-live="polite">
+        <b id="captureCount">0</b>
+        <span>photos</span>
+      </div>
+
+      <div class="camera-v3-zoom-feedback" id="pinchZoomLabel">1.0×</div>
+
+      <aside class="camera-v3-filmstrip" aria-label="Photos récentes">
+        <div class="camera-v3-filmstrip-head">
+          <span>Captures</span>
+          <button id="galleryRailImport" aria-label="Ajouter depuis la galerie">＋</button>
+        </div>
+        <div class="rail-thumbs camera-v3-filmstrip-list" id="captureGalleryRail"></div>
       </aside>
 
-      <div class="camera-gesture-hint">Pincez avec deux doigts pour zoomer</div>
-    </div>
+      <div class="camera-v3-hint">Pincez pour zoomer</div>
 
-    <div class="camera-console">
-      <div class="quick-zoom" aria-label="Zoom rapide">
-        <button class="zoom-chip" data-zoom="1">1×</button>
-        <button class="zoom-chip" data-zoom="2">2×</button>
-        <button class="zoom-chip" data-zoom="3">3×</button>
-      </div>
+      <div class="camera-v3-bottom">
+        <div class="camera-v3-zoom-row" aria-label="Zoom">
+          <button class="zoom-chip" data-zoom="1">1×</button>
+          <button class="zoom-chip" data-zoom="2">2×</button>
+          <button class="zoom-chip" data-zoom="3">3×</button>
+          <span id="zoomLabel">1.0×</span>
+          <input id="zoomRange" class="camera-v3-hidden-range" type="range" min="1" max="4" step="0.1" value="1" aria-label="Zoom">
+        </div>
 
-      <div class="camera-tools pro-tools">
-        <button class="tool-btn" id="torchBtn"><span>☀</span><small>Torche</small></button>
-        <button class="tool-btn" id="cropLastBtn"><span>⌗</span><small>Recadrer</small></button>
-        <button class="tool-btn" id="flipCam"><span>↺</span><small>Retourner</small></button>
-        <button class="tool-btn" id="galleryBtn"><span>▧</span><small>Galerie</small></button>
-        <input type="file" id="galleryInput" accept="image/*" multiple hidden>
-      </div>
+        <div class="camera-v3-primary-controls">
+          <button class="camera-v3-gallery-preview" id="lastPhotoBtn" aria-label="Dernière photo">
+            <span>▧</span>
+          </button>
 
-      <div class="zoom-row compact-zoom">
-        <span>1×</span>
-        <input id="zoomRange" type="range" min="1" max="4" step="0.1" value="1" aria-label="Zoom">
-        <span id="zoomLabel">1.0×</span>
-      </div>
+          <button class="camera-v3-shutter" id="shutter" aria-label="Prendre une photo">
+            <span></span>
+          </button>
 
-      <div class="shutter-row pro-shutter-row">
-        <button class="finish-camera-btn" id="finishCapture">Terminer</button>
-        <button class="shutter" id="shutter" aria-label="Prendre une photo"><span></span></button>
-        <button class="last-photo-btn" id="lastPhotoBtn" aria-label="Dernière photo"><span>▧</span></button>
+          <button class="camera-v3-flip" id="flipCam" aria-label="Changer de caméra">
+            <span>↻</span>
+          </button>
+        </div>
+
+        <div class="camera-v3-footer">
+          <button class="camera-v3-footer-btn" id="galleryBtn">
+            <span>Galerie</span>
+          </button>
+          <div class="camera-v3-mode">PHOTO</div>
+          <button class="camera-v3-footer-btn strong" id="finishCapture">Terminer</button>
+          <input type="file" id="galleryInput" accept="image/*" multiple hidden>
+        </div>
       </div>
     </div>
 
@@ -65,7 +86,11 @@ function renderCapture(){
 
   byId('closeCam').onclick=()=>closeCaptureScreen();
   byId('shutter').onclick=capturePhoto;
-  byId('flipCam').onclick=async()=>{cameraFacing=cameraFacing==='environment'?'user':'environment';await startCamera();setupPinchZoom()};
+  byId('flipCam').onclick=async()=>{
+    cameraFacing=cameraFacing==='environment'?'user':'environment';
+    await startCamera();
+    setupPinchZoom();
+  };
   byId('torchBtn').onclick=toggleTorch;
   byId('galleryBtn').onclick=()=>byId('galleryInput').click();
   byId('galleryRailImport').onclick=()=>byId('galleryInput').click();

@@ -13,6 +13,7 @@ on:
       - remove-camera-zoom-hint
       - camera-cleanup-r4
       - home-modern-redesign
+      - home-nav-option-b
       - camera-modern-v3
 
 permissions:

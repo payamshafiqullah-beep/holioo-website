@@ -25,7 +25,7 @@ const drive=read('./drive.js');
 const html=read('./index.html');
 const sw=read('./sw.js');
 const manifest=JSON.parse(read('./manifest.webmanifest'));
-if(!html.includes('20260928-home-v5-r1'))throw new Error('Asset cache-bust version missing');
+if(!html.includes('20260928-home-nav-b-r1'))throw new Error('Asset cache-bust version missing');
 
 const required=[
   'Diviser le lot','Organiser les photos','Inbox','Section personnalisée','Nouvelle séance',
@@ -50,3 +50,5 @@ if(manifest.display!=='standalone'||manifest.scope!=='./')throw new Error('PWA m
 if(/GOOGLE_CLIENT_SECRET|SUPABASE_SERVICE_ROLE_KEY/.test(app+drive))throw new Error('Sensitive server secret referenced in frontend');
 
 console.log(`Holioo modular smoke test: PASS (${pageFiles.length} page files)`);
+
+if(!read('./styles.css').includes('Home-only navigation refresh — Option B'))throw new Error('Option B home navigation styles missing');

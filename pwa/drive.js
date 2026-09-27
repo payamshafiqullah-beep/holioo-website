@@ -28,7 +28,13 @@
     const headers=new Headers(options.headers||{});headers.set('Authorization',`Bearer ${token}`);
     const r=await fetch(url,{...options,headers});
     const text=await r.text();let data={};try{data=text?JSON.parse(text):{}}catch{data={raw:text}}
-    if(!r.ok) throw new Error(data.error?.message||data.error_description||data.error||`Google Drive ${r.status}`);
+    if(!r.ok){
+      const message=data.error?.message||data.error_description||data.error||`Google Drive ${r.status}`;
+      const reasons=(data.error?.errors||[]).map(x=>x.reason).filter(Boolean);
+      const err=new Error(message);err.status=r.status;err.driveReasons=reasons;
+      if(reasons.some(x=>['storageQuotaExceeded','quotaExceeded','userRateLimitExceeded'].includes(x))||/storage quota|quota exceeded|full/i.test(message))err.code='DRIVE_FULL';
+      throw err;
+    }
     return data;
   }
   async function findFolder(token,name,parentId){
@@ -78,24 +84,27 @@
       const names=ctx.kind==='session'?
         ['Holioo',rootYear,ctx.course.name,ctx.section.name,ctx.session.title]:
         ['Holioo',rootYear,'Inbox',new Date(ctx.batch.createdAt).toISOString().slice(0,10)];
-      const parentId=await ensurePath(token,names);const filename=`${String((ctx.kind==='session'?ctx.session.photoIds:ctx.batch.photoIds).indexOf(p.id)+1).padStart(3,'0')}-${p.id.slice(0,8)}.jpg`;
+      const filename=`${String((ctx.kind==='session'?ctx.session.photoIds:ctx.batch.photoIds).indexOf(p.id)+1).padStart(3,'0')}-${p.id.slice(0,8)}.jpg`;
       try{
-        let remote;
+        const parentId=await ensurePath(token,names);let remote;
         if(p.driveFileId){
           if(p.driveParentId!==parentId||p.driveName!==filename) remote=await moveFile(token,p.driveFileId,parentId,filename);
           else remote={id:p.driveFileId,parents:[parentId],webViewLink:p.driveWebViewLink,name:p.driveName};
         }else remote=await uploadBlob(token,p.blob,filename,parentId);
         await db.put('photos',{...p,driveFileId:remote.id,driveWebViewLink:remote.webViewLink||p.driveWebViewLink||null,driveParentId:parentId,driveName:filename,syncState:'synced',syncError:null,syncedAt:new Date().toISOString()});
         synced++;onProgress?.({type:'photo',synced});
-      }catch(e){await db.put('photos',{...p,syncState:'error',syncError:String(e.message||e)});throw e}
+      }catch(e){const full=e?.code==='DRIVE_FULL';await db.put('photos',{...p,syncState:full?'drive_full':'error',syncError:String(e.message||e)});throw e}
     }
     for(const f of state.files||[]){
       const row=await db.get('files',f.id);if(!row?.blob)continue;
-      const course=state.courses.find(c=>c.id===f.courseId);const parentId=await ensurePath(token,['Holioo',rootYear,course?.name||'PDFs','PDFs']);const filename=safeName(f.fileName||`${f.title}.pdf`);
+      const course=state.courses.find(c=>c.id===f.courseId);const filename=safeName(f.fileName||`${f.title}.pdf`);
       let remote;
-      if(row.driveFileId){if(row.driveParentId!==parentId||row.driveName!==filename)remote=await moveFile(token,row.driveFileId,parentId,filename);else remote={id:row.driveFileId,webViewLink:row.driveWebViewLink,parents:[parentId],name:row.driveName}}
-      else remote=await uploadBlob(token,row.blob,filename,parentId);
-      await db.put('files',{...row,driveFileId:remote.id,driveWebViewLink:remote.webViewLink||row.driveWebViewLink||null,driveParentId:parentId,driveName:filename,syncState:'synced',syncedAt:new Date().toISOString()});synced++;onProgress?.({type:'file',synced});
+      try{
+        const parentId=await ensurePath(token,['Holioo',rootYear,course?.name||'PDFs','PDFs']);
+        if(row.driveFileId){if(row.driveParentId!==parentId||row.driveName!==filename)remote=await moveFile(token,row.driveFileId,parentId,filename);else remote={id:row.driveFileId,webViewLink:row.driveWebViewLink,parents:[parentId],name:row.driveName}}
+        else remote=await uploadBlob(token,row.blob,filename,parentId);
+        await db.put('files',{...row,driveFileId:remote.id,driveWebViewLink:remote.webViewLink||row.driveWebViewLink||null,driveParentId:parentId,driveName:filename,syncState:'synced',syncError:null,syncedAt:new Date().toISOString()});synced++;onProgress?.({type:'file',synced});
+      }catch(e){const full=e?.code==='DRIVE_FULL';await db.put('files',{...row,syncState:full?'drive_full':'error',syncError:String(e.message||e)});throw e}
     }
     return {synced,pending:await pendingCount(state,db),connected:true,email:st.email};
   }

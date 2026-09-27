@@ -54,7 +54,7 @@ function setNav(view){document.querySelectorAll('.nav-item').forEach(b=>b.classL
 function navigate(view,payload={}){
   if(view!=='capture')stopCamera();currentView=view;
   if(payload.courseId)currentCourseId=payload.courseId;if(payload.sectionId)currentSectionId=payload.sectionId;if(payload.sessionId)currentSessionId=payload.sessionId;
-  const mainViews=['home','courses','capture','library','files'];setNav(mainViews.includes(view)?view:'');setChrome(['welcome','academicSetup','capture'].includes(view));render().catch(e=>{console.error(e);showToast('Une erreur est survenue')});
+  const mainViews=['home','courses','capture','library','files'];setNav(mainViews.includes(view)?view:'');setChrome(['welcome','academicSetup','capture','photoViewer','pdfViewer'].includes(view));render().catch(e=>{console.error(e);showToast('Une erreur est survenue')});
 }
 document.addEventListener('click',e=>{const n=e.target.closest('[data-nav]');if(n){e.preventDefault();navigate(n.dataset.nav)}});
 

@@ -52,6 +52,7 @@ function backButton(){return'<button class="back" id="backBtn" aria-label="Retou
 function setChrome(hidden){appShell.classList.toggle('hidden-chrome',hidden)}
 function setNav(view){document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.nav===view))}
 function navigate(view,payload={}){
+  appShell.classList.toggle('home-modern',view==='home');
   if(view!=='capture')stopCamera();currentView=view;
   if(payload.courseId)currentCourseId=payload.courseId;if(payload.sectionId)currentSectionId=payload.sectionId;if(payload.sessionId)currentSessionId=payload.sessionId;
   const mainViews=['home','courses','capture','library','files'];setNav(mainViews.includes(view)?view:'');setChrome(['welcome','academicSetup','capture','photoViewer','pdfViewer'].includes(view));render().catch(e=>{console.error(e);showToast('Une erreur est survenue')});

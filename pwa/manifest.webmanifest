@@ -1,7 +1,7 @@
 {
   "name": "Holioo — Études",
   "short_name": "Holioo",
-  "description": "Capture rapide des cours, CM/TD/TP, PDF et bibliothèque académique.",
+  "description": "Capture locale des cours, CM/TD/TP, PDF, bibliothèque académique et synchronisation Google Drive.",
   "lang": "fr",
   "start_url": "./",
   "scope": "./",
@@ -10,6 +10,8 @@
   "background_color": "#F5F6FA",
   "theme_color": "#506BFF",
   "icons": [
-    {"src":"./icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
+    {"src":"./icon-192.png","sizes":"192x192","type":"image/png","purpose":"any"},
+    {"src":"./icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"},
+    {"src":"./icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any"}
   ]
 }

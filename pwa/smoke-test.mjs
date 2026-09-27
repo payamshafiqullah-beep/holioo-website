@@ -25,6 +25,7 @@ const drive=read('./drive.js');
 const html=read('./index.html');
 const sw=read('./sw.js');
 const manifest=JSON.parse(read('./manifest.webmanifest'));
+if(!html.includes('20260927-camera-v3-r1'))throw new Error('Asset cache-bust version missing');
 
 const required=[
   'Capture rapide','Diviser le lot','Organiser les photos','Inbox','Section personnalisée','Nouvelle séance',
@@ -36,7 +37,7 @@ for(const s of required)if(!app.includes(s))throw new Error(`Flow missing: ${s}`
 
 for(const p of [...pageFiles,...featureFiles,'./db.js','./drive.js','./core.js','./app.js','./manifest.webmanifest']){
   const htmlPath=p.replace('./','./');
-  if(p.endsWith('.js')&&!html.includes(`src="${htmlPath}"`))throw new Error(`HTML dependency missing: ${htmlPath}`);
+  if(p.endsWith('.js')&&!html.includes(`src="${htmlPath}`))throw new Error(`HTML dependency missing: ${htmlPath}`);
 }
 
 for(const s of ['drive-auth-start','drive-access-token','drive-disconnect','syncAll'])if(!drive.includes(s))throw new Error(`Drive integration missing: ${s}`);

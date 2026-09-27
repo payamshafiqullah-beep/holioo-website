@@ -1,0 +1,15 @@
+{
+  "name": "Holioo — Études",
+  "short_name": "Holioo",
+  "description": "Capture rapide des cours, CM/TD/TP, PDF et bibliothèque académique.",
+  "lang": "fr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F5F6FA",
+  "theme_color": "#506BFF",
+  "icons": [
+    {"src":"./icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
+  ]
+}

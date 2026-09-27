@@ -600,3 +600,30 @@
     height:50px;
   }
 }
+
+
+/* Camera cleanup r4 */
+.camera-v3-hint{display:none!important}
+.camera-v3-gallery-preview{
+  background:rgba(14,16,20,.50);
+  border:1px solid rgba(255,255,255,.22);
+  box-shadow:0 10px 28px rgba(0,0,0,.24);
+  color:#fff;
+}
+.camera-v3-gallery-preview:not(.has-photo){
+  border-radius:18px;
+}
+.camera-v3-gallery-icon{
+  width:25px;
+  height:25px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.75;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  opacity:.96;
+  pointer-events:none;
+}
+.camera-v3-gallery-preview:active{
+  transform:scale(.95);
+}

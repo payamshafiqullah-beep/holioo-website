@@ -43,7 +43,6 @@ function renderCapture(){
         <div class="rail-thumbs camera-v3-filmstrip-list" id="captureGalleryRail"></div>
       </aside>
 
-      <div class="camera-v3-hint">Pincez pour zoomer</div>
 
       <div class="camera-v3-bottom">
         <div class="camera-v3-zoom-row" aria-label="Zoom">

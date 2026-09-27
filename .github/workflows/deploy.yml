@@ -7,6 +7,7 @@ on:
       - holioo-final-master
       - holioo-page-modules
       - camera-pro-v2
+      - camera-modern-v3
 
 permissions:
   contents: read

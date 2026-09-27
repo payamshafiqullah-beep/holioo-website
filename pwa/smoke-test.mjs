@@ -30,7 +30,7 @@ const required=[
   'Capture rapide','Diviser le lot','Organiser les photos','Inbox','Section personnalisée','Nouvelle séance',
   'Créer un PDF','Bibliothèque académique','Rechercher un Holioo ID','Google Drive','Synchroniser automatiquement',
   'movePhotoToSession','renderPdfBuilder','renderSplit','publishSession','openPhotoViewer','renderPhotoViewer',
-  'openPdfViewer','renderPdfViewer','Partager','Synchroniser vers Drive','Recadrer','setupPinchZoom','openCropEditor','captureGalleryRail'
+  'openPdfViewer','renderPdfViewer','Partager','Synchroniser vers Drive','Recadrer','setupPinchZoom','openCropEditor','captureGalleryRail','camera-v3-filmstrip','camera-v3-shutter'
 ];
 for(const s of required)if(!app.includes(s))throw new Error(`Flow missing: ${s}`);
 

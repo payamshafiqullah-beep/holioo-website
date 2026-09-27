@@ -6,6 +6,7 @@ on:
       - main
       - holioo-final-master
       - holioo-page-modules
+      - camera-pro-v2
 
 permissions:
   contents: read

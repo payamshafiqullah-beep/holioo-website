@@ -10,6 +10,7 @@ on:
       - fix-pwa-cache-refresh
       - website-open-holioo-app
       - fix-camera-zoom-duplicate
+      - remove-camera-zoom-hint
       - camera-modern-v3
 
 permissions:

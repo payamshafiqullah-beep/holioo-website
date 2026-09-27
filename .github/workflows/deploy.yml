@@ -68,3 +68,27 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
+
+  verify-live:
+    runs-on: ubuntu-latest
+    needs: deploy
+    steps:
+      - name: Verify deployed Holioo app
+        run: |
+          set -e
+          URL="https://payamshafiqullah-beep.github.io/holioo-website/app/"
+          for i in 1 2 3 4 5 6; do
+            if curl -fsSL "$URL" -o /tmp/holioo.html; then break; fi
+            sleep 5
+          done
+          grep -q 'drive.js' /tmp/holioo.html
+          grep -q 'capture.js' /tmp/holioo.html
+          grep -q 'manifest.webmanifest' /tmp/holioo.html
+          curl -fsSL "$URL/manifest.webmanifest" | grep -q '"display": "standalone"'
+          echo "Holioo live PWA verification: PASS"
+
+      - name: Report Google Drive OAuth readiness
+        run: |
+          echo "Google Drive config status:"
+          curl -fsSL "https://vznsvcotzurgmkmtvapm.supabase.co/functions/v1/drive-config-status" || true
+          echo

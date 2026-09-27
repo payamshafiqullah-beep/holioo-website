@@ -86,7 +86,6 @@ function openPdfViewer(fileId,returnView='files'){
   currentPdfReturnView=returnView;
   navigate('pdfViewer');
 }
-let currentPdfReturnView='files';
 
 async function sharePdf(meta,row){
   const file=new File([row.blob],meta.fileName||`${meta.title}.pdf`,{type:'application/pdf'});

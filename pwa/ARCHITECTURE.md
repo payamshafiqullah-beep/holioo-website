@@ -1,44 +1,51 @@
 # Holioo PWA architecture
 
-This folder is intentionally feature-based so future changes can be patched without rebuilding the entire app.
+Holioo is organized so a small future change can be made in one place without rebuilding unrelated screens.
 
-## Source of truth
+## Screen rule
 
-- Product/design source: **Holioo — Final Model** in Figma.
-- The code should follow the Figma screen/component structure when Figma read access is available.
-- Shared visual tokens live at the top of `styles.css` under `:root`.
+Every visible app screen has its own JavaScript file in `pwa/pages/`.
 
-## Module ownership
+Examples:
+- Home → `pages/HomePage.js`
+- Courses → `pages/CoursesPage.js`
+- Course detail → `pages/CourseDetailPage.js`
+- Session gallery → `pages/SessionPage.js`
+- Capture → `pages/CapturePage.js`
+- Inbox → `pages/InboxPage.js`
+- PDF builder → `pages/PdfBuilderPage.js`
+- PDF viewer → `pages/PdfViewerPage.js`
+- Library → `pages/AcademicLibraryPage.js`
+- Profile → `pages/ProfilePage.js`
 
-- `db.js` — IndexedDB storage only. Photos/PDF blobs stay local-first here.
-- `drive.js` — Google Drive OAuth client calls and Drive file/folder sync only.
-- `core.js` — shared app state, routing primitives, Supabase bootstrap, sync queue.
-- `viewer.js` — full-screen photo gallery viewer and internal PDF viewer.
-- `courses.js` — onboarding, home, courses, sections, sessions, session photo management.
-- `capture.js` — camera, gallery import, capture recovery, Inbox, split batch, organize flow.
-- `pdf.js` — PDF builder/generation and Files listing.
-- `community.js` — academic library, public/private publication, profile, Holioo ID, Drive settings UI.
-- `app.js` — route dispatcher and global lifecycle listeners only.
-- `sw.js` — PWA offline shell caching.
-- `smoke-test.mjs` — static quality gates for critical flows.
+If only one screen changes, edit that page file first. Do not rewrite unrelated page files.
 
-## Patch rules
+## Shared feature logic
 
-1. Do not rewrite unrelated modules for a local feature request.
-2. Gallery changes belong in `viewer.js` plus the smallest calling screen patch.
-3. PDF preview/share changes belong in `viewer.js` and `pdf.js`.
-4. Camera/Inbox/Split changes belong in `capture.js`.
-5. Google Drive changes belong in `drive.js` and, only when needed, the sync UI in `community.js`.
-6. Data schema changes must be backward compatible or versioned.
-7. Keep binary photos/PDFs out of `localStorage`; use IndexedDB.
-8. Never place Google client secret or Supabase service-role key in frontend files.
-9. Before merging to `main`, JavaScript syntax + smoke tests must pass.
-10. `backup-before-figma-final` is the rollback branch created before the final-model work.
+Shared behavior that several screens use lives in `pwa/features/`:
 
-## Media behavior
+- `course-actions.js` — photo reorder, move, delete, session gallery helpers
+- `capture-actions.js` — camera, gallery import, batch helpers
+- `pdf-actions.js` — PDF generation helpers
+- `community-actions.js` — publish/library/Profile/Drive UI actions
+- `media-viewer.js` — shared photo/PDF viewer state and actions
 
-- Session and batch thumbnails are visible inside Holioo.
-- Tapping a photo opens the internal full-screen viewer with swipe and zoom.
-- Generated PDFs open inside the Holioo PDF viewer first.
-- Sharing is always an explicit user action.
-- Google Drive sync is optional and per user.
+## Services and app shell
+
+- `db.js` — IndexedDB local-first binary storage
+- `drive.js` — per-user Google Drive sync
+- `core.js` — shared state, Supabase bootstrap, navigation helpers, sync queue
+- `app.js` — route dispatcher and lifecycle listeners only
+- `styles.css` — shared visual tokens and shared component styling
+- `sw.js` — offline PWA cache
+- `smoke-test.mjs` — critical flow checks
+
+## Future change rule
+
+1. Change only the page or shared feature involved.
+2. Do not recreate the whole project for a small UI change.
+3. Keep photos and PDFs in IndexedDB, not localStorage.
+4. Keep Google secrets server-side.
+5. Schema changes must be backward compatible or versioned.
+6. Run syntax checks, smoke tests, and website build before merging to main.
+7. The rollback branch created before this work remains `backup-before-figma-final`.

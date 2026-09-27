@@ -25,7 +25,19 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
+
+      - name: Verify Holioo PWA JavaScript
+        run: |
+          node --check pwa/db.js
+          node --check pwa/drive.js
+          node --check pwa/core.js
+          node --check pwa/courses.js
+          node --check pwa/capture.js
+          node --check pwa/pdf.js
+          node --check pwa/community.js
+          node --check pwa/app.js
+          node pwa/smoke-test.mjs
 
       - name: Install website dependencies
         run: npm ci
@@ -37,6 +49,7 @@ jobs:
         run: |
           mkdir -p dist/app
           cp -R pwa/. dist/app/
+          rm -f dist/app/smoke-test.mjs
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

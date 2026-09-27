@@ -84,9 +84,9 @@
       const names=ctx.kind==='session'?
         ['Holioo',rootYear,ctx.course.name,ctx.section.name,ctx.session.title]:
         ['Holioo',rootYear,'Inbox',new Date(ctx.batch.createdAt).toISOString().slice(0,10)];
-      const parentId=await ensurePath(token,names);const filename=`${String((ctx.kind==='session'?ctx.session.photoIds:ctx.batch.photoIds).indexOf(p.id)+1).padStart(3,'0')}-${p.id.slice(0,8)}.jpg`;
+      const filename=`${String((ctx.kind==='session'?ctx.session.photoIds:ctx.batch.photoIds).indexOf(p.id)+1).padStart(3,'0')}-${p.id.slice(0,8)}.jpg`;
       try{
-        let remote;
+        const parentId=await ensurePath(token,names);let remote;
         if(p.driveFileId){
           if(p.driveParentId!==parentId||p.driveName!==filename) remote=await moveFile(token,p.driveFileId,parentId,filename);
           else remote={id:p.driveFileId,parents:[parentId],webViewLink:p.driveWebViewLink,name:p.driveName};
@@ -97,9 +97,10 @@
     }
     for(const f of state.files||[]){
       const row=await db.get('files',f.id);if(!row?.blob)continue;
-      const course=state.courses.find(c=>c.id===f.courseId);const parentId=await ensurePath(token,['Holioo',rootYear,course?.name||'PDFs','PDFs']);const filename=safeName(f.fileName||`${f.title}.pdf`);
+      const course=state.courses.find(c=>c.id===f.courseId);const filename=safeName(f.fileName||`${f.title}.pdf`);
       let remote;
       try{
+        const parentId=await ensurePath(token,['Holioo',rootYear,course?.name||'PDFs','PDFs']);
         if(row.driveFileId){if(row.driveParentId!==parentId||row.driveName!==filename)remote=await moveFile(token,row.driveFileId,parentId,filename);else remote={id:row.driveFileId,webViewLink:row.driveWebViewLink,parents:[parentId],name:row.driveName}}
         else remote=await uploadBlob(token,row.blob,filename,parentId);
         await db.put('files',{...row,driveFileId:remote.id,driveWebViewLink:remote.webViewLink||row.driveWebViewLink||null,driveParentId:parentId,driveName:filename,syncState:'synced',syncError:null,syncedAt:new Date().toISOString()});synced++;onProgress?.({type:'file',synced});

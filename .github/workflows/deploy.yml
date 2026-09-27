@@ -1,4 +1,4 @@
-name: Deploy Vite site to GitHub Pages
+name: Deploy website + Holioo PWA to GitHub Pages
 
 on:
   push:
@@ -27,13 +27,21 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install dependencies
+      - name: Install website dependencies
         run: npm ci
 
-      - name: Build
+      - name: Build website
         run: npm run build
 
-      - name: Upload artifact
+      - name: Add Holioo installable app
+        run: |
+          mkdir -p dist/app
+          cp -R pwa/. dist/app/
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./dist

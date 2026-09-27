@@ -9,6 +9,7 @@ on:
       - camera-pro-v2
       - fix-pwa-cache-refresh
       - website-open-holioo-app
+      - fix-camera-zoom-duplicate
       - camera-modern-v3
 
 permissions:

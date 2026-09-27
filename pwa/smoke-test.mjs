@@ -25,7 +25,7 @@ const drive=read('./drive.js');
 const html=read('./index.html');
 const sw=read('./sw.js');
 const manifest=JSON.parse(read('./manifest.webmanifest'));
-if(!html.includes('20260927-camera-v3-r1'))throw new Error('Asset cache-bust version missing');
+if(!html.includes('20260927-camera-v3-r2'))throw new Error('Asset cache-bust version missing');
 
 const required=[
   'Capture rapide','Diviser le lot','Organiser les photos','Inbox','Section personnalisée','Nouvelle séance',

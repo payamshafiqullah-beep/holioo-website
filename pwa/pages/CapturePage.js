@@ -50,7 +50,6 @@ function renderCapture(){
           <button class="zoom-chip" data-zoom="1">1×</button>
           <button class="zoom-chip" data-zoom="2">2×</button>
           <button class="zoom-chip" data-zoom="3">3×</button>
-          <span id="zoomLabel">1.0×</span>
           <input id="zoomRange" class="camera-v3-hidden-range" type="range" min="1" max="4" step="0.1" value="1" aria-label="Zoom">
         </div>
 

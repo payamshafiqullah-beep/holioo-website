@@ -8,6 +8,7 @@ on:
       - holioo-page-modules
       - camera-pro-v2
       - fix-pwa-cache-refresh
+      - website-open-holioo-app
       - camera-modern-v3
 
 permissions:
@@ -80,6 +81,9 @@ jobs:
       - name: Verify deployed Holioo app
         run: |
           set -e
+          ROOT="https://payamshafiqullah-beep.github.io/holioo-website/"
+          curl -fsSL "$ROOT" -o /tmp/root.html
+          grep -q 'url=./app/' /tmp/root.html
           URL="https://payamshafiqullah-beep.github.io/holioo-website/app/"
           for i in 1 2 3 4 5 6; do
             if curl -fsSL "$URL" -o /tmp/holioo.html; then break; fi

@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - holioo-final-master
+      - holioo-page-modules
 
 permissions:
   contents: read
@@ -33,12 +34,8 @@ jobs:
           node --check pwa/db.js
           node --check pwa/drive.js
           node --check pwa/core.js
-          node --check pwa/viewer.js
-          node --check pwa/courses.js
-          node --check pwa/capture.js
-          node --check pwa/pdf.js
-          node --check pwa/community.js
           node --check pwa/app.js
+          find pwa/features pwa/pages -name '*.js' -print0 | xargs -0 -n1 node --check
           node pwa/smoke-test.mjs
 
       - name: Install website dependencies
@@ -86,8 +83,8 @@ jobs:
             sleep 5
           done
           grep -q 'drive.js' /tmp/holioo.html
-          grep -q 'capture.js' /tmp/holioo.html
-          grep -q 'viewer.js' /tmp/holioo.html
+          grep -q 'pages/CapturePage.js' /tmp/holioo.html
+          grep -q 'pages/PhotoViewerPage.js' /tmp/holioo.html
           grep -q 'manifest.webmanifest' /tmp/holioo.html
           curl -fsSL "$URL/manifest.webmanifest" | grep -q '"display": "standalone"'
           echo "Holioo live PWA verification: PASS"

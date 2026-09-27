@@ -12,6 +12,7 @@ on:
       - fix-camera-zoom-duplicate
       - remove-camera-zoom-hint
       - camera-cleanup-r4
+      - home-modern-redesign
       - camera-modern-v3
 
 permissions:

@@ -10,6 +10,7 @@ function revokeViewerUrl(){
 
 function photoStatusLabel(row){
   if(row?.driveFileId)return{label:'DRIVE',cls:'green'};
+  if(row?.syncState==='drive_full')return{label:'DRIVE PLEIN',cls:'coral'};
   if(row?.syncState==='error')return{label:'ERREUR',cls:'coral'};
   if(row?.syncState==='synced')return{label:'SYNC',cls:'green'};
   if(row?.syncState==='pending')return{label:navigator.onLine?'À SYNC':'LOCAL',cls:navigator.onLine?'orange':'gray'};
@@ -117,7 +118,7 @@ async function renderPdfViewer(){
   const meta=state.files.find(f=>f.id===currentFileId),row=meta?await DB.get('files',meta.id):null;
   if(!meta||!row?.blob){showToast('PDF introuvable sur cet appareil');navigate('files');return}
   revokeViewerUrl();viewerObjectUrl=URL.createObjectURL(row.blob);
-  const status=row.driveFileId?{label:'DRIVE',cls:'green'}:row.syncState==='error'?{label:'ERREUR',cls:'coral'}:{label:'LOCAL',cls:'gray'};
+  const status=row.driveFileId?{label:'DRIVE',cls:'green'}:row.syncState==='drive_full'?{label:'DRIVE PLEIN',cls:'coral'}:row.syncState==='error'?{label:'ERREUR',cls:'coral'}:{label:'LOCAL',cls:'gray'};
   const course=state.courses.find(c=>c.id===meta.courseId);
   app.innerHTML=`<div class="pdf-viewer-page">
     <div class="pdf-viewer-head">

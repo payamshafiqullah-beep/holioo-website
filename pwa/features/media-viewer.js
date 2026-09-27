@@ -21,7 +21,22 @@ function photoStatusLabel(row){
   return{label:'LOCAL',cls:'gray'};
 }
 
-function openPhotoViewer(ids,startIndex=0,options={}
+function openPhotoViewer(ids,startIndex=0,options={}){
+  if(!ids?.length)return;
+  currentPhotoViewer={
+    ids:[...ids],
+    index:Math.max(0,Math.min(startIndex,ids.length-1)),
+    title:options.title||'Galerie',
+    source:options.source||'generic',
+    sourceId:options.sourceId||null,
+    editable:!!options.editable,
+    returnView:options.returnView||currentView,
+    courseId:options.courseId||currentCourseId,
+    sectionId:options.sectionId||currentSectionId,
+    sessionId:options.sessionId||currentSessionId
+  };
+  navigate('photoViewer');
+}
 
 function viewerStep(dir){
   if(!currentPhotoViewer)return;
@@ -71,6 +86,7 @@ function openPdfViewer(fileId,returnView='files'){
   currentPdfReturnView=returnView;
   navigate('pdfViewer');
 }
+let currentPdfReturnView='files';
 
 async function sharePdf(meta,row){
   const file=new File([row.blob],meta.fileName||`${meta.title}.pdf`,{type:'application/pdf'});

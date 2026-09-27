@@ -14,7 +14,17 @@ async function importGallery(e){for(const f of [...(e.target.files||[])]){const 
 
 function finishCapture(){if(!captureIds.length){showToast('Prenez au moins une photo');return}stopCamera();currentBatch={id:state.captureDraft?.id||uid(),photoIds:[...captureIds],selected:new Set(captureIds),createdAt:state.captureDraft?.createdAt||now(),splitQueue:[]};state.captureDraft=null;captureIds=[];saveState();navigate('captureComplete')}
 
-async function fillThumbs(containerId,ids,{selectable=false,split=false,viewerTitle='Galerie'}
+async function fillThumbs(containerId,ids,{selectable=false,split=false,viewerTitle='Galerie'}={}){
+  const box=document.getElementById(containerId);if(!box)return;box.innerHTML='';
+  for(let i=0;i<ids.length;i++){
+    const id=ids[i],row=await DB.get('photos',id);if(!row?.blob)continue;const url=URL.createObjectURL(row.blob),selected=currentBatch?.selected?.has(id),status=photoStatusLabel(row),b=document.createElement('button');
+    b.className=`thumb ${selectable&&selected?'selected':''} ${split?(selected?'group-a':'group-b'):''}`;
+    b.innerHTML=`<img src="${url}" alt="Photo ${i+1}"><span class="num">${i+1}</span>${!selectable?`<span class="thumb-status badge ${status.cls}">${status.label}</span>`:''}${selectable&&!split?`<span class="check">${selected?'✓':''}</span>`:''}${split?`<span class="group-tag">${selected?'LOT 1':'LOT 2'}</span>`:''}`;
+    if(selectable)b.onclick=()=>{selected?currentBatch.selected.delete(id):currentBatch.selected.add(id);render()};
+    else b.onclick=()=>openPhotoViewer(ids,i,{title:viewerTitle,source:'batch',sourceId:currentBatch?.id||null,editable:false,returnView:currentView,courseId:currentCourseId,sectionId:currentSectionId,sessionId:currentSessionId});
+    box.appendChild(b);
+  }
+}
 
 function saveBatchToInbox(batch){state.inbox.unshift({id:batch.id,title:`Capture ${fmtShort(batch.createdAt)}`,photoIds:[...batch.photoIds],createdAt:batch.createdAt});saveState();currentBatch=null;showToast('Lot enregistré dans Inbox');queueSync();navigate('home')}
 

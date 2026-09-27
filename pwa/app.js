@@ -8,5 +8,5 @@ window.addEventListener('online',async()=>{offlineBanner.classList.add('hidden')
 window.addEventListener('offline',()=>{offlineBanner.classList.remove('hidden');refreshSyncIndicator()});
 window.addEventListener('focus',async()=>{if(sb&&currentUser&&navigator.onLine){try{driveStatus=await Drive.status(sb,currentUser.id);await refreshSyncIndicator();if(driveStatus.connected&&currentView==='sync')render()}catch{}}});
 if(!navigator.onLine)offlineBanner.classList.remove('hidden');
-if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(console.error));
+if('serviceWorker'in navigator)window.addEventListener('load',async()=>{try{const reg=await navigator.serviceWorker.register('./sw.js');await reg.update()}catch(e){console.error(e)}});
 (async()=>{await DB.open();try{await navigator.storage?.persist?.()}catch{}await bootstrapCloud();await refreshSyncIndicator();await render()})();

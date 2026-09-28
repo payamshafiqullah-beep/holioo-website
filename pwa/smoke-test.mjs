@@ -31,7 +31,7 @@ const required=[
   'Diviser le lot','Organiser les photos','Inbox','Section personnalisée','Nouvelle séance',
   'Créer un PDF','Ma bibliothèque','Rechercher un Holioo ID','Google Drive','Synchroniser automatiquement',
   'movePhotoToSession','renderPdfBuilder','renderSplit','publishSession','openPhotoViewer','renderPhotoViewer',
-  'openPdfViewer','renderPdfViewer','Partager','Synchroniser vers Drive','Recadrer','setupPinchZoom','openCropEditor','captureGalleryRail','camera-v3-filmstrip','camera-v3-shutter'
+  'openPdfViewer','renderPdfViewer','Partager','Synchroniser vers Drive','Recadrer','setupPinchZoom','openCropEditor','captureGalleryRail','camera-v3-filmstrip','camera-pastel-shutter'
 ];
 for(const s of required)if(!app.includes(s))throw new Error(`Flow missing: ${s}`);
 for(const s of ['Prêt(e) à continuer','Mes cours','Réviser rapidement','pastel-feature-card','pastel-main-view'])if(!app.includes(s)&&!read('./styles.css').includes(s))throw new Error(`Pastel UI missing: ${s}`);

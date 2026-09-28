@@ -25,7 +25,7 @@ const drive=read('./drive.js');
 const html=read('./index.html');
 const sw=read('./sw.js');
 const manifest=JSON.parse(read('./manifest.webmanifest'));
-if(!html.includes('20260928-home-nav-b-r1'))throw new Error('Asset cache-bust version missing');
+if(!html.includes('20260928-pastel-full-v1'))throw new Error('Asset cache-bust version missing');
 
 const required=[
   'Diviser le lot','Organiser les photos','Inbox','Section personnalisée','Nouvelle séance',
@@ -34,9 +34,9 @@ const required=[
   'openPdfViewer','renderPdfViewer','Partager','Synchroniser vers Drive','Recadrer','setupPinchZoom','openCropEditor','captureGalleryRail','camera-v3-filmstrip','camera-v3-shutter'
 ];
 for(const s of required)if(!app.includes(s))throw new Error(`Flow missing: ${s}`);
-for(const s of ['Prêt à étudier','Mes cours','Révisions du jour','home-v5-hero','home-modern'])if(!app.includes(s)&&!read('./styles.css').includes(s))throw new Error(`Modern Home missing: ${s}`);
+for(const s of ['Prêt(e) à continuer','Mes cours','Réviser rapidement','pastel-feature-card','pastel-main-view'])if(!app.includes(s)&&!read('./styles.css').includes(s))throw new Error(`Pastel UI missing: ${s}`);
 if(app.includes('Pincez pour zoomer'))throw new Error('Old pinch zoom hint still present');
-if(!app.includes('camera-v3-gallery-icon'))throw new Error('Modern gallery icon missing');
+if(!app.includes('camera-pastel-thumb'))throw new Error('Modern gallery control missing');
 
 for(const p of [...pageFiles,...featureFiles,'./db.js','./drive.js','./core.js','./app.js','./manifest.webmanifest']){
   const htmlPath=p.replace('./','./');
@@ -51,4 +51,4 @@ if(/GOOGLE_CLIENT_SECRET|SUPABASE_SERVICE_ROLE_KEY/.test(app+drive))throw new Er
 
 console.log(`Holioo modular smoke test: PASS (${pageFiles.length} page files)`);
 
-if(!read('./styles.css').includes('Home-only navigation refresh — Option B'))throw new Error('Option B home navigation styles missing');
+for(const s of ['HOLIOO PASTEL SYSTEM','pastel-brand-header','pastel-course-row','pastel-file-row','camera-pastel-shutter'])if(!read('./styles.css').includes(s))throw new Error(`Pastel style missing: ${s}`);

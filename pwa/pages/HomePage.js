@@ -1,149 +1,66 @@
 function homeSvgIcon(kind){
   const icons={
-    chip:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg>',
-    sigma:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.5 5H7l5 7-5 7h10.5"/></svg>',
-    resistor:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12h4l1.2-3h2.6l1.2 6h2.6l1.2-6h2.6l1.2 3H22"/></svg>',
-    photo:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="9" r="1.5"/><path d="m5 17 4.5-4.5L13 16l2-2 4 4"/></svg>',
-    pdf:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v5h5M9.5 13h5M9.5 16h5"/></svg>',
-    bell:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9a6 6 0 0 1 12 0v4l2 3H4l2-3z"/><path d="M9.5 19a3 3 0 0 0 5 0"/></svg>',
-    play:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 7 8 5-8 5z"/></svg>'
-  };
-  return icons[kind]||'';
+    law:'<svg viewBox="0 0 24 24"><path d="M4 20h16M6 18V9m4 9V9m4 9V9m4 9V9M3 9h18L12 3z"/></svg>',
+    calc:'<svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="3"/><path d="M8 7h8M8 12h2M12 12h2M16 12h0M8 16h2M12 16h2M16 16h0"/></svg>',
+    leaf:'<svg viewBox="0 0 24 24"><path d="M19 4C11 4 5 8 5 14c0 3 2 5 5 5 6 0 9-7 9-15Z"/><path d="M5 20c2-5 6-8 11-10"/></svg>',
+    note:'<svg viewBox="0 0 24 24"><path d="M7 3h8l3 3v15H7z"/><path d="M15 3v4h4M10 12h5M10 16h5"/></svg>',
+    brain:'<svg viewBox="0 0 24 24"><path d="M9 5a3 3 0 0 0-5 2.2A3 3 0 0 0 4 13a3 3 0 0 0 4 4 3 3 0 0 0 4 2V6a3 3 0 0 0-3-3ZM15 5a3 3 0 0 1 5 2.2A3 3 0 0 1 20 13a3 3 0 0 1-4 4 3 3 0 0 1-4 2V6a3 3 0 0 1 3-3Z"/></svg>',
+    stats:'<svg viewBox="0 0 24 24"><rect x="4" y="13" width="3" height="7" rx="1"/><rect x="10.5" y="8" width="3" height="12" rx="1"/><rect x="17" y="4" width="3" height="16" rx="1"/></svg>',
+    clock:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></svg>'
+  };return icons[kind]||icons.note
 }
-function homeCourseIcon(course,index){
-  const name=(course?.name||'').toLowerCase();
-  if(name.includes('math'))return{kind:'sigma',tone:'green'};
-  if(name.includes('électron')||name.includes('electron'))return{kind:'resistor',tone:'rose'};
-  if(name.includes('vhdl'))return{kind:'chip',tone:'violet'};
-  return [{kind:'chip',tone:'violet'},{kind:'sigma',tone:'green'},{kind:'resistor',tone:'rose'}][index%3];
+function homeCourseVisual(course,index){
+  const n=(course?.name||'').toLowerCase();
+  if(n.includes('droit'))return{tone:'pink',icon:'law'};
+  if(n.includes('math'))return{tone:'sky',icon:'calc'};
+  if(n.includes('svt')||n.includes('bio'))return{tone:'mint',icon:'leaf'};
+  return [{tone:'pink',icon:'law'},{tone:'sky',icon:'calc'},{tone:'mint',icon:'leaf'}][index%3]
 }
 function homeCourseProgress(course){
-  const sessions=course.sections.reduce((sum,s)=>sum+(s.sessions?.length||0),0);
-  const target=Math.max(6,Math.min(18,sessions+8));
-  return{sessions,target,pct:Math.max(12,Math.min(92,Math.round((sessions/target)*100)||28))};
+  const sessions=course.sections.reduce((a,s)=>a+(s.sessions?.length||0),0);
+  const target=Math.max(6,sessions+8),pct=Math.min(92,Math.max(18,Math.round(sessions/target*100)||35));
+  return{sessions,target,pct}
 }
 async function renderHome(){
   setChrome(false);
-  appShell.classList.add('home-modern');
-
+  appShell.classList.add('home-modern','pastel-main-view');
   const inboxCount=state.inbox.reduce((a,b)=>a+b.photoIds.length,0);
-  const firstCourse=state.courses[0]||null;
-  let continueCourse=firstCourse;
-  let continueSection=null;
-  let continueSession=null;
-
-  outer:
-  for(const course of state.courses){
-    for(const section of course.sections||[]){
-      if(section.sessions?.length){
-        continueCourse=course;
-        continueSection=section;
-        continueSession=section.sessions[section.sessions.length-1];
-        break outer;
-      }
-    }
-  }
-
-  const displayName=state.profile.displayName&&state.profile.displayName!=='Étudiant'?state.profile.displayName:'';
-  const heroTitle=continueSession?continueSession.title:(continueCourse?continueCourse.name:'Votre prochain cours');
-  const heroMeta=continueSession
-    ? `${continueSection?.name||'Session'} • ${continueSession.photoIds?.length||0} photo${(continueSession.photoIds?.length||0)>1?'s':''}`
-    : (continueCourse?'Prêt pour votre prochaine séance':'Ajoutez votre premier cours');
-
-  const heroTarget=continueSession
-    ? `data-session-home="${continueSession.id}"`
-    : (continueCourse?`data-course="${continueCourse.id}"`:'data-nav="courses"');
-
+  const courses=state.courses.slice(0,3);
   app.innerHTML=`
-    <section class="home-v5">
-      <div class="home-v5-top">
-        <div class="home-v5-brand">
-          <span class="home-v5-wordmark">Holioo<span></span></span>
-          <div class="home-v5-greeting">Bonjour${displayName?` ${esc(displayName)}`:''} 👋</div>
+    <section class="pastel-screen home-pastel">
+      ${pastelBrandHeader({kicker:'Bonjour 👋',title:'Prêt(e) à continuer votre apprentissage ?',subtitle:'Capturez, organisez et révisez vos cours simplement avec Holioo.'})}
+      <button class="pastel-feature-card" data-nav="capture">
+        <div class="pastel-feature-copy">
+          <span>À LA UNE</span>
+          <h2>Transformez vos cours en fiches claires</h2>
+          <p>Prenez une photo, Holioo organise vos notes et les prépare pour vos révisions.</p>
+          <b>Essayer maintenant <i>→</i></b>
         </div>
-        <div class="home-v5-actions">
-          <button class="home-v5-icon-btn" id="homeNotify" aria-label="Notifications">
-            ${homeSvgIcon('bell')}
-            ${inboxCount?'<span class="home-v5-alert-dot"></span>':''}
-          </button>
-          <button class="home-v5-avatar" data-nav="profile" aria-label="Profil">
-            ${esc(iconLetter(state.profile.displayName))}
-          </button>
-        </div>
-      </div>
-
-      <h1 class="home-v5-title">Prêt à étudier<br>aujourd’hui&nbsp;?</h1>
-
-      <button class="home-v5-hero" ${heroTarget}>
-        <div class="home-v5-hero-copy">
-          <span class="home-v5-kicker">CONTINUER</span>
-          <strong>${esc(heroTitle)}</strong>
-          <small>${esc(heroMeta)}</small>
-          <span class="home-v5-resume">${homeSvgIcon('play')} Reprendre</span>
-        </div>
-        <div class="home-v5-hero-art">
-          <div class="home-v5-note back"></div>
-          <div class="home-v5-note front">
-            <span class="home-v5-note-icon">${homeSvgIcon('chip')}</span>
-            <b>${esc((continueCourse?.name||'Holioo').slice(0,12))}</b>
-            <i></i><i></i><i></i>
-          </div>
+        <div class="pastel-feature-art" aria-hidden="true">
+          <div class="sheet back"></div>
+          <div class="sheet front"><i></i><i></i><i></i><i></i></div>
+          <span>✦</span>
         </div>
       </button>
-
-      <div class="home-v5-section-head">
-        <h2>Mes cours</h2>
-        <button data-nav="courses">Voir tout <span>›</span></button>
+      ${sectionHeading('Mes cours','Voir tout','courses')}
+      <div class="pastel-course-grid">
+        ${courses.length?courses.map((c,i)=>{const v=homeCourseVisual(c,i),p=homeCourseProgress(c);return `
+          <button class="pastel-mini-course ${v.tone}" data-course="${c.id}">
+            <span class="pastel-icon-badge">${homeSvgIcon(v.icon)}</span>
+            <strong>${esc(c.name)}</strong>
+            <small>${p.sessions} séances • ${c.sections.length} sections</small>
+            <span class="pastel-progress"><i style="width:${p.pct}%"></i></span>
+            <em>${p.pct}%</em>
+          </button>`}).join(''):'<div class="pastel-empty-wide">Ajoutez votre premier cours pour commencer.</div>'}
       </div>
-
-      <div class="home-v5-course-grid">
-        ${state.courses.slice(0,3).map((course,index)=>{
-          const visual=homeCourseIcon(course,index),p=homeCourseProgress(course);
-          return `<button class="home-v5-course-card ${visual.tone}" data-course="${course.id}">
-            <span class="home-v5-course-icon">${homeSvgIcon(visual.kind)}</span>
-            <strong>${esc(course.name)}</strong>
-            <small>${p.sessions}/${p.target} séances</small>
-            <span class="home-v5-progress"><i style="width:${p.pct}%"></i></span>
-          </button>`;
-        }).join('')}
-      </div>
-
-      <div class="home-v5-section-head review">
-        <h2>Révisions du jour</h2>
-      </div>
-
-      <div class="home-v5-task-list">
-        <button class="home-v5-task" id="homeInboxTask">
-          <span class="home-v5-task-icon amber">${homeSvgIcon('photo')}</span>
-          <span class="home-v5-task-copy">
-            <strong>Photos à classer</strong>
-            <small>${inboxCount} photo${inboxCount>1?'s':''} • 5 min</small>
-          </span>
-          <span class="home-v5-task-arrow">›</span>
-        </button>
-
-        <button class="home-v5-task" data-nav="files">
-          <span class="home-v5-task-icon purple">${homeSvgIcon('pdf')}</span>
-          <span class="home-v5-task-copy">
-            <strong>Créer PDF</strong>
-            <small>${state.files.length} fichier${state.files.length>1?'s':''} • 2 min</small>
-          </span>
-          <span class="home-v5-task-arrow">›</span>
-        </button>
+      ${sectionHeading('Réviser rapidement','Voir tout','library')}
+      <div class="pastel-quick-grid">
+        <button class="pastel-quick-card peach" data-nav="library"><span>${homeSvgIcon('note')}</span><div><strong>Mes fiches</strong><small>Relisez vos documents par matière</small></div><b>›</b></button>
+        <button class="pastel-quick-card lavender" data-nav="library"><span>${homeSvgIcon('brain')}</span><div><strong>Quiz</strong><small>Testez vos connaissances</small></div><b>›</b></button>
+        <button class="pastel-quick-card mint" data-nav="courses"><span>${homeSvgIcon('stats')}</span><div><strong>Statistiques</strong><small>Suivez vos progrès</small></div><b>›</b></button>
+        <button class="pastel-quick-card sky" id="homeInboxTask"><span>${homeSvgIcon('clock')}</span><div><strong>Révisions express</strong><small>${inboxCount} photo${inboxCount>1?'s':''} à organiser</small></div><b>›</b></button>
       </div>
     </section>`;
-
   bindCourseCards();
-
-  document.getElementById('homeNotify')?.addEventListener('click',()=>navigate(inboxCount?'inbox':'sync'));
-  document.getElementById('homeInboxTask')?.addEventListener('click',()=>navigate(inboxCount?'inbox':'capture'));
-
-  document.querySelectorAll('[data-session-home]').forEach(btn=>btn.onclick=()=>{
-    const found=findSessionContext(btn.dataset.sessionHome);
-    if(!found)return;
-    currentCourseId=found.course.id;
-    currentSectionId=found.section.id;
-    currentSessionId=found.session.id;
-    navigate('session');
-  });
+  byId('homeInboxTask')?.addEventListener('click',()=>navigate(inboxCount?'inbox':'capture'));
 }

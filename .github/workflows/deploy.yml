@@ -15,6 +15,7 @@ on:
       - home-modern-redesign
       - home-nav-option-b
       - camera-modern-v3
+      - holioo-pastel-full-ui
 
 permissions:
   contents: read

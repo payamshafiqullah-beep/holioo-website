@@ -47,15 +47,19 @@ if(state.captureDraft?.photoIds?.length){state.inbox.unshift({id:state.captureDr
 saveState();
 
 function showToast(message){toastEl.textContent=message;toastEl.classList.remove('hidden');clearTimeout(showToast.t);showToast.t=setTimeout(()=>toastEl.classList.add('hidden'),3000)}
-function pageHead(title,subtitle='',eyebrow='HOLIOO'){return`<div class="page-head"><p class="eyebrow">${esc(eyebrow)}</p><h1 class="page-title">${esc(title)}</h1>${subtitle?`<p class="subtitle">${esc(subtitle)}</p>`:''}</div>`}
+function pageHead(title,subtitle='',eyebrow='HOLIOO'){return`<div class="page-head pastel-page-head"><p class="eyebrow">${esc(eyebrow)}</p><h1 class="page-title">${esc(title)}</h1>${subtitle?`<p class="subtitle">${esc(subtitle)}</p>`:''}</div>`}
+function pastelBrandHeader({kicker='',title='',subtitle='',showAvatar=true}={}){const initials=esc(iconLetter(state.profile.displayName));return`<div class="pastel-brand-header"><div><div class="pastel-wordmark">Holioo<span class="pastel-wordmark-dot"></span><span class="pastel-wordmark-rays">⌁</span></div>${kicker?`<p class="pastel-kicker">${esc(kicker)}</p>`:''}${title?`<h1 class="pastel-title">${esc(title)}</h1>`:''}${subtitle?`<p class="pastel-subtitle">${esc(subtitle)}</p>`:''}</div>${showAvatar?`<button class="pastel-avatar" data-nav="profile" aria-label="Profil">${initials}</button>`:''}</div>`}
+function sectionHeading(title,action='Voir tout',nav=''){return`<div class="pastel-section-head"><h2>${esc(title)}</h2>${action?`<button ${nav?`data-nav="${nav}"`:''}>${esc(action)} <span>›</span></button>`:''}</div>`}
 function backButton(){return'<button class="back" id="backBtn" aria-label="Retour">‹</button>'}
 function setChrome(hidden){appShell.classList.toggle('hidden-chrome',hidden)}
 function setNav(view){document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.nav===view))}
 function navigate(view,payload={}){
   appShell.classList.toggle('home-modern',view==='home');
+  appShell.classList.toggle('pastel-main-view',['home','courses','library','files'].includes(view));
+  appShell.classList.toggle('capture-active',view==='capture');
   if(view!=='capture')stopCamera();currentView=view;
   if(payload.courseId)currentCourseId=payload.courseId;if(payload.sectionId)currentSectionId=payload.sectionId;if(payload.sessionId)currentSessionId=payload.sessionId;
-  const mainViews=['home','courses','capture','library','files'];setNav(mainViews.includes(view)?view:'');setChrome(['welcome','academicSetup','capture','photoViewer','pdfViewer'].includes(view));render().catch(e=>{console.error(e);showToast('Une erreur est survenue')});
+  const mainViews=['home','courses','capture','library','files'];setNav(mainViews.includes(view)?view:'');setChrome(['welcome','academicSetup','photoViewer','pdfViewer'].includes(view));render().catch(e=>{console.error(e);showToast('Une erreur est survenue')});
 }
 document.addEventListener('click',e=>{const n=e.target.closest('[data-nav]');if(n){e.preventDefault();navigate(n.dataset.nav)}});
 

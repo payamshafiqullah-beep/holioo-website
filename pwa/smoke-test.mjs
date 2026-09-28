@@ -29,7 +29,7 @@ if(!html.includes('20260928-pastel-full-v1'))throw new Error('Asset cache-bust v
 
 const required=[
   'Diviser le lot','Organiser les photos','Inbox','Section personnalisée','Nouvelle séance',
-  'Créer un PDF','Bibliothèque académique','Rechercher un Holioo ID','Google Drive','Synchroniser automatiquement',
+  'Créer un PDF','Ma bibliothèque','Rechercher un Holioo ID','Google Drive','Synchroniser automatiquement',
   'movePhotoToSession','renderPdfBuilder','renderSplit','publishSession','openPhotoViewer','renderPhotoViewer',
   'openPdfViewer','renderPdfViewer','Partager','Synchroniser vers Drive','Recadrer','setupPinchZoom','openCropEditor','captureGalleryRail','camera-v3-filmstrip','camera-v3-shutter'
 ];

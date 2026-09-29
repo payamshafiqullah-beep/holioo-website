@@ -1,3 +1,30 @@
+// Synchronisation — Google Drive et installation de l'app.
 async function renderSync(){
-  let pending=0;try{pending=await Drive.pendingCount(state,DB)}catch{}const connected=!!driveStatus.connected;app.innerHTML=`${backButton()}${pageHead('Synchronisation','Local-first : capture immédiate sur l’appareil, puis sauvegarde quand Internet revient.','GOOGLE DRIVE')}<div class="card row ${connected?'success':''}"><span class="round-icon" style="background:${connected?'#24B27D':'#506BFF'}">☁</span><span class="grow"><span class="title">${connected?'Google Drive connecté':'Google Drive non connecté'}</span><span class="meta">${connected?esc(driveStatus.email||'Compte Google connecté'):'Chaque utilisateur connecte son propre Google Drive.'}</span></span><span class="badge ${connected?'green':'gray'}">${connected?'ACTIF':'LOCAL'}</span></div><div class="section-title">État local</div><div class="stats"><div class="stat"><b>${pending}</b><span>À synchroniser</span></div><div class="stat"><b>${state.files.length}</b><span>PDF locaux</span></div><div class="stat"><b>${state.inbox.reduce((a,b)=>a+b.photoIds.length,0)}</b><span>Inbox</span></div></div><div class="section-title">Comportement</div><label class="card row"><input type="checkbox" id="autoSync" ${state.settings.autoDriveSync?'checked':''}><span class="grow"><span class="title">Synchroniser automatiquement</span><span class="meta">Dès que l’iPhone retrouve Internet.</span></span></label><div class="actions">${connected?`<button class="btn green full" id="syncNow">Synchroniser maintenant</button><button class="btn ghost full" id="disconnectDrive">Déconnecter Google Drive</button>`:`<button class="btn primary full" id="connectDrive">Connecter mon Google Drive</button>`}<button class="btn ghost full" id="installPwa">Installer Holioo sur l’écran d’accueil</button></div><div class="notice">Les fichiers synchronisés restent accessibles depuis Google Drive sur un ordinateur même si le téléphone est éteint.</div><div id="driveHelp" class="small" style="margin-top:12px"></div>`;byId('backBtn').onclick=()=>navigate('home');byId('autoSync').onchange=()=>{state.settings.autoDriveSync=byId('autoSync').checked;saveState()};document.getElementById('syncNow')?.addEventListener('click',()=>runDriveSync('manual'));document.getElementById('disconnectDrive')?.addEventListener('click',()=>disconnectDrive());document.getElementById('connectDrive')?.addEventListener('click',()=>connectDrive());byId('installPwa').onclick=showInstallSheet
+  setChrome(false);
+  let pending=0;try{pending=await Drive.pendingCount(state,DB)}catch{}
+  const connected=!!driveStatus.connected;
+  app.innerHTML=`<section class="screen">
+    ${PageHeader({back:true,title:'Profil',actions:false})}
+    ${PageIntro({eyebrow:'GOOGLE DRIVE',title:'Synchronisation',subtitle:'Local-first : capture immédiate sur l’appareil, puis sauvegarde quand Internet revient.'})}
+    <div class="list-card static${connected?' success':''}">${IconBadge('cloud',connected?'mint':'sky','md')}<span class="list-card-copy"><strong>${connected?'Google Drive connecté':'Google Drive non connecté'}</strong><small>${connected?esc(driveStatus.email||'Compte Google connecté'):'Chaque utilisateur connecte son propre Google Drive.'}</small></span>${Tag(connected?'Actif':'Local',connected?'mint':'neutral')}</div>
+    ${SectionTitle('État local')}
+    <div class="stat-grid three">
+      ${StatCard({tone:'peach',iconName:'refresh',value:pending,label:'À synchroniser'})}
+      ${StatCard({tone:'pink',iconName:'fileText',value:state.files.length,label:'PDF locaux'})}
+      ${StatCard({tone:'lavender',iconName:'inbox',value:state.inbox.reduce((a,b)=>a+b.photoIds.length,0),label:'Captures'})}
+    </div>
+    ${SectionTitle('Comportement')}
+    <label class="toggle-card"><span class="list-card-copy"><strong>Synchroniser automatiquement</strong><small>Dès que l’iPhone retrouve Internet.</small></span><input type="checkbox" id="autoSync" class="switch" ${state.settings.autoDriveSync?'checked':''}></label>
+    <div class="button-stack">
+      ${connected?`${ActionButton({label:'Synchroniser maintenant',id:'syncNow',iconName:'refresh'})}${ActionButton({label:'Déconnecter Google Drive',id:'disconnectDrive',variant:'ghost',iconName:'x'})}`:ActionButton({label:'Connecter mon Google Drive',id:'connectDrive',iconName:'cloud'})}
+      ${ActionButton({label:'Installer Holioo sur l’écran d’accueil',id:'installPwa',variant:'soft',iconName:'phone'})}
+    </div>
+    ${Notice(`${icon('checkCircle',{size:18})}<span>Les fichiers synchronisés restent accessibles depuis Google Drive sur un ordinateur même si le téléphone est éteint.</span>`,'mint')}
+  </section>`;
+  byId('backBtn').onclick=()=>navigate('profile');
+  byId('autoSync').onchange=()=>{state.settings.autoDriveSync=byId('autoSync').checked;saveState()};
+  byId('syncNow')?.addEventListener('click',()=>runDriveSync('manual'));
+  byId('disconnectDrive')?.addEventListener('click',()=>disconnectDrive());
+  byId('connectDrive')?.addEventListener('click',()=>connectDrive());
+  byId('installPwa').onclick=showInstallSheet;
 }

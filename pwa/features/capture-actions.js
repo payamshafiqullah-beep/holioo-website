@@ -63,7 +63,7 @@ async function startCamera(){
     if(torch){
       torch.disabled=!caps.torch;
       torch.classList.toggle('unavailable',!caps.torch);
-      torch.querySelector('small').textContent=caps.torch?'Torche':'Indisponible';
+      torch.setAttribute('aria-label',caps.torch?'Flash':'Flash indisponible');
     }
 
     document.querySelectorAll('[data-zoom]').forEach(btn=>{
@@ -71,7 +71,7 @@ async function startCamera(){
       btn.disabled=z<cameraZoomMin||z>cameraZoomMax;
     });
 
-    setCameraStatus(cameraUsesHardwareZoom?'Caméra prête':'Caméra prête • zoom numérique');
+    setCameraStatus('Caméra prête');
   }catch(e){
     console.error(e);
     setCameraStatus('Caméra indisponible');
@@ -254,7 +254,7 @@ async function renderCaptureGalleryRail(){
     btn.className='rail-thumb';
     btn.dataset.photoId=id;
     btn.title='Ouvrir et recadrer';
-    btn.innerHTML=`<img src="${url}" alt="Photo ${captureIds.indexOf(id)+1}"><span>⌗</span>`;
+    btn.innerHTML=`<img src="${url}" alt="Photo ${captureIds.indexOf(id)+1}"><span>${icon('crop',{size:12,stroke:2.4})}</span>`;
     btn.onclick=()=>openCropEditor(id);
     rail.appendChild(btn);
   }
@@ -268,12 +268,7 @@ async function renderCaptureGalleryRail(){
       captureRailUrls.push(preview);
       lastBtn.innerHTML=`<img src="${preview}" alt="Dernière photo">`;
     }else{
-      lastBtn.innerHTML=`<svg class="camera-v3-gallery-icon" viewBox="0 0 24 24" aria-hidden="true">
-  <rect x="3.5" y="4.5" width="17" height="15" rx="3"></rect>
-  <circle cx="9" cy="9.5" r="1.6"></circle>
-  <path d="M5.8 16.5l4.2-4.1a1.35 1.35 0 0 1 1.9 0l2.1 2.1"></path>
-  <path d="M13 15.6l2.1-2.1a1.35 1.35 0 0 1 1.9 0l1.3 1.3"></path>
-</svg>`;
+      lastBtn.innerHTML=icon('image',{size:24});
     }
   }
 }
@@ -300,12 +295,8 @@ async function openCropEditor(photoId){
 
   host.innerHTML=`<div class="crop-editor" id="cropEditor">
     <div class="crop-editor-head">
-      <button class="crop-text-btn" id="cancelCrop">Annuler</button>
-      <div>
-        <b>Recadrer</b>
-        <small>Ajustez le cadre puis enregistrez</small>
-      </div>
-      <button class="crop-save-btn" id="saveCrop">Enregistrer</button>
+      <b>Recadrer</b>
+      <small>Déplacez le cadre ou tirez les coins</small>
     </div>
 
     <div class="crop-workspace" id="cropWorkspace">
@@ -320,13 +311,18 @@ async function openCropEditor(photoId){
       </div>
     </div>
 
-    <div class="crop-ratios">
-      <button class="crop-ratio active" data-ratio="free">Libre</button>
-      <button class="crop-ratio" data-ratio="1">1:1</button>
-      <button class="crop-ratio" data-ratio="1.333333">4:3</button>
-      <button class="crop-ratio" data-ratio="0.707071">A4</button>
+    <div class="crop-bar">
+      <div class="crop-ratios">
+        <button class="crop-ratio active" data-ratio="free">Libre</button>
+        <button class="crop-ratio" data-ratio="1">1:1</button>
+        <button class="crop-ratio" data-ratio="1.333333">4:3</button>
+        <button class="crop-ratio" data-ratio="0.707071">A4</button>
+      </div>
+      <div class="crop-actions">
+        <button class="crop-text-btn" id="cancelCrop">Annuler</button>
+        <button class="crop-save-btn" id="saveCrop">${icon('check',{size:18,stroke:2.4})}Enregistrer</button>
+      </div>
     </div>
-    <div class="crop-help">Déplacez le cadre ou tirez les coins pour ajuster.</div>
   </div>`;
 
   byId('cancelCrop').onclick=closeCropEditor;
@@ -515,7 +511,7 @@ function closeCaptureScreen(){
       photoIds:[...captureIds],
       createdAt:state.captureDraft.createdAt
     });
-    showToast('Photos gardées dans Inbox');
+    showToast('Photos gardées dans Captures');
   }
 
   state.captureDraft=null;
@@ -564,7 +560,7 @@ async function fillThumbs(containerId,ids,{selectable=false,split=false,viewerTi
 
 function saveBatchToInbox(batch){
   state.inbox.unshift({id:batch.id,title:`Capture ${fmtShort(batch.createdAt)}`,photoIds:[...batch.photoIds],createdAt:batch.createdAt});
-  saveState();currentBatch=null;showToast('Lot enregistré dans Inbox');queueSync();navigate('home');
+  saveState();currentBatch=null;showToast('Lot gardé dans Captures');queueSync();navigate('home');
 }
 
 function assignCurrentBatch(customTitle){

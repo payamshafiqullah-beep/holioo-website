@@ -1,3 +1,25 @@
+// Séance — galerie de photos, PDF, publication.
 async function renderSession(){
-  const ctx=findSessionContext();if(!ctx){navigate('courses');return}const{course,section,session}=ctx;app.innerHTML=`${backButton()}${pageHead(session.title,`${course.name} • ${section.name} • ${session.photoIds.length} photo${session.photoIds.length>1?'s':''}`,'SÉANCE')}${session.photoIds.length?`<div class="gallery-head"><div><b>Galerie</b><span> Touchez une photo pour l’ouvrir en plein écran.</span></div><button class="chip" id="openFirstPhoto">Plein écran</button></div><div class="thumbs" id="sessionThumbs"></div><div class="actions"><button class="btn primary full" id="buildPdf">Créer un PDF</button><button class="btn teal full" id="publishSession">${session.visibility==='public'?'Publié dans la bibliothèque ✓':'Publier dans la bibliothèque académique'}</button><button class="btn ghost full" id="renameSession">Renommer la séance</button></div>`:`<div class="card empty"><div class="empty-icon">●</div>Cette séance ne contient pas encore de photos.</div><div class="actions"><button class="btn orange full" data-nav="capture">Prendre des photos</button></div>`}`;byId('backBtn').onclick=()=>navigate('section');if(session.photoIds.length){await fillSessionThumbs(session);byId('openFirstPhoto').onclick=()=>openPhotoViewer(session.photoIds,0,{title:session.title,source:'session',sourceId:session.id,editable:true,returnView:'session',courseId:course.id,sectionId:section.id,sessionId:session.id})}document.getElementById('buildPdf')?.addEventListener('click',()=>navigate('pdfBuilder'));document.getElementById('publishSession')?.addEventListener('click',()=>publishSession(course,section,session));document.getElementById('renameSession')?.addEventListener('click',()=>openSheet({title:'Renommer la séance',body:`<div class="field"><label>Titre</label><input id="renameValue" value="${esc(session.title)}"></div>`,onConfirm:()=>{session.title=byId('renameValue').value.trim()||session.title;saveState();render();queueSync();return true}}))
+  const ctx=findSessionContext();if(!ctx){navigate('courses');return}
+  const{course,section,session}=ctx,n=session.photoIds.length,pub=session.visibility==='public';
+  app.innerHTML=`<section class="screen">
+    ${PageHeader({back:true,title:`${course.name} · ${section.name}`})}
+    ${PageIntro({eyebrow:'SÉANCE',title:session.title,subtitle:`${plural(n,'photo')} · ${fmtDate(session.createdAt)}`})}
+    ${n?`${SectionTitle('Galerie',{action:'Plein écran',id:'openFirstPhoto'})}
+      <div class="thumbs" id="sessionThumbs"></div>
+      <div class="button-stack">
+        ${ActionButton({label:'Créer un PDF',id:'buildPdf',iconName:'fileText'})}
+        ${ActionButton({label:pub?'Publiée dans la bibliothèque':'Publier dans la bibliothèque',id:'publishSession',variant:pub?'soft':'ghost',iconName:pub?'checkCircle':'globe'})}
+        ${ActionButton({label:'Renommer la séance',id:'renameSession',variant:'ghost',iconName:'pencil'})}
+      </div>`
+    :`${EmptyState({iconName:'camera',title:'Aucune photo',text:'Cette séance ne contient pas encore de photos.'})}${ActionButton({label:'Prendre des photos',variant:'capture',iconName:'camera',attrs:'data-nav="capture"'})}`}
+  </section>`;
+  byId('backBtn').onclick=()=>navigate('section');
+  if(n){
+    await fillSessionThumbs(session);
+    byId('openFirstPhoto').onclick=()=>openPhotoViewer(session.photoIds,0,{title:session.title,source:'session',sourceId:session.id,editable:true,returnView:'session',courseId:course.id,sectionId:section.id,sessionId:session.id});
+  }
+  byId('buildPdf')?.addEventListener('click',()=>navigate('pdfBuilder'));
+  byId('publishSession')?.addEventListener('click',()=>publishSession(course,section,session));
+  byId('renameSession')?.addEventListener('click',()=>openSheet({title:'Renommer la séance',body:Field({label:'Titre',id:'renameValue',value:session.title}),onConfirm:()=>{session.title=byId('renameValue').value.trim()||session.title;saveState();render();queueSync();return true}}));
 }

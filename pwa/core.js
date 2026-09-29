@@ -24,7 +24,7 @@ const fmtDate=s=>{try{return new Date(s).toLocaleDateString('fr-FR',{day:'2-digi
 const fmtShort=s=>{try{return new Date(s).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})}catch{return''}};
 const sectionClass=n=>n==='CM'?'cm':n==='TD'?'td':n==='TP'?'tp':'custom';
 const sectionColor=n=>n==='CM'?'#506BFF':n==='TD'?'#8C5CF5':n==='TP'?'#FF9E42':'#29ADB5';
-const defaultState=()=>({version:3,onboardingComplete:false,academicSetupSeen:false,profile:{displayName:'Étudiant',holiooId:'',university:'',faculty:'',program:'',level:'',semester:'',academicYear:'2026–2027',publicProfile:false},courses:[sampleCourse('VHDL','#8C5CF5'),sampleCourse('Mathématiques','#506BFF'),sampleCourse('Électronique','#FF9E42')],inbox:[],files:[],favorites:[],settings:{autoDriveSync:true}});
+const defaultState=()=>({version:3,onboardingComplete:false,academicSetupSeen:false,profile:{displayName:'Étudiant',holiooId:'',avatarUrl:'',university:'',faculty:'',program:'',level:'',semester:'',academicYear:'2026–2027',publicProfile:false},courses:[sampleCourse('VHDL','#8C5CF5'),sampleCourse('Mathématiques','#506BFF'),sampleCourse('Électronique','#FF9E42')],inbox:[],files:[],favorites:[],settings:{autoDriveSync:true}});
 function sampleCourse(name,color){return{id:uid(),name,color,sections:['CM','TD','TP'].map((n,i)=>({id:uid(),name:n,type:n,sortOrder:i,sessions:[]}))}}
 function loadState(){
   try{
@@ -59,7 +59,7 @@ function openSheet({title,subtitle='',body='',confirmText='Enregistrer',confirmC
   return close;
 }
 
-function profilePayload(){const p=state.profile;return{id:currentUser?.id,user_id:currentUser?.id,holioo_id:p.holiooId,name:p.displayName,display_name:p.displayName,university:p.university||null,faculty:p.faculty||null,program:p.program||null,level:p.level||null,semester:p.semester||null,academic_year:p.academicYear||null,public_profile:p.publicProfile,is_public:p.publicProfile}}
+function profilePayload(){const p=state.profile;return{id:currentUser?.id,user_id:currentUser?.id,holioo_id:p.holiooId,name:p.displayName,display_name:p.displayName,university:p.university||null,faculty:p.faculty||null,program:p.program||null,level:p.level||null,semester:p.semester||null,academic_year:p.academicYear||null,avatar_url:p.avatarUrl||null,public_profile:p.publicProfile,is_public:p.publicProfile}}
 async function bootstrapCloud(){
   if(!navigator.onLine||!window.supabase)return;
   try{
@@ -68,7 +68,7 @@ async function bootstrapCloud(){
     const auth=await r.json();if(!r.ok)throw new Error(auth.error||'Connexion cloud impossible');
     sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});await sb.auth.setSession({access_token:auth.access_token,refresh_token:auth.refresh_token});currentUser=auth.user;cloudReady=true;
     const {data:profile}=await sb.from('profiles').select('*').eq('id',currentUser.id).maybeSingle();
-    if(profile){state.profile={...state.profile,displayName:profile.name||profile.display_name||state.profile.displayName,holiooId:profile.holioo_id||state.profile.holiooId,university:profile.university??state.profile.university,faculty:profile.faculty??state.profile.faculty,program:profile.program??state.profile.program,level:profile.level??state.profile.level,semester:profile.semester??state.profile.semester,academicYear:profile.academic_year??state.profile.academicYear,publicProfile:!!(profile.public_profile||profile.is_public)};saveState()}
+    if(profile){state.profile={...state.profile,displayName:profile.name||profile.display_name||state.profile.displayName,holiooId:profile.holioo_id||state.profile.holiooId,avatarUrl:profile.avatar_url??state.profile.avatarUrl,university:profile.university??state.profile.university,faculty:profile.faculty??state.profile.faculty,program:profile.program??state.profile.program,level:profile.level??state.profile.level,semester:profile.semester??state.profile.semester,academicYear:profile.academic_year??state.profile.academicYear,publicProfile:!!(profile.public_profile||profile.is_public)};saveState()}
     else{const hid=`h${currentUser.id.replace(/-/g,'').slice(0,10)}`;state.profile.holiooId=hid;saveState();await sb.from('profiles').insert({...profilePayload(),holioo_id:hid})}
     try{driveStatus=await Drive.status(sb,currentUser.id)}catch{driveStatus={connected:false,email:null}}
     sb.channel('public-materials-live').on('postgres_changes',{event:'*',schema:'public',table:'public_materials'},()=>{if(currentView==='library')render()}).subscribe();

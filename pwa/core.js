@@ -5,13 +5,9 @@ const STORE_KEY='holioo_pwa_state_v3';
 const LEGACY_KEY='holioo_pwa_state_v1';
 const app=document.getElementById('app');
 const appShell=document.getElementById('appShell');
-const topbar=document.getElementById('topbar');
 const bottomNav=document.getElementById('bottomNav');
 const toastEl=document.getElementById('toast');
 const offlineBanner=document.getElementById('offlineBanner');
-const syncPill=document.getElementById('syncPill');
-const syncText=document.getElementById('syncText');
-const avatarBtn=document.getElementById('avatarBtn');
 const sheetRoot=document.getElementById('sheetRoot');
 const byId=id=>document.getElementById(id);
 const DB=window.HoliooDB;
@@ -28,14 +24,14 @@ const fmtDate=s=>{try{return new Date(s).toLocaleDateString('fr-FR',{day:'2-digi
 const fmtShort=s=>{try{return new Date(s).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})}catch{return''}};
 const sectionClass=n=>n==='CM'?'cm':n==='TD'?'td':n==='TP'?'tp':'custom';
 const sectionColor=n=>n==='CM'?'#506BFF':n==='TD'?'#8C5CF5':n==='TP'?'#FF9E42':'#29ADB5';
-const defaultState=()=>({version:3,onboardingComplete:false,academicSetupSeen:false,profile:{displayName:'Étudiant',holiooId:'',university:'',faculty:'',program:'',level:'',semester:'',academicYear:'2026–2027',publicProfile:false},courses:[sampleCourse('VHDL','#8C5CF5'),sampleCourse('Mathématiques','#506BFF'),sampleCourse('Électronique','#FF9E42')],inbox:[],files:[],settings:{autoDriveSync:true}});
+const defaultState=()=>({version:3,onboardingComplete:false,academicSetupSeen:false,profile:{displayName:'Étudiant',holiooId:'',university:'',faculty:'',program:'',level:'',semester:'',academicYear:'2026–2027',publicProfile:false},courses:[sampleCourse('VHDL','#8C5CF5'),sampleCourse('Mathématiques','#506BFF'),sampleCourse('Électronique','#FF9E42')],inbox:[],files:[],favorites:[],settings:{autoDriveSync:true}});
 function sampleCourse(name,color){return{id:uid(),name,color,sections:['CM','TD','TP'].map((n,i)=>({id:uid(),name:n,type:n,sortOrder:i,sessions:[]}))}}
 function loadState(){
   try{
     let raw=localStorage.getItem(STORE_KEY);if(!raw)raw=localStorage.getItem(LEGACY_KEY);
     const parsed=raw?JSON.parse(raw):null;if(!parsed)return defaultState();
     const base=defaultState();const merged={...base,...parsed,version:3,profile:{...base.profile,...parsed.profile},settings:{...base.settings,...parsed.settings}};
-    merged.courses=Array.isArray(parsed.courses)&&parsed.courses.length?parsed.courses:base.courses;merged.inbox=Array.isArray(parsed.inbox)?parsed.inbox:[];merged.files=Array.isArray(parsed.files)?parsed.files:[];
+    merged.courses=Array.isArray(parsed.courses)&&parsed.courses.length?parsed.courses:base.courses;merged.inbox=Array.isArray(parsed.inbox)?parsed.inbox:[];merged.files=Array.isArray(parsed.files)?parsed.files:[];merged.favorites=Array.isArray(parsed.favorites)?parsed.favorites:[];
     merged.courses.forEach(ensureDefaultSections);return merged;
   }catch(e){console.warn(e);return defaultState()}
 }
@@ -47,24 +43,18 @@ if(state.captureDraft?.photoIds?.length){state.inbox.unshift({id:state.captureDr
 saveState();
 
 function showToast(message){toastEl.textContent=message;toastEl.classList.remove('hidden');clearTimeout(showToast.t);showToast.t=setTimeout(()=>toastEl.classList.add('hidden'),3000)}
-function pageHead(title,subtitle='',eyebrow='HOLIOO'){return`<div class="page-head pastel-page-head"><p class="eyebrow">${esc(eyebrow)}</p><h1 class="page-title">${esc(title)}</h1>${subtitle?`<p class="subtitle">${esc(subtitle)}</p>`:''}</div>`}
-function pastelBrandHeader({kicker='',title='',subtitle='',showAvatar=true}={}){const initials=esc(iconLetter(state.profile.displayName));return`<div class="pastel-brand-header"><div><div class="pastel-wordmark">Holioo<span class="pastel-wordmark-dot"></span><span class="pastel-wordmark-rays">⌁</span></div>${kicker?`<p class="pastel-kicker">${esc(kicker)}</p>`:''}${title?`<h1 class="pastel-title">${esc(title)}</h1>`:''}${subtitle?`<p class="pastel-subtitle">${esc(subtitle)}</p>`:''}</div>${showAvatar?`<button class="pastel-avatar" data-nav="profile" aria-label="Profil">${initials}</button>`:''}</div>`}
-function sectionHeading(title,action='Voir tout',nav=''){return`<div class="pastel-section-head"><h2>${esc(title)}</h2>${action?`<button ${nav?`data-nav="${nav}"`:''}>${esc(action)} <span>›</span></button>`:''}</div>`}
-function backButton(){return'<button class="back" id="backBtn" aria-label="Retour">‹</button>'}
 function setChrome(hidden){appShell.classList.toggle('hidden-chrome',hidden)}
 function setNav(view){document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.nav===view))}
 function navigate(view,payload={}){
-  appShell.classList.toggle('home-modern',view==='home');
-  appShell.classList.toggle('pastel-main-view',['home','courses','library','files'].includes(view));
   appShell.classList.toggle('capture-active',view==='capture');
   if(view!=='capture')stopCamera();currentView=view;
   if(payload.courseId)currentCourseId=payload.courseId;if(payload.sectionId)currentSectionId=payload.sectionId;if(payload.sessionId)currentSessionId=payload.sessionId;
-  const mainViews=['home','courses','capture','library','files'];setNav(mainViews.includes(view)?view:'');setChrome(['welcome','academicSetup','photoViewer','pdfViewer'].includes(view));render().catch(e=>{console.error(e);showToast('Une erreur est survenue')});
+  const mainViews=['home','courses','capture','library','files'];setNav(mainViews.includes(view)?view:'');setChrome(['welcome','academicSetup','photoViewer','pdfViewer','capture'].includes(view));window.scrollTo(0,0);render().catch(e=>{console.error(e);showToast('Une erreur est survenue')});
 }
 document.addEventListener('click',e=>{const n=e.target.closest('[data-nav]');if(n){e.preventDefault();navigate(n.dataset.nav)}});
 
 function openSheet({title,subtitle='',body='',confirmText='Enregistrer',confirmClass='primary',onConfirm=null,secondaryText='Annuler',onSecondary=null}){
-  sheetRoot.innerHTML=`<div class="sheet" id="activeSheet"><div class="sheet-card"><div class="sheet-handle"></div><h2 class="sheet-title">${esc(title)}</h2>${subtitle?`<p class="sheet-sub">${esc(subtitle)}</p>`:''}<div>${body}</div><div class="sheet-actions"><button class="btn ${confirmClass} full" id="sheetConfirm">${esc(confirmText)}</button>${secondaryText?`<button class="btn ghost full" id="sheetCancel">${esc(secondaryText)}</button>`:''}</div></div></div>`;
+  sheetRoot.innerHTML=`<div class="sheet" id="activeSheet"><div class="sheet-card"><div class="sheet-handle"></div><h2 class="sheet-title">${esc(title)}</h2>${subtitle?`<p class="sheet-sub">${esc(subtitle)}</p>`:''}<div>${body}</div><div class="sheet-actions"><button class="action-btn ${confirmClass==='coral'?'danger':'primary'} full" id="sheetConfirm">${esc(confirmText)}</button>${secondaryText?`<button class="action-btn ghost full" id="sheetCancel">${esc(secondaryText)}</button>`:''}</div></div></div>`;
   const close=()=>sheetRoot.innerHTML='';document.getElementById('sheetCancel')?.addEventListener('click',async()=>{if(onSecondary)await onSecondary();close()});document.getElementById('activeSheet')?.addEventListener('click',e=>{if(e.target.id==='activeSheet')close()});document.getElementById('sheetConfirm').addEventListener('click',async()=>{const ok=onConfirm?await onConfirm(close):true;if(ok!==false&&sheetRoot.innerHTML)close()});
   return close;
 }
@@ -88,10 +78,11 @@ async function bootstrapCloud(){
 async function syncProfile(){if(sb&&currentUser&&navigator.onLine){const{error}=await sb.from('profiles').upsert(profilePayload(),{onConflict:'id'});if(error)throw error}}
 async function refreshSyncIndicator(){
   let pending=0;try{pending=await Drive.pendingCount(state,DB)}catch{}
-  syncPill.classList.remove('online','pending','error');
-  if(!navigator.onLine){syncText.textContent='Hors ligne';return}
-  if(syncBusy){syncPill.classList.add('pending');syncText.textContent='Sync…';return}
-  if(driveStatus.connected){syncPill.classList.add(pending?'pending':'online');syncText.textContent=pending?`${pending} à sync`:'Drive OK'}else{syncText.textContent=pending?'Local':'Local'}
+  if(!navigator.onLine)syncIndicator={cls:'offline',text:'Hors ligne'};
+  else if(syncBusy)syncIndicator={cls:'pending',text:'Synchronisation…'};
+  else if(driveStatus.connected)syncIndicator=pending?{cls:'pending',text:`${pending} élément(s) à synchroniser`}:{cls:'online',text:'Google Drive à jour'};
+  else syncIndicator={cls:'',text:'Enregistré sur cet appareil'};
+  applyChromeStatus();
 }
 function queueSync(reason='auto'){clearTimeout(queueSync.t);queueSync.t=setTimeout(()=>runDriveSync(reason),600)}
 async function runDriveSync(reason='manual'){
@@ -99,10 +90,9 @@ async function runDriveSync(reason='manual'){
   try{
     driveStatus=await Drive.status(sb,currentUser.id);if(!driveStatus.connected){if(reason==='manual')showToast('Connectez Google Drive d’abord');return}
     const result=await Drive.syncAll({sb,user:currentUser,state,db:DB,onProgress:()=>refreshSyncIndicator()});if(reason==='manual'||result.synced)showToast(result.synced?`${result.synced} élément(s) synchronisé(s)`:'Tout est déjà synchronisé');
-  }catch(e){console.error(e);syncPill.classList.add('error');if(reason==='manual')showToast(`Sync impossible : ${e.message||e}`)}finally{syncBusy=false;await refreshSyncIndicator();if(currentView==='sync')render()}
+  }catch(e){console.error(e);syncIndicator={cls:'error',text:'Erreur de synchronisation'};applyChromeStatus();if(reason==='manual')showToast(`Sync impossible : ${e.message||e}`)}finally{syncBusy=false;await refreshSyncIndicator();if(currentView==='sync')render()}
 }
 
-function courseCard(c){const sessions=c.sections.reduce((a,s)=>a+(s.sessions?.length||0),0),photos=c.sections.reduce((a,s)=>a+s.sessions.reduce((x,q)=>x+(q.photoIds?.length||0),0),0);return`<button class="card row card-button" data-course="${c.id}"><span class="course-icon" style="background:${c.color||'#506BFF'}">${esc(iconLetter(c.name))}</span><span class="grow"><span class="title">${esc(c.name)}</span><span class="meta">${sessions} séance${sessions>1?'s':''} • ${photos} photo${photos>1?'s':''}</span></span><span class="chev">›</span></button>`}
 function bindCourseCards(){document.querySelectorAll('[data-course]').forEach(b=>b.onclick=()=>{currentCourseId=b.dataset.course;navigate('course')})}
 function getCourse(id=currentCourseId){return state.courses.find(c=>c.id===id)}
 function getSection(course=getCourse(),id=currentSectionId){return course?.sections.find(s=>s.id===id)}

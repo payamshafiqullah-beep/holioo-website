@@ -1,73 +1,132 @@
-function libraryFileIcon(type=''){
-  const t=(type||'').toLowerCase();
-  if(t.includes('pdf'))return'<span class="pastel-lib-symbol pdf">PDF</span>';
-  if(t.includes('photo')||t.includes('image'))return'<span class="pastel-lib-symbol image">▧</span>';
-  return'<span class="pastel-lib-symbol doc">▤</span>'
+// Bibliothèque — ressources personnelles et matériel académique partagé.
+// Navigation inside the public library: years → courses → sections → items → item.
+
+function libraryItemCard(i,kind){
+  return ListCard({iconName:'users',tone:'mint',title:i.title||'Ressource académique',meta:`${i.course||'Cours'} · ${i.section||'Section'} · ${plural(i.photo_count||0,'photo')}`,attrs:`data-libitem-open="${esc(i.id)}"`,search:`${i.title} ${i.course} ${i.section}`,kind,tag:isFavorite(i.id)?`<span class="fav-star">${icon('star',{size:16})}</span>`:''});
 }
+function isFavorite(id){return state.favorites.some(f=>f.id===id)}
+function toggleFavorite(item){
+  if(isFavorite(item.id))state.favorites=state.favorites.filter(f=>f.id!==item.id);
+  else state.favorites.unshift({id:item.id,title:item.title,course:item.course,section:item.section,academic_year:item.academic_year,photo_count:item.photo_count,created_at:item.created_at,storage_paths:item.storage_paths||[],contributor_name:item.contributor_name||null});
+  saveState();
+}
+
 async function renderLibrary(){
-  setChrome(false);appShell.classList.add('pastel-main-view');
+  setChrome(false);
   const p=state.profile;
-  if(!navigator.onLine||!sb){
-    app.innerHTML=`<section class="pastel-screen">${pastelBrandHeader({title:'Ma bibliothèque',subtitle:'Vos contenus privés restent disponibles sur cet appareil.'})}<div class="pastel-empty-wide">Connexion au cloud indisponible pour le moment.</div></section>`;return
+  if(currentLibrary.step!=='years')return renderLibraryDrill();
+
+  const cloud=navigator.onLine&&sb;
+  const profileReady=!!(p.university&&p.program);
+  let materials=[];
+  if(cloud&&profileReady){
+    const{data}=await sb.from('public_materials').select('id,academic_year,title,course,section,created_at,photo_count,storage_paths,contributor_name').eq('university',p.university).eq('program',p.program).eq('level',p.level).eq('semester',p.semester).eq('is_published',true).order('created_at',{ascending:false});
+    materials=data||[];
   }
-  if(!p.university||!p.program){
-    app.innerHTML=`<section class="pastel-screen">${pastelBrandHeader({title:'Ma bibliothèque',subtitle:'Ajoutez votre contexte académique pour afficher les ressources correspondantes.'})}<div class="pastel-notice">Université, filière, niveau et semestre permettent de filtrer votre bibliothèque académique.</div><button class="pastel-primary-cta" data-nav="profile">Compléter mon profil</button></section>`;return
-  }
-  if(currentLibrary.step==='years'){
-    const{data=[]}=await sb.from('public_materials').select('academic_year,title,course,section,created_at,photo_count').eq('university',p.university).eq('program',p.program).eq('level',p.level).eq('semester',p.semester).eq('is_published',true);
-    const years=[...new Set([p.academicYear,...data.map(x=>x.academic_year).filter(Boolean)])].sort().reverse();
-    const recent=[...data].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,3);
-    const courses=[...new Set(data.map(x=>x.course).filter(Boolean))];
-    app.innerHTML=`
-      <section class="pastel-screen library-pastel">
-        ${pastelBrandHeader({title:'Ma bibliothèque',subtitle:'Tous vos documents, fiches et ressources académiques au même endroit.'})}
-        <label class="pastel-search"><span>⌕</span><input id="librarySearch" type="search" placeholder="Rechercher un document, une fiche, un sujet..."></label>
-        <div class="pastel-filter-row library-filters"><button class="active">Tous</button><button>Documents</button><button>Fiches</button><button>PDF</button><button>Collections</button></div>
-        ${sectionHeading('Mes ressources','Voir tout','')}
-        <div class="pastel-stat-grid">
-          <div class="pastel-stat-card pink"><span>▤</span><strong>${data.length}</strong><b>Documents</b><small>Ressources publiques</small></div>
-          <div class="pastel-stat-card peach"><span>▥</span><strong>${data.reduce((a,x)=>a+(x.photo_count||0),0)}</strong><b>Photos</b><small>Supports de cours</small></div>
-          <div class="pastel-stat-card lavender"><span>PDF</span><strong>${data.filter(x=>(x.title||'').toLowerCase().includes('pdf')).length}</strong><b>PDF</b><small>Documents partagés</small></div>
-          <div class="pastel-stat-card mint"><span>▰</span><strong>${courses.length}</strong><b>Collections</b><small>Cours organisés</small></div>
-        </div>
-        ${sectionHeading('Imports récents','Voir tout','')}
-        <div class="pastel-import-list">
-          ${recent.length?recent.map(i=>`<div class="pastel-import-row">${libraryFileIcon(i.title)}<div><strong>${esc(i.title||'Ressource académique')}</strong><small>${esc(i.course||'Cours')} • ${fmtShort(i.created_at)}</small></div><span class="pastel-tag">${esc(i.section||'Public')}</span><b>•••</b></div>`).join(''):'<div class="pastel-empty-wide">Aucune ressource récente.</div>'}
-        </div>
-        ${sectionHeading('Mes collections','Voir tout','')}
-        <div class="pastel-collection-grid">
-          ${courses.slice(0,4).map((c,i)=>`<button class="pastel-collection-card ${['pink','lavender','mint','peach'][i%4]}" data-libcourse-direct="${esc(c)}"><span>${['⌂','▣','◒','▥'][i%4]}</span><div><strong>${esc(c)}</strong><small>Matériel académique</small></div><b>›</b></button>`).join('')||'<div class="pastel-empty-wide">Aucune collection disponible.</div>'}
-        </div>
-        ${sectionHeading('Années universitaires','', '')}
-        <div class="pastel-year-grid">${years.map(y=>`<button class="pastel-year-card" data-year="${esc(y)}"><span><strong>${esc(y)}</strong><small>Cours → sections → matériel public</small></span><b>›</b></button>`).join('')}</div>
-      </section>`;
-    document.querySelectorAll('[data-year]').forEach(b=>b.onclick=()=>{currentLibrary={step:'courses',year:b.dataset.year};render()});
-    document.querySelectorAll('[data-libcourse-direct]').forEach(b=>{b.onclick=()=>{currentLibrary={step:'sections',year:p.academicYear,course:b.dataset.libcourseDirect};render()}});
-    return
-  }
+  const publicCourses=[...new Set(materials.map(x=>x.course).filter(Boolean))];
+  const years=[...new Set([p.academicYear,...materials.map(x=>x.academic_year).filter(Boolean)])].sort().reverse();
+  const notes=state.courses.flatMap(c=>c.sections.flatMap(s=>s.sessions.map(q=>({course:c,section:s,session:q})))).sort((a,b)=>new Date(b.session.createdAt)-new Date(a.session.createdAt)).slice(0,5);
+  const pdfs=state.files.slice(0,5);
+  const favIds=new Set(state.favorites.map(f=>f.id));
+
+  const cloudNotice=!cloud
+    ?Notice(`${icon('wifiOff',{size:18})}<span>Hors connexion : le matériel partagé s’affichera au retour d’Internet. Vos notes et PDF restent disponibles.</span>`,'peach')
+    :!profileReady?`<div class="notice tone-lavender">${icon('cap',{size:18})}<span>Complétez votre profil académique pour voir le matériel de votre promotion.</span><button class="link-btn" data-nav="profile">Compléter</button></div>`:'';
+
+  app.innerHTML=`<section class="screen">
+    ${PageHeader({title:'Bibliothèque'})}
+    ${PageIntro({title:'Ma bibliothèque',subtitle:'Vos cours, PDF, notes et ressources partagées.'})}
+    ${SearchBar({id:'librarySearch',placeholder:'Rechercher dans la bibliothèque...'})}
+    ${FilterChips('libraryFilters',[{value:'all',label:'Tous'},{value:'cours',label:'Cours'},{value:'pdf',label:'PDF'},{value:'notes',label:'Notes'},{value:'sessions',label:'Sessions'},{value:'favoris',label:'Favoris'}],'all')}
+    <div class="stat-grid">
+      <button class="stat-tile" data-pick="cours">${StatCard({tone:'lavender',iconName:'book',value:publicCourses.length,label:'Cours enregistrés'})}</button>
+      <button class="stat-tile" data-pick="pdf">${StatCard({tone:'pink',iconName:'fileText',value:state.files.length,label:'PDF'})}</button>
+      <button class="stat-tile" data-pick="notes">${StatCard({tone:'mint',iconName:'note',value:state.courses.reduce((a,c)=>a+courseStats(c).sessions,0),label:'Notes privées'})}</button>
+      <button class="stat-tile" data-pick="sessions">${StatCard({tone:'peach',iconName:'users',value:materials.length,label:'Sessions partagées'})}</button>
+    </div>
+    ${cloudNotice}
+    <div id="libraryContent">
+      <div data-filter-group>
+        ${SectionTitle('Favoris')}
+        <div class="list-stack">${state.favorites.map(f=>libraryItemCard(f,'favoris')).join('')}</div>
+      </div>
+      <div data-filter-group>
+        ${SectionTitle('Cours enregistrés')}
+        <div class="collection-grid">${publicCourses.map((c,i)=>{const v=courseVisual({name:c},i),n=materials.filter(m=>m.course===c).length;return`<button class="collection-card tone-${v.tone}" data-libcourse-direct="${esc(c)}" data-kind="cours" data-search="${esc(c.toLowerCase())}">${IconBadge(v.iconName,v.tone,'md')}<strong>${esc(c)}</strong><small>${plural(n,'ressource')}</small></button>`}).join('')}</div>
+      </div>
+      <div data-filter-group>
+        ${SectionTitle('PDF récents',{action:'Voir tout',nav:'files'})}
+        <div class="list-stack">${pdfs.map(f=>ListCard({iconName:'fileText',tone:'pink',title:f.title,meta:`${fmtDate(f.createdAt)} · ${f.pages||'—'} pages`,attrs:`data-pdf-open="${f.id}"`,search:f.title,kind:'pdf'})).join('')}</div>
+      </div>
+      <div data-filter-group>
+        ${SectionTitle('Notes privées')}
+        <div class="list-stack">${notes.map(n=>ListCard({iconName:'note',tone:'sky',title:n.session.title,meta:`${n.course.name} · ${n.section.name} · ${plural(n.session.photoIds.length,'photo')}`,attrs:`data-note-open="${n.session.id}"`,search:`${n.session.title} ${n.course.name}`,kind:'notes',tag:Tag('Privé','neutral')})).join('')}</div>
+      </div>
+      <div data-filter-group>
+        ${SectionTitle('Sessions partagées')}
+        <div class="list-stack">${materials.filter(m=>!favIds.has(m.id)).slice(0,8).map(m=>libraryItemCard(m,'sessions')).join('')}</div>
+      </div>
+      <div data-filter-group>
+        ${SectionTitle('Années universitaires')}
+        <div class="list-stack">${cloud&&profileReady?years.map(y=>ListCard({iconName:'calendar',tone:'yellow',title:y,meta:'Cours → sections → matériel public',attrs:`data-year="${esc(y)}"`,search:y,kind:'cours'})).join(''):''}</div>
+      </div>
+    </div>
+    <div id="libraryEmpty" hidden>${EmptyState({iconName:'library',title:'Rien à afficher',text:'Aucun élément ne correspond à ce filtre pour le moment.'})}</div>
+  </section>`;
+
+  bindListFilter({searchId:'librarySearch',chipsId:'libraryFilters',scope:'#libraryContent',onChange:({shown})=>byId('libraryEmpty').hidden=!!shown});
+  document.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>document.querySelector(`#libraryFilters [data-chip="${b.dataset.pick}"]`)?.click());
+  document.querySelectorAll('[data-year]').forEach(b=>b.onclick=()=>{currentLibrary={step:'courses',year:b.dataset.year};render()});
+  document.querySelectorAll('[data-libcourse-direct]').forEach(b=>b.onclick=()=>{currentLibrary={step:'sections',year:p.academicYear,course:b.dataset.libcourseDirect};render()});
+  document.querySelectorAll('[data-pdf-open]').forEach(b=>b.onclick=()=>openPdfViewer(b.dataset.pdfOpen,'library'));
+  document.querySelectorAll('[data-note-open]').forEach(b=>b.onclick=()=>{const ctx=findSessionContext(b.dataset.noteOpen);if(!ctx)return;currentCourseId=ctx.course.id;currentSectionId=ctx.section.id;currentSessionId=ctx.session.id;navigate('session')});
+  const all=[...materials,...state.favorites];
+  document.querySelectorAll('[data-libitem-open]').forEach(b=>b.onclick=()=>{const item=all.find(x=>x.id===b.dataset.libitemOpen);if(item){currentLibrary={step:'item',year:item.academic_year,course:item.course,section:item.section,item,from:'years'};render()}});
+}
+
+async function renderLibraryDrill(){
+  if(!navigator.onLine||!sb){if(currentLibrary.step==='item')return renderLibraryItem();currentLibrary={step:'years'};return renderLibrary()}
+  const back=to=>{byId('backBtn').onclick=()=>{currentLibrary={...currentLibrary,...to};render()}};
+
   if(currentLibrary.step==='courses'){
-    const{data=[]}=await libraryQuery('course'),courses=[...new Set(data.map(x=>x.course))].sort();
-    app.innerHTML=`<section class="pastel-screen">${backButton()}${pastelBrandHeader({kicker:'Bibliothèque',title:currentLibrary.year,subtitle:'Cours avec matériel public.'})}<div class="pastel-course-list">${courses.length?courses.map((c,i)=>`<button class="pastel-course-row ${['sky','peach','mint','lavender'][i%4]}" data-libcourse="${esc(c)}"><span class="pastel-row-icon">▥</span><span class="pastel-row-copy"><strong>${esc(c)}</strong><small>Ouvrir les sections</small><em>Matériel académique public</em></span><span class="pastel-row-menu">›</span></button>`).join(''):'<div class="pastel-empty-wide">Aucun matériel public cette année.</div>'}</div></section>`;
-    byId('backBtn').onclick=()=>{currentLibrary={step:'years'};render()};
-    document.querySelectorAll('[data-libcourse]').forEach(b=>b.onclick=()=>{currentLibrary={...currentLibrary,step:'sections',course:b.dataset.libcourse};render()});return
+    const{data=[]}=await libraryQuery('course'),courses=[...new Set((data||[]).map(x=>x.course))].sort();
+    app.innerHTML=`<section class="screen">${PageHeader({back:true,title:'Bibliothèque'})}${PageIntro({eyebrow:'ANNÉE UNIVERSITAIRE',title:currentLibrary.year,subtitle:'Cours avec du matériel partagé.'})}
+      <div class="collection-grid">${courses.map((c,i)=>{const v=courseVisual({name:c},i);return`<button class="collection-card tone-${v.tone}" data-libcourse="${esc(c)}">${IconBadge(v.iconName,v.tone,'md')}<strong>${esc(c)}</strong><small>Ouvrir les sections</small></button>`}).join('')}</div>
+      ${courses.length?'':EmptyState({iconName:'library',title:'Aucun matériel',text:'Rien n’a encore été partagé pour cette année.'})}</section>`;
+    back({step:'years',year:null});
+    document.querySelectorAll('[data-libcourse]').forEach(b=>b.onclick=()=>{currentLibrary={...currentLibrary,step:'sections',course:b.dataset.libcourse};render()});return;
   }
   if(currentLibrary.step==='sections'){
-    const{data=[]}=await libraryQuery('section').eq('course',currentLibrary.course),sections=[...new Set(data.map(x=>x.section))];
-    app.innerHTML=`<section class="pastel-screen">${backButton()}${pastelBrandHeader({kicker:currentLibrary.year,title:currentLibrary.course,subtitle:'Choisissez une section.'})}<div class="pastel-collection-grid">${sections.map((s,i)=>`<button class="pastel-collection-card ${['lavender','sky','peach','mint'][i%4]}" data-libsection="${esc(s)}"><span>${esc(iconLetter(s))}</span><div><strong>${esc(s)}</strong><small>Séances publiques</small></div><b>›</b></button>`).join('')}</div></section>`;
-    byId('backBtn').onclick=()=>{currentLibrary={...currentLibrary,step:'courses',course:null};render()};
-    document.querySelectorAll('[data-libsection]').forEach(b=>b.onclick=()=>{currentLibrary={...currentLibrary,step:'items',section:b.dataset.libsection};render()});return
+    const{data=[]}=await libraryQuery('section').eq('course',currentLibrary.course),sections=[...new Set((data||[]).map(x=>x.section))];
+    app.innerHTML=`<section class="screen">${PageHeader({back:true,title:'Bibliothèque'})}${PageIntro({eyebrow:currentLibrary.year,title:currentLibrary.course,subtitle:'Choisissez une section.'})}
+      <div class="list-stack">${sections.map(s=>ListCard({iconName:'layers',tone:sectionTone(s),title:s,meta:'Séances partagées',attrs:`data-libsection="${esc(s)}"`})).join('')}</div>
+      ${sections.length?'':EmptyState({iconName:'layers',title:'Aucune section',text:'Aucun matériel public pour ce cours.'})}</section>`;
+    back({step:'courses',course:null});
+    document.querySelectorAll('[data-libsection]').forEach(b=>b.onclick=()=>{currentLibrary={...currentLibrary,step:'items',section:b.dataset.libsection};render()});return;
   }
   if(currentLibrary.step==='items'){
     const{data=[]}=await libraryQuery('*').eq('course',currentLibrary.course).eq('section',currentLibrary.section).order('created_at',{ascending:false});
-    app.innerHTML=`<section class="pastel-screen">${backButton()}${pastelBrandHeader({kicker:currentLibrary.course,title:currentLibrary.section,subtitle:'Matériel partagé volontairement.'})}<div class="pastel-filter-row"><button class="active">Récent</button><button>Photos</button><button>PDF</button></div><div class="pastel-file-list">${data.length?data.map(i=>`<button class="pastel-file-row" data-libitem="${i.id}"><span class="pastel-file-icon lavender">▤</span><span class="pastel-file-copy"><strong>${esc(i.title)}</strong><small>${i.photo_count||0} photos • ${fmtShort(i.created_at)}</small></span><span class="pastel-tag">PUBLIC</span><span class="pastel-row-menu">›</span></button>`).join(''):'<div class="pastel-empty-wide">Aucun matériel public ici.</div>'}</div></section>`;
-    byId('backBtn').onclick=()=>{currentLibrary={...currentLibrary,step:'sections',section:null};render()};
-    document.querySelectorAll('[data-libitem]').forEach(b=>b.onclick=()=>{currentLibrary={...currentLibrary,step:'item',item:data.find(x=>x.id===b.dataset.libitem)};render()});return
+    app.innerHTML=`<section class="screen">${PageHeader({back:true,title:'Bibliothèque'})}${PageIntro({eyebrow:currentLibrary.course,title:currentLibrary.section,subtitle:'Matériel partagé volontairement par des étudiants.'})}
+      <div class="list-stack">${(data||[]).map(i=>ListCard({iconName:'image',tone:'lavender',title:i.title,meta:`${plural(i.photo_count||0,'photo')} · ${fmtShort(i.created_at)}`,attrs:`data-libitem="${i.id}"`,tag:Tag('Public','mint')})).join('')}</div>
+      ${(data||[]).length?'':EmptyState({iconName:'image',title:'Rien ici',text:'Aucun matériel public dans cette section.'})}</section>`;
+    back({step:'sections',section:null});
+    document.querySelectorAll('[data-libitem]').forEach(b=>b.onclick=()=>{currentLibrary={...currentLibrary,step:'item',item:data.find(x=>x.id===b.dataset.libitem),from:'items'};render()});return;
   }
-  if(currentLibrary.step==='item'){
-    const i=currentLibrary.item;
-    app.innerHTML=`<section class="pastel-screen">${backButton()}${pastelBrandHeader({kicker:'Matériel public',title:i.title,subtitle:`${i.course} • ${i.section} • ${i.academic_year}`})}<div id="publicThumbs" class="thumbs pastel-thumbs"></div><p class="small">${i.contributor_name?`Partagé par ${esc(i.contributor_name)}`:'Partagé par un étudiant'}</p><button class="btn ghost full" id="reportMaterial">Signaler ce matériel</button></section>`;
-    byId('backBtn').onclick=()=>{currentLibrary={...currentLibrary,step:'items',item:null};render()};
-    for(let x=0;x<(i.storage_paths||[]).length;x++){const{data}=sb.storage.from('public-materials').getPublicUrl(i.storage_paths[x]),d=document.createElement('div');d.className='thumb';d.innerHTML=`<img src="${data.publicUrl}" alt="Photo publique ${x+1}"><span class="num">${x+1}</span>`;byId('publicThumbs').appendChild(d)}
-    byId('reportMaterial').onclick=()=>showToast('Signalement enregistré pour ce test')
-  }
+  if(currentLibrary.step==='item')return renderLibraryItem();
+}
+
+function renderLibraryItem(){
+  const i=currentLibrary.item;if(!i){currentLibrary={step:'years'};return renderLibrary()}
+  const fav=isFavorite(i.id);
+  app.innerHTML=`<section class="screen">${PageHeader({back:true,title:'Bibliothèque'})}${PageIntro({eyebrow:'MATÉRIEL PARTAGÉ',title:i.title,subtitle:`${i.course} · ${i.section} · ${i.academic_year||''}`})}
+    <p class="meta-line">${icon('user',{size:16})}${i.contributor_name?`Partagé par ${esc(i.contributor_name)}`:'Partagé par un étudiant'}</p>
+    <div id="publicThumbs" class="thumbs"></div>
+    <div class="button-stack">
+      ${ActionButton({label:fav?'Retirer des favoris':'Ajouter aux favoris',id:'favMaterial',variant:fav?'soft':'primary',iconName:'star'})}
+      ${ActionButton({label:'Signaler ce matériel',id:'reportMaterial',variant:'ghost',iconName:'flag'})}
+    </div></section>`;
+  byId('backBtn').onclick=()=>{currentLibrary=currentLibrary.from==='items'?{...currentLibrary,step:'items',item:null}:{step:'years'};render()};
+  if(sb)for(let x=0;x<(i.storage_paths||[]).length;x++){const{data}=sb.storage.from('public-materials').getPublicUrl(i.storage_paths[x]),d=document.createElement('div');d.className='thumb';d.innerHTML=`<img src="${data.publicUrl}" alt="Photo publique ${x+1}" loading="lazy"><span class="num">${x+1}</span>`;byId('publicThumbs').appendChild(d)}
+  byId('favMaterial').onclick=()=>{toggleFavorite(i);showToast(isFavorite(i.id)?'Ajouté aux favoris':'Retiré des favoris');render()};
+  byId('reportMaterial').onclick=()=>showToast('Signalement enregistré pour ce test');
 }

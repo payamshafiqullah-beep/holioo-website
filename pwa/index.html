@@ -12,7 +12,10 @@
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="icon" href="./icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="./icon-180.png" />
-  <link rel="stylesheet" href="./styles.css?v=20260928-pastel-full-v1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
+  <link rel="stylesheet" href="./styles.css?v=20260929-ui-v2" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 </head>
@@ -21,67 +24,46 @@
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
   <div id="sheetRoot"></div>
   <div id="appShell" class="app-shell">
-    <header id="topbar" class="topbar">
-      <button class="brand" data-nav="home" aria-label="Accueil Holioo">
-        <span class="brand-stack" aria-hidden="true"><b>H</b><b>ol</b><b>io</b><b>o</b></span>
-        <span class="brand-word">Holioo</span>
-      </button>
-      <div class="top-actions">
-        <button class="sync-pill" id="syncPill" data-nav="sync" aria-label="État de synchronisation"><span class="sync-dot"></span><span id="syncText">Local</span></button>
-        <button class="avatar" data-nav="profile" id="avatarBtn" aria-label="Profil">H</button>
-      </div>
-    </header>
     <main id="app" class="main"></main>
-    <nav id="bottomNav" class="bottom-nav" aria-label="Navigation principale">
-      <button data-nav="home" class="nav-item active" aria-label="Accueil">
-        <span class="nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 10.5 12 3l8.5 7.5V21H14v-6h-4v6H3.5z"/></svg></span><small>Accueil</small>
-      </button>
-      <button data-nav="courses" class="nav-item" aria-label="Cours">
-        <span class="nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 5.5h5A3.5 3.5 0 0 1 13 9v10a4.5 4.5 0 0 0-4.5-4.5h-4z"/><path d="M19.5 5.5h-2A4.5 4.5 0 0 0 13 10v9a4.5 4.5 0 0 1 4.5-4.5h2z"/></svg></span><small>Cours</small>
-      </button>
-      <button data-nav="capture" class="nav-item capture-nav" aria-label="Capture">
-        <span class="capture-orb"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.7 6 10 4.5h4L15.3 6H19a2 2 0 0 1 2 2v10H3V8a2 2 0 0 1 2-2z"/><circle cx="12" cy="12.5" r="3.4"/></svg></span><small>Capture</small>
-      </button>
-      <button data-nav="library" class="nav-item" aria-label="Bibliothèque">
-        <span class="nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="7" width="3.2" height="12" rx="1.2"/><rect x="10.4" y="4" width="3.2" height="15" rx="1.2"/><rect x="16.8" y="9" width="3.2" height="10" rx="1.2"/></svg></span><small>Bibliothèque</small>
-      </button>
-      <button data-nav="files" class="nav-item" aria-label="Fichiers">
-        <span class="nav-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 7.5h6l1.7 2H20.5v9.5a1.5 1.5 0 0 1-1.5 1.5H5a1.5 1.5 0 0 1-1.5-1.5z"/></svg></span><small>Fichiers</small>
-      </button>
-    </nav>
+    <nav id="bottomNav" class="bottom-nav" aria-label="Navigation principale"></nav>
   </div>
-  <script src="./db.js?v=20260928-pastel-full-v1" defer></script>
-  <script src="./drive.js?v=20260928-pastel-full-v1" defer></script>
-  <script src="./core.js?v=20260928-pastel-full-v1" defer></script>
+  <script src="./db.js?v=20260929-ui-v2" defer></script>
+  <script src="./drive.js?v=20260929-ui-v2" defer></script>
+  <script src="./core.js?v=20260929-ui-v2" defer></script>
+
+  <!-- Shared UI layer (icons, components, app shell) -->
+  <script src="./ui/icons.js?v=20260929-ui-v2" defer></script>
+  <script src="./ui/components.js?v=20260929-ui-v2" defer></script>
+  <script src="./ui/shell.js?v=20260929-ui-v2" defer></script>
 
   <!-- Shared feature logic -->
-  <script src="./features/media-viewer.js?v=20260928-pastel-full-v1" defer></script>
-  <script src="./features/course-actions.js?v=20260928-pastel-full-v1" defer></script>
-  <script src="./features/capture-actions.js?v=20260928-pastel-full-v1" defer></script>
-  <script src="./features/pdf-actions.js?v=20260928-pastel-full-v1" defer></script>
-  <script src="./features/community-actions.js?v=20260928-pastel-full-v1" defer></script>
+  <script src="./features/media-viewer.js?v=20260929-ui-v2" defer></script>
+  <script src="./features/course-actions.js?v=20260929-ui-v2" defer></script>
+  <script src="./features/capture-actions.js?v=20260929-ui-v2" defer></script>
+  <script src="./features/pdf-actions.js?v=20260929-ui-v2" defer></script>
+  <script src="./features/community-actions.js?v=20260929-ui-v2" defer></script>
 
   <!-- One file per screen -->
-  <script src="./pages/WelcomePage.js?v=20260928-pastel-full-v1" defer></script>
-  <script src="./pages/AcademicSetupPage.js?v=20260928-pastel-full-v1" defer></script>
-  <script src="./pages/HomePage.js?v=20260928-pastel-full-v1" defer></script>
-  <script src="./pages/CoursesPage.js?v=20260928-pastel-full-v1" defer></script>
-  <script src="./pages/CourseDetailPage.js?v=20260928-pastel-full-v1" defer></script>
-  <script src="./pages/SectionPage.js?v=20260928-pastel-full-v1" defer></script>
-  <script src="./pages/SessionPage.js?v=20260928-pastel-full-v1" defer></script>
-  <script src="./pages/CapturePage.js?v=20260928-pastel-full-v1" defer></script>
-  <script src="./pages/CaptureCompletePage.js?v=20260928-pastel-full-v1" defer></script>
-  <script src="./pages/SplitBatchPage.js?v=20260928-pastel-full-v1" defer></script>
-  <script src="./pages/OrganizeBatchPage.js?v=20260928-pastel-full-v1" defer></script>
-  <script src="./pages/InboxPage.js?v=20260928-pastel-full-v1" defer></script>
-  <script src="./pages/PhotoViewerPage.js?v=20260928-pastel-full-v1" defer></script>
-  <script src="./pages/PdfBuilderPage.js?v=20260928-pastel-full-v1" defer></script>
-  <script src="./pages/PdfViewerPage.js?v=20260928-pastel-full-v1" defer></script>
-  <script src="./pages/FilesPage.js?v=20260928-pastel-full-v1" defer></script>
-  <script src="./pages/AcademicLibraryPage.js?v=20260928-pastel-full-v1" defer></script>
-  <script src="./pages/ProfilePage.js?v=20260928-pastel-full-v1" defer></script>
-  <script src="./pages/SyncPage.js?v=20260928-pastel-full-v1" defer></script>
+  <script src="./pages/WelcomePage.js?v=20260929-ui-v2" defer></script>
+  <script src="./pages/AcademicSetupPage.js?v=20260929-ui-v2" defer></script>
+  <script src="./pages/HomePage.js?v=20260929-ui-v2" defer></script>
+  <script src="./pages/CoursesPage.js?v=20260929-ui-v2" defer></script>
+  <script src="./pages/CourseDetailPage.js?v=20260929-ui-v2" defer></script>
+  <script src="./pages/SectionPage.js?v=20260929-ui-v2" defer></script>
+  <script src="./pages/SessionPage.js?v=20260929-ui-v2" defer></script>
+  <script src="./pages/CapturePage.js?v=20260929-ui-v2" defer></script>
+  <script src="./pages/CaptureCompletePage.js?v=20260929-ui-v2" defer></script>
+  <script src="./pages/SplitBatchPage.js?v=20260929-ui-v2" defer></script>
+  <script src="./pages/OrganizeBatchPage.js?v=20260929-ui-v2" defer></script>
+  <script src="./pages/InboxPage.js?v=20260929-ui-v2" defer></script>
+  <script src="./pages/PhotoViewerPage.js?v=20260929-ui-v2" defer></script>
+  <script src="./pages/PdfBuilderPage.js?v=20260929-ui-v2" defer></script>
+  <script src="./pages/PdfViewerPage.js?v=20260929-ui-v2" defer></script>
+  <script src="./pages/FilesPage.js?v=20260929-ui-v2" defer></script>
+  <script src="./pages/AcademicLibraryPage.js?v=20260929-ui-v2" defer></script>
+  <script src="./pages/ProfilePage.js?v=20260929-ui-v2" defer></script>
+  <script src="./pages/SyncPage.js?v=20260929-ui-v2" defer></script>
 
-  <script src="./app.js?v=20260928-pastel-full-v1" defer></script>
+  <script src="./app.js?v=20260929-ui-v2" defer></script>
 </body>
 </html>

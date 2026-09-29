@@ -16,6 +16,7 @@ on:
       - home-nav-option-b
       - camera-modern-v3
       - holioo-pastel-full-ui
+      - holioo-ui-v2
 
 permissions:
   contents: read
@@ -45,7 +46,7 @@ jobs:
           node --check pwa/drive.js
           node --check pwa/core.js
           node --check pwa/app.js
-          find pwa/features pwa/pages -name '*.js' -print0 | xargs -0 -n1 node --check
+          find pwa/ui pwa/features pwa/pages -name '*.js' -print0 | xargs -0 -n1 node --check
           node pwa/smoke-test.mjs
 
       - name: Install website dependencies

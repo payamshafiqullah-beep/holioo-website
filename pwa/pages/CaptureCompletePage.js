@@ -1,3 +1,19 @@
+// Capture terminée — choisir quoi faire du lot.
 async function renderCaptureComplete(){
-  if(!currentBatch){navigate('home');return}app.innerHTML=`${pageHead(`${currentBatch.photoIds.length} photo${currentBatch.photoIds.length>1?'s':''} capturée${currentBatch.photoIds.length>1?'s':''}`,'Que voulez-vous faire maintenant ?','CAPTURE TERMINÉE')}<div class="thumbs" id="capturedThumbs"></div><div class="actions"><button class="btn purple full" id="organizeNow">Organiser maintenant</button><button class="btn soft full" id="splitNow">Diviser le lot</button><button class="btn ghost full" id="saveInbox">Garder dans Inbox</button></div>`;await fillThumbs('capturedThumbs',currentBatch.photoIds,{selectable:false});byId('organizeNow').onclick=()=>{currentBatch.selected=new Set(currentBatch.photoIds);navigate('organize')};byId('splitNow').onclick=()=>{currentBatch.selected=new Set(currentBatch.photoIds.slice(0,Math.ceil(currentBatch.photoIds.length/2)));navigate('split')};byId('saveInbox').onclick=()=>saveBatchToInbox(currentBatch)
+  if(!currentBatch){navigate('home');return}
+  const n=currentBatch.photoIds.length;
+  app.innerHTML=`<section class="screen">
+    ${PageHeader({title:'Capture',actions:false})}
+    <div class="success-hero">${IconBadge('checkCircle','mint','lg')}<p class="eyebrow">CAPTURE TERMINÉE</p><h1 class="hero-title">${plural(n,'photo capturée','photos capturées')}</h1><p class="lead">Que voulez-vous faire maintenant ?</p></div>
+    <div class="thumbs" id="capturedThumbs"></div>
+    <div class="button-stack">
+      ${ActionButton({label:'Organiser maintenant',id:'organizeNow',iconName:'folder'})}
+      ${ActionButton({label:'Diviser le lot',id:'splitNow',variant:'soft',iconName:'scissors'})}
+      ${ActionButton({label:'Garder dans Captures',id:'saveInbox',variant:'ghost',iconName:'inbox'})}
+    </div>
+  </section>`;
+  await fillThumbs('capturedThumbs',currentBatch.photoIds,{selectable:false});
+  byId('organizeNow').onclick=()=>{currentBatch.selected=new Set(currentBatch.photoIds);navigate('organize')};
+  byId('splitNow').onclick=()=>{currentBatch.selected=new Set(currentBatch.photoIds.slice(0,Math.ceil(n/2)));navigate('split')};
+  byId('saveInbox').onclick=()=>saveBatchToInbox(currentBatch);
 }

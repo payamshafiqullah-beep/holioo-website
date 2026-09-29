@@ -1,3 +1,23 @@
+// Créer un PDF — sélection de séances et options de mise en page.
 function renderPdfBuilder(){
-  const ctx=findSessionContext();if(!ctx){navigate('files');return}const{course,session}=ctx;const allSessions=course.sections.flatMap(s=>s.sessions.map(q=>({section:s,session:q}))).filter(x=>x.session.photoIds.length);const pre=new Set([session.id]);app.innerHTML=`${backButton()}${pageHead('Créer un PDF','Sélectionnez une ou plusieurs séances du même cours.','PDF')}<div class="field"><label>Titre du document</label><input id="pdfTitle" value="${esc(`${course.name} — ${session.title}`)}"></div><div class="section-title">Séances</div><div class="grid">${allSessions.map(({section,session:q})=>`<label class="card row"><input type="checkbox" class="pdfSession" value="${q.id}" ${pre.has(q.id)?'checked':''}><span class="section-icon ${sectionClass(section.name)}">${q.number}</span><span class="grow"><span class="title">${esc(q.title)}</span><span class="meta">${esc(section.name)} • ${q.photoIds.length} photos</span></span></label>`).join('')}</div><div class="section-title">Mise en page</div><div class="pdf-options"><label class="card toggle-row"><input type="checkbox" id="pdfCover" checked><span><b>Page de couverture</b><span class="meta">Cours, année universitaire et titre</span></span></label><label class="card toggle-row"><input type="checkbox" id="pdfToc" checked><span><b>Table des matières</b><span class="meta">Sections et séances</span></span></label><label class="card toggle-row"><input type="checkbox" id="pdfNumbers" checked><span><b>Numéros de page</b><span class="meta">Ajoutés en pied de page</span></span></label></div><div class="actions"><button class="btn primary full" id="generatePdf">Générer le PDF</button></div>`;byId('backBtn').onclick=()=>navigate('session');byId('generatePdf').onclick=async()=>{const ids=[...document.querySelectorAll('.pdfSession:checked')].map(x=>x.value);if(!ids.length){showToast('Sélectionnez au moins une séance');return}await generatePdfFile(course,ids,{title:byId('pdfTitle').value.trim()||course.name,cover:byId('pdfCover').checked,toc:byId('pdfToc').checked,numbers:byId('pdfNumbers').checked})}
+  const ctx=findSessionContext();if(!ctx){navigate('files');return}
+  const{course,session}=ctx;
+  const allSessions=course.sections.flatMap(s=>s.sessions.map(q=>({section:s,session:q}))).filter(x=>x.session.photoIds.length);
+  const toggle=(id,title,meta,checked=true)=>`<label class="toggle-card"><span class="list-card-copy"><strong>${title}</strong><small>${meta}</small></span><input type="checkbox" id="${id}" class="switch" ${checked?'checked':''}></label>`;
+  app.innerHTML=`<section class="screen">
+    ${PageHeader({back:true,title:course.name,actions:false})}
+    ${PageIntro({eyebrow:'PDF',title:'Créer un PDF',subtitle:'Sélectionnez une ou plusieurs séances du même cours.'})}
+    <div class="form-card">${Field({label:'Titre du document',id:'pdfTitle',value:`${course.name} — ${session.title}`})}</div>
+    ${SectionTitle('Séances')}
+    <div class="list-stack">${allSessions.map(({section,session:q})=>`<label class="check-card"><input type="checkbox" class="pdfSession" value="${q.id}" ${q.id===session.id?'checked':''}>${IconBadge('layers',sectionTone(section.name),'sm')}<span class="list-card-copy"><strong>${esc(q.title)}</strong><small>${esc(section.name)} · ${plural(q.photoIds.length,'photo')}</small></span><i class="check-mark">${icon('check',{size:16,stroke:2.6})}</i></label>`).join('')}</div>
+    ${SectionTitle('Mise en page')}
+    <div class="list-stack">
+      ${toggle('pdfCover','Page de couverture','Cours, année universitaire et titre')}
+      ${toggle('pdfToc','Table des matières','Sections et séances')}
+      ${toggle('pdfNumbers','Numéros de page','Ajoutés en pied de page')}
+    </div>
+    ${ActionButton({label:'Générer le PDF',id:'generatePdf',iconName:'fileText'})}
+  </section>`;
+  byId('backBtn').onclick=()=>navigate('session');
+  byId('generatePdf').onclick=async()=>{const ids=[...document.querySelectorAll('.pdfSession:checked')].map(x=>x.value);if(!ids.length){showToast('Sélectionnez au moins une séance');return}await generatePdfFile(course,ids,{title:byId('pdfTitle').value.trim()||course.name,cover:byId('pdfCover').checked,toc:byId('pdfToc').checked,numbers:byId('pdfNumbers').checked})};
 }

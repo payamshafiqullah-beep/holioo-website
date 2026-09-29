@@ -9,6 +9,7 @@ async function renderOrganize(){
     ${PageHeader({back:true,title:'Capture',actions:false})}
     ${PageIntro({eyebrow:'ORGANISER',title:'Organiser les photos',subtitle:'Choisissez où ranger ce lot.'})}
     <div class="thumbs compact" id="organizeThumbs"></div>
+    <p class="reorder-hint">${icon('more',{size:14})}Maintenez une photo puis glissez-la pour changer l’ordre.</p>
     <div class="form-card">
       <div class="field"><label for="orgCourse">Cours</label><select id="orgCourse">${state.courses.map(x=>`<option value="${x.id}" ${x.id===c.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select></div>
       <div class="field"><label for="orgSection">Section</label><select id="orgSection">${c.sections.map(x=>`<option value="${x.id}" ${x.id===s.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select></div>
@@ -21,7 +22,7 @@ async function renderOrganize(){
     </div>
   </section>`;
   byId('backBtn').onclick=()=>navigate('captureComplete');
-  await fillThumbs('organizeThumbs',currentBatch.photoIds,{selectable:false});
+  await fillThumbs('organizeThumbs',currentBatch.photoIds,{selectable:false,reorder:true});
   byId('orgCourse').onchange=e=>{currentCourseId=e.target.value;currentSectionId=null;render()};
   byId('orgSection').onchange=e=>{currentSectionId=e.target.value;render()};
   byId('assignBatch').onclick=()=>assignCurrentBatch(byId('orgTitle').value);

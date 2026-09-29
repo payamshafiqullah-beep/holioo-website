@@ -307,6 +307,9 @@ a{color:inherit}
 .profile-card strong{font-size:20px;font-weight:800}
 .profile-card small{color:var(--muted);font-size:13px;margin-bottom:var(--s2)}
 
+.legal-links{margin:var(--s2) 0 0;text-align:center;font-size:13px;color:var(--muted)}
+.legal-links a{color:var(--muted)}
+
 /* ---------- Onboarding ---------- */
 .onboarding{min-height:calc(100dvh - 48px - env(safe-area-inset-top));display:flex;flex-direction:column;justify-content:space-between;gap:var(--s6);padding-top:var(--s5)}
 .onboarding > div:first-child{display:flex;flex-direction:column;gap:var(--s4)}

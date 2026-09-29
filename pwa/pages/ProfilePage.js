@@ -28,6 +28,7 @@ function renderProfile(){
       ${ActionButton({label:'Se déconnecter',id:'logoutBtn',variant:'ghost',iconName:'arrowLeft'})}
     </div>
     <div id="idSearchResult"></div>
+    <p class="legal-links"><a href="/confidentialite.html" target="_blank" rel="noopener">Politique de confidentialité</a> · <a href="/conditions.html" target="_blank" rel="noopener">Conditions d’utilisation</a></p>
   </section>`;
   byId('backBtn').onclick=()=>navigate('home');
   byId('logoutBtn').onclick=()=>openSheet({title:'Se déconnecter ?',subtitle:'Vos cours restent enregistrés sur cet appareil et réapparaîtront à votre prochaine connexion.',confirmText:'Se déconnecter',onConfirm:()=>{signOut();return true}});

@@ -545,17 +545,19 @@ function finishCapture(){
   navigate('captureComplete');
 }
 
-async function fillThumbs(containerId,ids,{selectable=false,split=false,viewerTitle='Galerie'}={}){
+async function fillThumbs(containerId,ids,{selectable=false,split=false,viewerTitle='Galerie',reorder=false}={}){
   const box=document.getElementById(containerId);if(!box)return;box.innerHTML='';
   for(let i=0;i<ids.length;i++){
     const id=ids[i],row=await DB.get('photos',id);if(!row?.blob)continue;
     const url=URL.createObjectURL(row.blob),selected=currentBatch?.selected?.has(id),status=photoStatusLabel(row),b=document.createElement('button');
-    b.className=`thumb ${selectable&&selected?'selected':''} ${split?(selected?'group-a':'group-b'):''}`;
-    b.innerHTML=`<img src="${url}" alt="Photo ${i+1}"><span class="num">${i+1}</span>${!selectable?`<span class="thumb-status badge ${status.cls}">${status.label}</span>`:''}${selectable&&!split?`<span class="check">${selected?'✓':''}</span>`:''}${split?`<span class="group-tag">${selected?'LOT 1':'LOT 2'}</span>`:''}`;
+    b.className=`thumb ${selectable&&selected?'selected':''} ${split?(selected?'group-a':'group-b'):''}`;b.dataset.photoId=id;
+    b.innerHTML=`<img src="${url}" alt="Photo ${i+1}" draggable="false"><span class="num">${i+1}</span>${!selectable?`<span class="thumb-status badge ${status.cls}">${status.label}</span>`:''}${selectable&&!split?`<span class="check">${selected?'✓':''}</span>`:''}${split?`<span class="group-tag">${selected?'LOT 1':'LOT 2'}</span>`:''}`;
     if(selectable)b.onclick=()=>{selected?currentBatch.selected.delete(id):currentBatch.selected.add(id);render()};
-    else b.onclick=()=>openPhotoViewer(ids,i,{title:viewerTitle,source:'batch',sourceId:currentBatch?.id||null,editable:false,returnView:currentView,courseId:currentCourseId,sectionId:currentSectionId,sessionId:currentSessionId});
+    else b.onclick=()=>openPhotoViewer(ids,Math.max(0,ids.indexOf(id)),{title:viewerTitle,source:'batch',sourceId:currentBatch?.id||null,editable:false,returnView:currentView,courseId:currentCourseId,sectionId:currentSectionId,sessionId:currentSessionId});
     box.appendChild(b);
   }
+  // `ids` is the batch's own array: reorder it in place so everything that uses the batch follows.
+  if(reorder)makeReorderable(box,{onChange:order=>{const rest=ids.filter(x=>!order.includes(x));ids.splice(0,ids.length,...order,...rest);showToast('Ordre enregistré')}});
 }
 
 function saveBatchToInbox(batch){

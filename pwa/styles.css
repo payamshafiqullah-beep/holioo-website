@@ -355,16 +355,16 @@ a{color:inherit}
 .thumb-actions{position:absolute;left:6px;right:6px;bottom:6px;display:flex;justify-content:space-between;gap:4px}
 .thumb-actions button{flex:1;height:28px;border-radius:10px;background:rgba(29,33,64,.55);backdrop-filter:blur(8px);color:#fff;font-size:13px;font-weight:700}
 
-/* PDF photo order — iPhone-style press, drag and drop */
-.pdf-order-grid{position:relative}
-.pdf-order-thumb{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;transition:transform .18s var(--ease),opacity .18s,border-color .18s,box-shadow .18s}
-.pdf-order-thumb:active{cursor:grabbing}
-.pdf-order-thumb img{pointer-events:none}
+/* Photo reordering — press, hold and drag (ui/reorder.js). Used by every photo grid. */
+.reorder-grid{position:relative}
+.reorder-grid > [data-photo-id]{touch-action:pan-y;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;transition:transform .18s var(--ease),opacity .18s,border-color .18s,box-shadow .18s}
+.reorder-grid > [data-photo-id] img{pointer-events:none;-webkit-user-drag:none}
+.reorder-grid.is-dragging > [data-photo-id]:not(.drag-placeholder){box-shadow:var(--shadow-sm)}
+.reorder-grid > .drag-placeholder{opacity:.22;transform:scale(.92);border-style:dashed;border-color:var(--accent)}
+.reorder-ghost{position:fixed!important;z-index:160!important;margin:0!important;pointer-events:none!important;opacity:.96;transform:scale(1.08) rotate(1.5deg);box-shadow:0 18px 42px rgba(29,33,64,.28)!important;border-color:var(--accent)!important;transition:transform .15s var(--ease)!important;animation:none!important}
+.reorder-ghost .thumb-actions,.reorder-ghost .thumb-status,.reorder-ghost .pdf-order-hint{display:none}
+.reorder-hint{display:flex;align-items:center;gap:6px;margin:0;font-size:12px;color:var(--muted)}
 .pdf-order-thumb .pdf-order-hint{position:absolute;right:6px;bottom:6px;display:grid;place-items:center;width:28px;height:24px;border-radius:10px;background:rgba(29,33,64,.58);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);color:#fff;transform:rotate(90deg);pointer-events:none}
-.pdf-order-grid.is-dragging .pdf-order-thumb:not(.drag-placeholder){box-shadow:var(--shadow-sm)}
-.pdf-order-thumb.drag-placeholder{opacity:.22;transform:scale(.92);border-style:dashed;border-color:var(--accent)}
-.pdf-order-ghost{position:fixed!important;z-index:160!important;margin:0!important;pointer-events:none!important;opacity:.96;transform:scale(1.06) rotate(1.5deg);box-shadow:0 18px 42px rgba(29,33,64,.28)!important;border-color:var(--accent)!important;transition:none!important;animation:none!important}
-.pdf-order-ghost .pdf-order-hint{display:none}
 
 .badge{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:11px;font-size:10px;font-weight:700;letter-spacing:.02em;background:#F0F1F6;color:var(--muted)}
 .badge.green,.badge.teal{background:var(--mint);color:var(--mint-fg)}

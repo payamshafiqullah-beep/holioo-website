@@ -9,7 +9,7 @@ const pageFiles=[
   './pages/PhotoViewerPage.js','./pages/PdfBuilderPage.js','./pages/PdfViewerPage.js','./pages/FilesPage.js',
   './pages/AcademicLibraryPage.js','./pages/ProfilePage.js','./pages/SyncPage.js'
 ];
-const uiFiles=['./ui/icons.js','./ui/components.js','./ui/shell.js'];
+const uiFiles=['./ui/icons.js','./ui/components.js','./ui/reorder.js','./ui/shell.js'];
 const featureFiles=[
   './features/media-viewer.js','./features/course-actions.js','./features/capture-actions.js',
   './features/pdf-actions.js','./features/community-actions.js'
@@ -27,19 +27,20 @@ const drive=read('./drive.js');
 const html=read('./index.html');
 const sw=read('./sw.js');
 const manifest=JSON.parse(read('./manifest.webmanifest'));
-if(!html.includes('20260929-login-v1'))throw new Error('Asset cache-bust version missing');
+if(!html.includes('20260929-reorder-v1'))throw new Error('Asset cache-bust version missing');
 
 const required=[
   'Diviser le lot','Organiser les photos','Captures à trier','Section personnalisée','Nouvelle séance',
   'Créer un PDF','Bibliothèque','Rechercher un Holioo ID','Google Drive','Synchroniser automatiquement',
   'movePhotoToSession','renderPdfBuilder','renderSplit','publishSession','openPhotoViewer','renderPhotoViewer',
-  'openPdfViewer','renderPdfViewer','Partager','Synchroniser vers Drive','Recadrer','setupPinchZoom','openCropEditor','captureGalleryRail','cameraStatus','finishCapture','zoomRange','importLocalFiles','toggleFavorite','startGoogleLogin','google-login-exchange','Continuer avec Google','Essayer sans compte','enterGuestMode','renderAdmin','admin-users','Bloquer l’accès','Supprimer le compte'
+  'openPdfViewer','renderPdfViewer','Partager','Synchroniser vers Drive','Recadrer','setupPinchZoom','openCropEditor','captureGalleryRail','cameraStatus','finishCapture','zoomRange','importLocalFiles','toggleFavorite','startGoogleLogin','google-login-exchange','Continuer avec Google','Essayer sans compte','enterGuestMode','makeReorderable','Maintenez une photo','renderAdmin','admin-users','Bloquer l’accès','Supprimer le compte'
 ];
 for(const s of required)if(!app.includes(s))throw new Error(`Flow missing: ${s}`);
 // Home, tabs and shared components required by the UI v2 spec.
 for(const s of ['Prêt à apprendre aujourd’hui ?','CONTINUER','Reprendre','Mes cours','Révisions du jour','Rechercher un cours...','Rechercher dans la bibliothèque...','Rechercher un fichier...','Cours enregistrés','PDF récents','Notes privées','Sessions partagées','Dossiers','Récents','Exports','Archives','PHOTO'])if(!app.includes(s))throw new Error(`UI v2 text missing: ${s}`);
 for(const c of ['PageHeader','BottomNav','FloatingCaptureButton','SearchBar','SectionTitle','HeroCard','CourseCard','CategoryCard','ListCard','StatCard','ProgressBar','FilterChips','IconBadge','EmptyState','ActionButton','AvatarButton'])if(!app.includes(`function ${c}(`))throw new Error(`Shared component missing: ${c}`);
 for(const l of ['Accueil','Cours','Capture','Bibliothèque','Fichiers'])if(!app.includes(`label:'${l}'`))throw new Error(`Bottom nav item missing: ${l}`);
+if(/data-left=|data-right=/.test(app))throw new Error('Old left/right photo arrows still present');
 if(app.includes('Pincez pour zoomer'))throw new Error('Old pinch zoom hint still present');
 if(!app.includes('gallery-shortcut'))throw new Error('Modern gallery control missing');
 

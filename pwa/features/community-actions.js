@@ -10,6 +10,7 @@ function libraryQuery(columns='*'){const p=state.profile;return sb.from('public_
 // Same window, no popup (popups are unreliable in installed iPhone apps). Google sends
 // the browser back to Holioo, which then finds Drive connected.
 async function connectDrive(){
+  if(guestMode||!currentUser){openSheet({title:'Compte Google nécessaire',subtitle:'Google Drive est disponible après connexion avec Google.',confirmText:'Se connecter avec Google',onConfirm:()=>{startGoogleLogin();return true}});return}
   if(!navigator.onLine||!sb){showToast('Internet est nécessaire');return}
   try{const data=await Drive.connect(sb,`${location.origin}${location.pathname}`);if(!data?.auth_url)throw new Error('Lien Google indisponible');location.href=data.auth_url}
   catch(e){console.error(e);showToast(`Google Drive indisponible : ${e.message||e}`)}

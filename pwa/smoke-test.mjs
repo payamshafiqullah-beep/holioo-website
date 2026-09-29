@@ -33,7 +33,7 @@ const required=[
   'Diviser le lot','Organiser les photos','Captures à trier','Section personnalisée','Nouvelle séance',
   'Créer un PDF','Ma bibliothèque','Rechercher un Holioo ID','Google Drive','Synchroniser automatiquement',
   'movePhotoToSession','renderPdfBuilder','renderSplit','publishSession','openPhotoViewer','renderPhotoViewer',
-  'openPdfViewer','renderPdfViewer','Partager','Synchroniser vers Drive','Recadrer','setupPinchZoom','openCropEditor','captureGalleryRail','cameraStatus','finishCapture','zoomRange','importLocalFiles','toggleFavorite','startGoogleLogin','google-login-exchange','Continuer avec Google','renderAdmin','admin-users','Bloquer l’accès','Supprimer le compte'
+  'openPdfViewer','renderPdfViewer','Partager','Synchroniser vers Drive','Recadrer','setupPinchZoom','openCropEditor','captureGalleryRail','cameraStatus','finishCapture','zoomRange','importLocalFiles','toggleFavorite','startGoogleLogin','google-login-exchange','Continuer avec Google','Essayer sans compte','enterGuestMode','renderAdmin','admin-users','Bloquer l’accès','Supprimer le compte'
 ];
 for(const s of required)if(!app.includes(s))throw new Error(`Flow missing: ${s}`);
 // Home, tabs and shared components required by the UI v2 spec.

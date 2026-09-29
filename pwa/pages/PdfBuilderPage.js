@@ -12,9 +12,9 @@ function renderPdfBuilder(){
     <div class="list-stack">${allSessions.map(({section,session:q})=>`<label class="check-card"><input type="checkbox" class="pdfSession" value="${q.id}" ${q.id===session.id?'checked':''}>${IconBadge('layers',sectionTone(section.name),'sm')}<span class="list-card-copy"><strong>${esc(q.title)}</strong><small>${esc(section.name)} · ${plural(q.photoIds.length,'photo')}</small></span><i class="check-mark">${icon('check',{size:16,stroke:2.6})}</i></label>`).join('')}</div>
     ${SectionTitle('Mise en page')}
     <div class="list-stack">
-      ${toggle('pdfCover','Page de couverture','Cours, année universitaire et titre')}
-      ${toggle('pdfToc','Table des matières','Sections et séances')}
-      ${toggle('pdfNumbers','Numéros de page','Ajoutés en pied de page')}
+      ${toggle('pdfCover','Page de couverture','Page de titre sans photo, au début du PDF',false)}
+      ${toggle('pdfToc','Table des matières','Liste des séances, sans photo',false)}
+      ${toggle('pdfNumbers','Numéroter les photos','Numéro affiché sous chaque photo')}
     </div>
     ${ActionButton({label:'Générer le PDF',id:'generatePdf',iconName:'fileText'})}
   </section>`;

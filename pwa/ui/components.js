@@ -55,7 +55,10 @@ function ActionButton({label,id='',variant='primary',iconName='',full=true,attrs
 }
 
 function AvatarButton(){
-  return`<button class="avatar-btn" data-nav="profile" aria-label="Profil et synchronisation"><span class="avatar-initial">${esc(iconLetter(state.profile.displayName))}</span><i class="sync-dot" data-sync-dot></i></button>`;
+  const avatar=state.profile.avatarUrl
+    ?`<img class="avatar-image" src="${esc(state.profile.avatarUrl)}" alt="">`
+    :`<span class="avatar-initial">${esc(iconLetter(state.profile.displayName))}</span>`;
+  return`<button class="avatar-btn" data-nav="profile" aria-label="Profil et synchronisation">${avatar}<i class="sync-dot" data-sync-dot></i></button>`;
 }
 
 function NotificationButton(){

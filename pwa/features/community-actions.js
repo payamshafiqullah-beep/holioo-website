@@ -7,11 +7,12 @@ async function publishSession(course,section,session){
 
 function libraryQuery(columns='*'){const p=state.profile;return sb.from('public_materials').select(columns).eq('is_published',true).eq('university',p.university).eq('program',p.program).eq('level',p.level).eq('semester',p.semester).eq('academic_year',currentLibrary.year)}
 
+// Same window, no popup (popups are unreliable in installed iPhone apps). Google sends
+// the browser back to Holioo, which then finds Drive connected.
 async function connectDrive(){
   if(!navigator.onLine||!sb){showToast('Internet est nécessaire');return}
-  const popup=window.open('about:blank','_blank');
-  try{const data=await Drive.connect(sb);if(!data?.auth_url)throw new Error('Lien Google indisponible');if(popup)popup.location.href=data.auth_url;else location.href=data.auth_url;showToast('Autorisez Holioo dans la fenêtre Google');clearInterval(drivePollTimer);drivePollTimer=setInterval(async()=>{try{const s=await Drive.status(sb,currentUser.id);if(s.connected){clearInterval(drivePollTimer);driveStatus=s;showToast('Google Drive connecté');await refreshSyncIndicator();render();queueSync('connected')}}catch{}},2500)}catch(e){try{popup?.close()}catch{}console.error(e);openSheet({title:'Google Drive n’est pas encore activé',subtitle:'Le bouton est prêt, mais les identifiants OAuth Google doivent être ajoutés au projet Holioo.',body:`<div class="notice">Erreur : ${esc(e.message||e)}</div><p class="small">Callback déjà préparé : ${esc(`${SUPABASE_URL}/functions/v1/drive-auth-callback`)}</p>`,confirmText:'Fermer',secondaryText:''})}}
-
-async function disconnectDrive(){openSheet({title:'Déconnecter Google Drive ?',subtitle:'Les copies déjà présentes dans Drive ne seront pas supprimées.',confirmText:'Déconnecter',confirmClass:'coral',onConfirm:async()=>{try{await Drive.disconnect(sb);driveStatus={connected:false,email:null};await refreshSyncIndicator();render();showToast('Google Drive déconnecté');return true}catch(e){showToast('Impossible de déconnecter');return false}}})}
+  try{const data=await Drive.connect(sb,`${location.origin}${location.pathname}`);if(!data?.auth_url)throw new Error('Lien Google indisponible');location.href=data.auth_url}
+  catch(e){console.error(e);showToast(`Google Drive indisponible : ${e.message||e}`)}
+}
 
 function showInstallSheet(){openSheet({title:'Installer Holioo sur iPhone',subtitle:'Ouvrez cette page dans Safari.',body:'<div class="notice">Touchez Partager → Sur l’écran d’accueil → Ajouter. Holioo s’ouvrira ensuite comme une app.</div>',confirmText:deferredInstallPrompt?'Installer maintenant':'Compris',onConfirm:async()=>{if(deferredInstallPrompt){deferredInstallPrompt.prompt();await deferredInstallPrompt.userChoice;deferredInstallPrompt=null}return true},secondaryText:''})}

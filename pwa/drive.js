@@ -21,7 +21,7 @@
     if(error) throw error;
     return data||{connected:false,email:null};
   }
-  async function connect(sb){return invoke(sb,'drive-auth-start')}
+  async function connect(sb,returnTo){return invoke(sb,'drive-auth-start',{return_to:returnTo})}
   async function disconnect(sb){return invoke(sb,'drive-disconnect')}
   async function accessToken(sb){const data=await invoke(sb,'drive-access-token');return data.access_token}
   async function driveFetch(token,url,options={}){

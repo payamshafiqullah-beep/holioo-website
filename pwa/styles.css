@@ -114,7 +114,7 @@ a{color:inherit}
 .page-header{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);min-height:48px}
 .page-header-left,.page-header-right{display:flex;align-items:center;gap:var(--s2);min-width:0}
 .page-header-title{font-size:17px;font-weight:700;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.wordmark{position:relative;font-size:26px;font-weight:800;letter-spacing:-.05em;color:var(--ink)}
+.wordmark{position:relative;display:inline-block;align-self:flex-start;font-size:26px;font-weight:800;letter-spacing:-.05em;color:var(--ink)}
 .wordmark i{position:absolute;right:-9px;top:5px;width:7px;height:7px;border-radius:50%;background:var(--capture)}
 .wordmark.large{font-size:34px}
 .icon-btn{position:relative;display:grid;place-items:center;width:44px;height:44px;flex:none;border-radius:50%;background:var(--surface);color:var(--ink);box-shadow:var(--shadow-sm);transition:transform .15s var(--ease)}

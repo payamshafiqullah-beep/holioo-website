@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
       values (${user.id}, ${user.id}, ${holiooId(user.id)}, ${email}, ${name}, ${name}, ${g.picture || null}, ${isAdmin ? 'admin' : 'user'}, now())
       on conflict (id) do update set
         email = excluded.email,
-        avatar_url = coalesce(excluded.avatar_url, public.profiles.avatar_url),
+        avatar_url = coalesce(public.profiles.avatar_url, excluded.avatar_url),
         role = case when ${!!isAdmin} then 'admin' else public.profiles.role end,
         last_login_at = now()`;
 

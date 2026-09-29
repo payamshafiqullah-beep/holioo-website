@@ -15,6 +15,7 @@ function renderProfile(){
       <small>${esc(p.email||currentUser?.email||'')}${p.holiooId?` · @${esc(p.holiooId)}`:''}</small>
       ${Tag(p.publicProfile?'Profil public':'Profil privé',p.publicProfile?'sky':'mint')}
     </div>
+    ${guestMode?`<div class="notice tone-peach">${icon('user',{size:18})}<span>Mode test sans compte : vos cours restent sur cet appareil. Connectez-vous avec Google pour les sauvegarder dans Drive.</span></div>${ActionButton({label:'Se connecter avec Google',id:'guestToGoogle',variant:'primary'})}`:''}
     ${SectionTitle('Informations académiques')}
     <div class="form-card">
       ${Field({label:'Nom affiché',id:'pName',value:p.displayName})}
@@ -30,13 +31,14 @@ function renderProfile(){
       ${ActionButton({label:'Google Drive & synchronisation',variant:'soft',iconName:'cloud',attrs:'data-nav="sync"'})}
       ${ActionButton({label:'Rechercher un Holioo ID',id:'searchId',variant:'ghost',iconName:'search'})}
       ${currentRole==='admin'?ActionButton({label:'Administration des utilisateurs',variant:'soft',iconName:'users',attrs:'data-nav="admin"'}):''}
-      ${ActionButton({label:'Se déconnecter',id:'logoutBtn',variant:'ghost',iconName:'arrowLeft'})}
+      ${ActionButton({label:guestMode?'Quitter le mode test':'Se déconnecter',id:'logoutBtn',variant:'ghost',iconName:'arrowLeft'})}
     </div>
     <div id="idSearchResult"></div>
     <p class="legal-links"><a href="/confidentialite.html" target="_blank" rel="noopener">Politique de confidentialité</a> · <a href="/conditions.html" target="_blank" rel="noopener">Conditions d’utilisation</a></p>
   </section>`;
   byId('backBtn').onclick=()=>navigate('home');
-  byId('logoutBtn').onclick=()=>openSheet({title:'Se déconnecter ?',subtitle:'Vos cours restent enregistrés sur cet appareil et réapparaîtront à votre prochaine connexion.',confirmText:'Se déconnecter',onConfirm:()=>{signOut();return true}});
+  byId('guestToGoogle')?.addEventListener('click',()=>startGoogleLogin());
+  byId('logoutBtn').onclick=guestMode?()=>openSheet({title:'Quitter le mode test ?',subtitle:'Vos cours de test restent sur cet appareil et réapparaîtront si vous revenez en mode test.',confirmText:'Quitter',onConfirm:()=>{signOut();return true}}):()=>openSheet({title:'Se déconnecter ?',subtitle:'Vos cours restent enregistrés sur cet appareil et réapparaîtront à votre prochaine connexion.',confirmText:'Se déconnecter',onConfirm:()=>{signOut();return true}});
   byId('avatarInput').onchange=async e=>{
     const file=e.target.files?.[0];
     if(!file)return;

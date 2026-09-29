@@ -1,7 +1,7 @@
 const VIEWS={login:()=>renderLogin(),blocked:()=>renderBlocked(),admin:()=>renderAdmin(),academicSetup:()=>renderAcademicSetup(),home:()=>renderHome(),courses:()=>renderCourses(),course:()=>renderCourse(),section:()=>renderSection(),session:()=>renderSession(),capture:()=>renderCapture(),captureComplete:()=>renderCaptureComplete(),split:()=>renderSplit(),organize:()=>renderOrganize(),inbox:()=>renderInbox(),photoViewer:()=>renderPhotoViewer(),pdfBuilder:()=>renderPdfBuilder(),pdfViewer:()=>renderPdfViewer(),files:()=>renderFiles(),library:()=>renderLibrary(),profile:()=>renderProfile(),sync:()=>renderSync()};
 async function render(){
   // Sign-in is mandatory. Offline, the last signed-in account on this device keeps working locally.
-  const signedIn=!!currentUser||(!navigator.onLine&&!!stateOwner);
+  const signedIn=!!currentUser||guestMode||(!navigator.onLine&&!!stateOwner);
   if(accountBlocked)currentView='blocked';
   else if(!signedIn)currentView='login';
   else if(currentView==='login'||currentView==='blocked')currentView='home';

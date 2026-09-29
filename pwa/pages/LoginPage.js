@@ -19,10 +19,13 @@ function renderLogin(){
     <div class="button-stack">
       ${offline?Notice(`${icon('wifiOff',{size:18})}<span>Connexion Internet nécessaire pour vous connecter la première fois.</span>`,'peach'):''}
       <button class="action-btn google-btn full" id="googleLogin" ${offline?'disabled':''}>${GoogleLogo()}<span>Continuer avec Google</span></button>
+      ${ActionButton({label:'Essayer sans compte',id:'guestLogin',variant:'ghost'})}
+      <p class="legal-links">Mode test : tout reste sur cet appareil, sans synchronisation ni bibliothèque partagée.</p>
       <p class="legal-links">En continuant, vous acceptez les <a href="/conditions.html" target="_blank" rel="noopener">conditions d’utilisation</a> et la <a href="/confidentialite.html" target="_blank" rel="noopener">politique de confidentialité</a>.</p>
     </div>
   </section>`;
   byId('googleLogin').onclick=()=>{byId('googleLogin').disabled=true;startGoogleLogin()};
+  byId('guestLogin').onclick=enterGuestMode;
 }
 
 function renderBlocked(){

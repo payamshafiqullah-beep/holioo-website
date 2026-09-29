@@ -29,6 +29,9 @@ function sampleCourse(name,color){return{id:uid(),name,color,sections:['CM','TD'
 // Local data is kept per Google account on this device. The first account to sign in
 // on a device inherits the data saved before accounts existed.
 let stateOwner=localStorage.getItem('holioo_last_uid')||'';
+// Test mode without an account (until Google verification): local only, never touches the server.
+const GUEST='guest';
+let guestMode=stateOwner===GUEST;
 const stateKey=()=>stateOwner?`${STORE_KEY}:${stateOwner}`:STORE_KEY;
 function loadState(){
   try{
@@ -43,6 +46,10 @@ let state=loadState();
 function saveState(){localStorage.setItem(stateKey(),JSON.stringify(state))}
 function switchStateOwner(uid){
   if(uid===stateOwner)return;
+  // Signing in with Google after test mode keeps what was done in test mode.
+  const guestData=stateOwner===GUEST&&uid&&uid!==GUEST&&!localStorage.getItem(`${STORE_KEY}:${uid}`)?localStorage.getItem(stateKey()):null;
+  if(guestData)localStorage.setItem(`${STORE_KEY}:${uid}`,guestData);
+  guestMode=uid===GUEST;
   stateOwner=uid;if(uid)localStorage.setItem('holioo_last_uid',uid);else localStorage.removeItem('holioo_last_uid');
   state=loadState();saveState();
   if(uid){localStorage.removeItem(STORE_KEY);localStorage.removeItem(LEGACY_KEY)}
@@ -87,6 +94,8 @@ function startGoogleLogin({consent=false}={}){
   const back=`${location.origin}${location.pathname}`;
   location.href=`${SUPABASE_URL}/functions/v1/google-login-start?return_to=${encodeURIComponent(back)}${consent?'&consent=1':''}`;
 }
+
+function enterGuestMode(){switchStateOwner(GUEST);navigate('home')}
 
 async function signOut(){
   try{await sb?.auth.signOut()}catch{}

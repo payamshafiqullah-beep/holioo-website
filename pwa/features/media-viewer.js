@@ -99,3 +99,29 @@ async function syncPdfNow(meta,row){
   if(!driveStatus.connected){showToast('Connectez Google Drive d’abord');navigate('sync');return}
   await runDriveSync('manual');const refreshed=await DB.get('files',meta.id);if(refreshed?.driveFileId){showToast('PDF synchronisé dans Drive');renderPdfViewer()}
 }
+// iOS shows only the first page of a PDF inside an <iframe>, so every page is
+// drawn on its own canvas with pdf.js (loaded on first use, then cached by the SW).
+const PDFJS_BASE='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174';
+let pdfJsPromise=null;
+function loadPdfJs(){
+  if(window.pdfjsLib)return Promise.resolve(window.pdfjsLib);
+  pdfJsPromise??=new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=`${PDFJS_BASE}/pdf.min.js`;s.onload=()=>{window.pdfjsLib.GlobalWorkerOptions.workerSrc=`${PDFJS_BASE}/pdf.worker.min.js`;resolve(window.pdfjsLib)};s.onerror=()=>{pdfJsPromise=null;reject(new Error('pdf.js indisponible'))};document.head.appendChild(s)});
+  return pdfJsPromise;
+}
+
+async function renderPdfPages(blob,host,{onCount}={}){
+  const lib=await loadPdfJs();
+  const pdf=await lib.getDocument({data:new Uint8Array(await blob.arrayBuffer())}).promise;
+  onCount?.(pdf.numPages);
+  host.innerHTML='';
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  for(let n=1;n<=pdf.numPages;n++){
+    if(!host.isConnected)return;
+    const page=await pdf.getPage(n),base=page.getViewport({scale:1});
+    const cssWidth=Math.max(200,host.clientWidth-2),viewport=page.getViewport({scale:cssWidth/base.width*dpr});
+    const wrap=document.createElement('figure');wrap.className='pdf-page';
+    const canvas=document.createElement('canvas');canvas.width=viewport.width;canvas.height=viewport.height;canvas.style.width=`${cssWidth}px`;
+    wrap.append(canvas);const cap=document.createElement('figcaption');cap.textContent=`${n} / ${pdf.numPages}`;wrap.append(cap);host.append(wrap);
+    await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
+  }
+}

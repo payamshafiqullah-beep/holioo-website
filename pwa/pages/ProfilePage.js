@@ -5,33 +5,36 @@ function renderProfile(){
   app.innerHTML=`<section class="screen">
     ${PageHeader({back:true,title:'Profil',actions:false})}
     <div class="profile-card">
-      <label class="profile-avatar-picker" aria-label="Choisir une photo de profil">
+      <label class="profile-avatar-picker" aria-label="Choisir une photo de profil" title="JPG, PNG ou WebP · 5 Mo max.">
         <span class="profile-avatar">${p.avatarUrl?`<img src="${esc(p.avatarUrl)}" alt="Photo de profil">`:esc(iconLetter(p.displayName))}</span>
-        <span class="profile-avatar-camera">${icon('camera',{size:16,stroke:2.2})}</span>
+        <span class="profile-avatar-camera">${icon('camera',{size:14,stroke:2.2})}</span>
         <input id="avatarInput" type="file" accept="image/jpeg,image/png,image/webp" hidden>
       </label>
-      <small class="profile-photo-hint">Touchez la photo pour la modifier · JPG, PNG ou WebP · 5 Mo max.</small>
-      <strong>${esc(p.displayName)}</strong>
-      <small>${esc(p.email||currentUser?.email||'')}${p.holiooId?` · @${esc(p.holiooId)}`:''}</small>
-      ${Tag(p.publicProfile?'Profil public':'Profil privé',p.publicProfile?'sky':'mint')}
+      <span class="profile-card-copy">
+        <strong>${esc(p.displayName)}</strong>
+        <small>${esc(p.email||currentUser?.email||'')}${p.holiooId?` · @${esc(p.holiooId)}`:''}</small>
+        ${Tag(p.publicProfile?'Profil public':'Profil privé',p.publicProfile?'sky':'mint')}
+      </span>
     </div>
     ${guestMode?`<div class="notice tone-peach">${icon('user',{size:18})}<span>Mode test sans compte : vos cours restent sur cet appareil. Connectez-vous avec Google pour les sauvegarder dans Drive.</span></div>${ActionButton({label:'Se connecter avec Google',id:'guestToGoogle',variant:'primary'})}`:''}
-    ${SectionTitle('Informations académiques')}
-    <div class="form-card">
-      ${Field({label:'Nom affiché',id:'pName',value:p.displayName})}
-      ${Field({label:'Université',id:'pUni',value:p.university})}
-      ${Field({label:'Faculté',id:'pFaculty',value:p.faculty})}
-      ${Field({label:'Filière / majeure',id:'pProgram',value:p.program})}
-      <div class="field-row">${Field({label:'Niveau',id:'pLevel',value:p.level})}${Field({label:'Semestre',id:'pSemester',value:p.semester})}</div>
-      ${Field({label:'Année universitaire',id:'pYear',value:p.academicYear})}
-    </div>
-    <label class="toggle-card"><span class="list-card-copy"><strong>Profil public facultatif</strong><small>Trouvable uniquement avec l’identifiant Holioo exact. Aucun chat ni abonnement.</small></span><input type="checkbox" id="pPublic" class="switch" ${p.publicProfile?'checked':''}></label>
-    <div class="button-stack">
-      ${ActionButton({label:'Enregistrer',id:'saveProfile',iconName:'check'})}
-      ${ActionButton({label:'Google Drive & synchronisation',variant:'soft',iconName:'cloud',attrs:'data-nav="sync"'})}
-      ${ActionButton({label:'Rechercher un Holioo ID',id:'searchId',variant:'ghost',iconName:'search'})}
-      ${currentRole==='admin'?ActionButton({label:'Administration des utilisateurs',variant:'soft',iconName:'users',attrs:'data-nav="admin"'}):''}
-      ${ActionButton({label:guestMode?'Quitter le mode test':'Se déconnecter',id:'logoutBtn',variant:'ghost',iconName:'arrowLeft'})}
+    <details class="collapse-card">
+      <summary>${IconBadge('cap','lavender','md')}<span class="list-card-copy"><strong>Informations académiques</strong><small>${esc([p.university,p.program,p.level,p.semester].filter(Boolean).join(' · ')||'Nom, université, filière, niveau…')}</small></span><span class="chev">${icon('chevronRight',{size:20})}</span></summary>
+      <div class="collapse-body">
+        ${Field({label:'Nom affiché',id:'pName',value:p.displayName})}
+        ${Field({label:'Université',id:'pUni',value:p.university})}
+        ${Field({label:'Faculté',id:'pFaculty',value:p.faculty})}
+        ${Field({label:'Filière / majeure',id:'pProgram',value:p.program})}
+        <div class="field-row">${Field({label:'Niveau',id:'pLevel',value:p.level})}${Field({label:'Semestre',id:'pSemester',value:p.semester})}</div>
+        ${Field({label:'Année universitaire',id:'pYear',value:p.academicYear})}
+        <label class="toggle-row"><span class="list-card-copy"><strong>Profil public facultatif</strong><small>Trouvable uniquement avec l’identifiant Holioo exact. Aucun chat ni abonnement.</small></span><input type="checkbox" id="pPublic" class="switch" ${p.publicProfile?'checked':''}></label>
+        ${ActionButton({label:'Enregistrer',id:'saveProfile',iconName:'check'})}
+      </div>
+    </details>
+    <div class="list-stack">
+      ${ListCard({iconName:'cloud',tone:'sky',title:'Google Drive & synchronisation',attrs:'data-nav="sync"'})}
+      ${ListCard({iconName:'search',tone:'mint',title:'Rechercher un Holioo ID',attrs:'id="searchId"'})}
+      ${currentRole==='admin'?ListCard({iconName:'users',tone:'lavender',title:'Administration des utilisateurs',attrs:'data-nav="admin"'}):''}
+      ${ListCard({iconName:'arrowLeft',tone:'pink',title:guestMode?'Quitter le mode test':'Se déconnecter',attrs:'id="logoutBtn"',trailing:false})}
     </div>
     <div id="idSearchResult"></div>
     <p class="legal-links"><a href="/confidentialite.html" target="_blank" rel="noopener">Politique de confidentialité</a> · <a href="/conditions.html" target="_blank" rel="noopener">Conditions d’utilisation</a></p>

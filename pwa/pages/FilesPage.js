@@ -23,8 +23,7 @@ async function renderFiles(){
   ];
 
   app.innerHTML=`<section class="screen">
-    ${PageHeader({title:'Fichiers'})}
-    ${PageIntro({title:'Mes fichiers',subtitle:'PDF, photos et exports de vos cours.'})}
+    ${PageHeader({title:'Fichiers',large:true})}
     ${SearchBar({id:'fileSearch',placeholder:'Rechercher un fichier...'})}
     <div class="storage-card">
       ${IconBadge('hardDrive','sky','md')}

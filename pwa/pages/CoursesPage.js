@@ -4,8 +4,7 @@ let coursesFilter='all';
 function renderCourses(){
   setChrome(false);
   app.innerHTML=`<section class="screen">
-    ${PageHeader({title:'Cours'})}
-    ${PageIntro({title:'Mes cours',subtitle:`${plural(state.courses.length,'cours','cours')} · CM, TD, TP et projets`})}
+    ${PageHeader({title:'Mes cours',large:true})}
     ${SearchBar({id:'courseSearch',placeholder:'Rechercher un cours...'})}
     ${FilterChips('courseFilters',[{value:'all',label:'Tous'},{value:'active',label:'Actifs'},{value:'review',label:'À revoir'},{value:'done',label:'Terminés'}],coursesFilter)}
     <div class="card-stack" id="courseList">${state.courses.map((c,i)=>CourseCard(c,i)).join('')}</div>

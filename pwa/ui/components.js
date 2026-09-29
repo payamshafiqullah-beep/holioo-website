@@ -70,8 +70,9 @@ function NotificationButton(){
 
 // Main tabs: logo or title on the left, notifications + avatar on the right.
 // Sub-pages: pass back:true to get a round back button (id="backBtn").
-function PageHeader({title='',logo=false,back=false,actions=true,trailing=''}={}){
-  const left=`${back?`<button class="icon-btn" id="backBtn" aria-label="Retour">${icon('chevronLeft',{size:22})}</button>`:''}${logo?`<span class="wordmark" aria-label="Holioo">Holioo<i></i></span>`:title?`<span class="page-header-title">${esc(title)}</span>`:''}`;
+// large:true puts the page title in the header row (iOS large-title style) instead of a separate block.
+function PageHeader({title='',logo=false,back=false,actions=true,trailing='',large=false}={}){
+  const left=`${back?`<button class="icon-btn" id="backBtn" aria-label="Retour">${icon('chevronLeft',{size:22})}</button>`:''}${logo?`<span class="wordmark" aria-label="Holioo">Holioo<i></i></span>`:title?(large?`<h1 class="page-header-large">${esc(title)}</h1>`:`<span class="page-header-title">${esc(title)}</span>`):''}`;
   const right=`${trailing}${actions?`${NotificationButton()}${AvatarButton()}`:''}`;
   return`<header class="page-header"><div class="page-header-left">${left}</div><div class="page-header-right">${right}</div></header>`;
 }

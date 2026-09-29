@@ -36,11 +36,10 @@ async function renderLibrary(){
     :!profileReady?`<div class="notice tone-lavender">${icon('cap',{size:18})}<span>Complétez votre profil académique pour voir le matériel de votre promotion.</span><button class="link-btn" data-nav="profile">Compléter</button></div>`:'';
 
   app.innerHTML=`<section class="screen">
-    ${PageHeader({title:'Bibliothèque'})}
-    ${PageIntro({title:'Ma bibliothèque',subtitle:'Vos cours, PDF, notes et ressources partagées.'})}
+    ${PageHeader({title:'Bibliothèque',large:true})}
     ${SearchBar({id:'librarySearch',placeholder:'Rechercher dans la bibliothèque...'})}
     ${FilterChips('libraryFilters',[{value:'all',label:'Tous'},{value:'cours',label:'Cours'},{value:'pdf',label:'PDF'},{value:'notes',label:'Notes'},{value:'sessions',label:'Sessions'},{value:'favoris',label:'Favoris'}],'all')}
-    <div class="stat-grid">
+    <div class="stat-grid four">
       <button class="stat-tile" data-pick="cours">${StatCard({tone:'lavender',iconName:'book',value:publicCourses.length,label:'Cours enregistrés'})}</button>
       <button class="stat-tile" data-pick="pdf">${StatCard({tone:'pink',iconName:'fileText',value:state.files.length,label:'PDF'})}</button>
       <button class="stat-tile" data-pick="notes">${StatCard({tone:'mint',iconName:'note',value:state.courses.reduce((a,c)=>a+courseStats(c).sessions,0),label:'Notes privées'})}</button>

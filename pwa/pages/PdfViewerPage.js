@@ -14,12 +14,14 @@ async function renderPdfViewer(){
     <div class="pdf-frame-wrap"><div class="pdf-pages" id="pdfPages"><p class="pdf-loading">Chargement du PDF…</p></div></div>
     <div class="viewer-dock">
       <button class="dock-btn" id="pdfShare">${icon('share',{size:22})}<small>Partager</small></button>
+      <button class="dock-btn" id="pdfPublish">${icon('globe',{size:22})}<small>Bibliothèque</small></button>
       <button class="dock-btn" id="pdfDrive">${icon('cloud',{size:22})}<small>${row.driveFileId?'Déjà dans Drive':'Synchroniser vers Drive'}</small></button>
       <button class="dock-btn" id="pdfDownload">${icon('download',{size:22})}<small>Enregistrer une copie</small></button>
     </div>
   </div>`;
   byId('pdfBack').onclick=()=>{revokeViewerUrl();navigate(currentPdfReturnView||'files')};
   byId('pdfShare').onclick=()=>sharePdf(meta,row);
+  byId('pdfPublish').onclick=()=>publishPdfToLibrary(meta,row);
   byId('pdfDrive').onclick=()=>syncPdfNow(meta,row);
   byId('pdfDownload').onclick=()=>downloadPdf(meta,row);
   const host=byId('pdfPages');

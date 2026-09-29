@@ -12,7 +12,7 @@ function renderProfile(){
       </label>
       <small class="profile-photo-hint">Touchez la photo pour la modifier · JPG, PNG ou WebP · 5 Mo max.</small>
       <strong>${esc(p.displayName)}</strong>
-      <small>@${esc(p.holiooId||'connexion…')}</small>
+      <small>${esc(p.email||currentUser?.email||'')}${p.holiooId?` · @${esc(p.holiooId)}`:''}</small>
       ${Tag(p.publicProfile?'Profil public':'Profil privé',p.publicProfile?'sky':'mint')}
     </div>
     ${SectionTitle('Informations académiques')}
@@ -29,10 +29,14 @@ function renderProfile(){
       ${ActionButton({label:'Enregistrer',id:'saveProfile',iconName:'check'})}
       ${ActionButton({label:'Google Drive & synchronisation',variant:'soft',iconName:'cloud',attrs:'data-nav="sync"'})}
       ${ActionButton({label:'Rechercher un Holioo ID',id:'searchId',variant:'ghost',iconName:'search'})}
+      ${currentRole==='admin'?ActionButton({label:'Administration des utilisateurs',variant:'soft',iconName:'users',attrs:'data-nav="admin"'}):''}
+      ${ActionButton({label:'Se déconnecter',id:'logoutBtn',variant:'ghost',iconName:'arrowLeft'})}
     </div>
     <div id="idSearchResult"></div>
+    <p class="legal-links"><a href="/confidentialite.html" target="_blank" rel="noopener">Politique de confidentialité</a> · <a href="/conditions.html" target="_blank" rel="noopener">Conditions d’utilisation</a></p>
   </section>`;
   byId('backBtn').onclick=()=>navigate('home');
+  byId('logoutBtn').onclick=()=>openSheet({title:'Se déconnecter ?',subtitle:'Vos cours restent enregistrés sur cet appareil et réapparaîtront à votre prochaine connexion.',confirmText:'Se déconnecter',onConfirm:()=>{signOut();return true}});
   byId('avatarInput').onchange=async e=>{
     const file=e.target.files?.[0];
     if(!file)return;

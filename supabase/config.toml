@@ -1,0 +1,23 @@
+# Holioo Supabase project (vznsvcotzurgmkmtvapm).
+# Every function checks the caller itself (requestUser / admin role), and the app
+# uses a publishable key that is not a JWT, so gateway JWT checks are disabled.
+project_id = "vznsvcotzurgmkmtvapm"
+
+[functions.google-login-start]
+verify_jwt = false
+[functions.google-login-exchange]
+verify_jwt = false
+[functions.drive-auth-start]
+verify_jwt = false
+[functions.drive-auth-callback]
+verify_jwt = false
+[functions.drive-access-token]
+verify_jwt = false
+[functions.drive-disconnect]
+verify_jwt = false
+[functions.drive-config-status]
+verify_jwt = false
+[functions.device-bootstrap]
+verify_jwt = false
+[functions.admin-users]
+verify_jwt = false

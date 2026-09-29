@@ -12,7 +12,7 @@ const sheetRoot=document.getElementById('sheetRoot');
 const byId=id=>document.getElementById(id);
 const DB=window.HoliooDB;
 const Drive=window.HoliooDrive;
-let sb=null,currentUser=null,cloudReady=false,driveStatus={connected:false,email:null};
+let sb=null,currentUser=null,cloudReady=false,currentRole='user',accountBlocked=false,driveStatus={connected:false,email:null};
 let currentView='home',currentCourseId=null,currentSectionId=null,currentSessionId=null,currentBatch=null,currentLibrary={step:'years',year:null,course:null,section:null,item:null};
 let cameraStream=null,cameraTrack=null,captureIds=[],cameraFacing='environment',torchOn=false,zoomValue=1,syncBusy=false;
 let deferredInstallPrompt=null,drivePollTimer=null;
@@ -26,9 +26,13 @@ const sectionClass=n=>n==='CM'?'cm':n==='TD'?'td':n==='TP'?'tp':'custom';
 const sectionColor=n=>n==='CM'?'#506BFF':n==='TD'?'#8C5CF5':n==='TP'?'#FF9E42':'#29ADB5';
 const defaultState=()=>({version:3,onboardingComplete:false,academicSetupSeen:false,profile:{displayName:'Étudiant',holiooId:'',avatarUrl:'',university:'',faculty:'',program:'',level:'',semester:'',academicYear:'2026–2027',publicProfile:false},courses:[sampleCourse('VHDL','#8C5CF5'),sampleCourse('Mathématiques','#506BFF'),sampleCourse('Électronique','#FF9E42')],inbox:[],files:[],favorites:[],settings:{autoDriveSync:true}});
 function sampleCourse(name,color){return{id:uid(),name,color,sections:['CM','TD','TP'].map((n,i)=>({id:uid(),name:n,type:n,sortOrder:i,sessions:[]}))}}
+// Local data is kept per Google account on this device. The first account to sign in
+// on a device inherits the data saved before accounts existed.
+let stateOwner=localStorage.getItem('holioo_last_uid')||'';
+const stateKey=()=>stateOwner?`${STORE_KEY}:${stateOwner}`:STORE_KEY;
 function loadState(){
   try{
-    let raw=localStorage.getItem(STORE_KEY);if(!raw)raw=localStorage.getItem(LEGACY_KEY);
+    let raw=localStorage.getItem(stateKey());if(!raw&&stateOwner)raw=localStorage.getItem(STORE_KEY)||localStorage.getItem(LEGACY_KEY);
     const parsed=raw?JSON.parse(raw):null;if(!parsed)return defaultState();
     const base=defaultState();const merged={...base,...parsed,version:3,profile:{...base.profile,...parsed.profile},settings:{...base.settings,...parsed.settings}};
     merged.courses=Array.isArray(parsed.courses)&&parsed.courses.length?parsed.courses:base.courses;merged.inbox=Array.isArray(parsed.inbox)?parsed.inbox:[];merged.files=Array.isArray(parsed.files)?parsed.files:[];merged.favorites=Array.isArray(parsed.favorites)?parsed.favorites:[];
@@ -36,7 +40,13 @@ function loadState(){
   }catch(e){console.warn(e);return defaultState()}
 }
 let state=loadState();
-function saveState(){localStorage.setItem(STORE_KEY,JSON.stringify(state))}
+function saveState(){localStorage.setItem(stateKey(),JSON.stringify(state))}
+function switchStateOwner(uid){
+  if(uid===stateOwner)return;
+  stateOwner=uid;if(uid)localStorage.setItem('holioo_last_uid',uid);else localStorage.removeItem('holioo_last_uid');
+  state=loadState();saveState();
+  if(uid){localStorage.removeItem(STORE_KEY);localStorage.removeItem(LEGACY_KEY)}
+}
 function ensureDefaultSections(course){course.sections=Array.isArray(course.sections)?course.sections:[];for(const [i,n] of ['CM','TD','TP'].entries())if(!course.sections.some(s=>s.name===n))course.sections.splice(i,0,{id:uid(),name:n,type:n,sortOrder:i,sessions:[]});for(const s of course.sections)s.sessions=Array.isArray(s.sessions)?s.sessions:[]}
 state.courses.forEach(ensureDefaultSections);
 if(state.captureDraft?.photoIds?.length){state.inbox.unshift({id:state.captureDraft.id||uid(),title:'Capture récupérée',photoIds:[...state.captureDraft.photoIds],createdAt:state.captureDraft.createdAt||now()});state.captureDraft=null;}
@@ -49,7 +59,7 @@ function navigate(view,payload={}){
   appShell.classList.toggle('capture-active',view==='capture');
   if(view!=='capture')stopCamera();currentView=view;
   if(payload.courseId)currentCourseId=payload.courseId;if(payload.sectionId)currentSectionId=payload.sectionId;if(payload.sessionId)currentSessionId=payload.sessionId;
-  const mainViews=['home','courses','capture','library','files'];setNav(mainViews.includes(view)?view:'');setChrome(['welcome','academicSetup','photoViewer','pdfViewer','capture'].includes(view));window.scrollTo(0,0);render().catch(e=>{console.error(e);showToast('Une erreur est survenue')});
+  const mainViews=['home','courses','capture','library','files'];setNav(mainViews.includes(view)?view:'');setChrome(['login','blocked','academicSetup','photoViewer','pdfViewer','capture','admin'].includes(view));window.scrollTo(0,0);render().catch(e=>{console.error(e);showToast('Une erreur est survenue')});
 }
 document.addEventListener('click',e=>{const n=e.target.closest('[data-nav]');if(n){e.preventDefault();navigate(n.dataset.nav)}});
 
@@ -60,16 +70,44 @@ function openSheet({title,subtitle='',body='',confirmText='Enregistrer',confirmC
 }
 
 function profilePayload(){const p=state.profile;return{id:currentUser?.id,user_id:currentUser?.id,holioo_id:p.holiooId,name:p.displayName,display_name:p.displayName,university:p.university||null,faculty:p.faculty||null,program:p.program||null,level:p.level||null,semester:p.semester||null,academic_year:p.academicYear||null,avatar_url:p.avatarUrl||null,public_profile:p.publicProfile,is_public:p.publicProfile}}
-async function bootstrapCloud(){
-  if(!navigator.onLine||!window.supabase)return;
+const supabaseClient=()=>sb??=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false,storageKey:'holioo-auth'}});
+
+// After Google, the server sends the browser back with #holioo_login=<one-time code>.
+async function completeGoogleLogin(){
+  const code=new URLSearchParams(location.hash.slice(1)).get('holioo_login');if(!code)return;
+  history.replaceState(null,'',location.pathname+location.search);
   try{
-    const deviceId=localStorage.getItem('holioo_device_id')||`${crypto.randomUUID()}-${Date.now()}`;localStorage.setItem('holioo_device_id',deviceId);
-    const r=await fetch(`${SUPABASE_URL}/functions/v1/device-bootstrap`,{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY},body:JSON.stringify({device_id:deviceId})});
-    const auth=await r.json();if(!r.ok)throw new Error(auth.error||'Connexion cloud impossible');
-    sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});await sb.auth.setSession({access_token:auth.access_token,refresh_token:auth.refresh_token});currentUser=auth.user;cloudReady=true;
-    const {data:profile}=await sb.from('profiles').select('*').eq('id',currentUser.id).maybeSingle();
-    if(profile){state.profile={...state.profile,displayName:profile.name||profile.display_name||state.profile.displayName,holiooId:profile.holioo_id||state.profile.holiooId,avatarUrl:profile.avatar_url??state.profile.avatarUrl,university:profile.university??state.profile.university,faculty:profile.faculty??state.profile.faculty,program:profile.program??state.profile.program,level:profile.level??state.profile.level,semester:profile.semester??state.profile.semester,academicYear:profile.academic_year??state.profile.academicYear,publicProfile:!!(profile.public_profile||profile.is_public)};saveState()}
+    const r=await fetch(`${SUPABASE_URL}/functions/v1/google-login-exchange`,{method:'POST',headers:{'Content-Type':'application/json',apikey:SUPABASE_KEY},body:JSON.stringify({code})});
+    const t=await r.json();if(!r.ok)throw new Error(t.error||'Connexion impossible');
+    const{error}=await supabaseClient().auth.setSession(t);if(error)throw error;
+  }catch(e){console.error(e);showToast(e.message||'Connexion impossible')}
+}
+
+function startGoogleLogin({consent=false}={}){
+  const back=`${location.origin}${location.pathname}`;
+  location.href=`${SUPABASE_URL}/functions/v1/google-login-start?return_to=${encodeURIComponent(back)}${consent?'&consent=1':''}`;
+}
+
+async function signOut(){
+  try{await sb?.auth.signOut()}catch{}
+  currentUser=null;cloudReady=false;currentRole='user';driveStatus={connected:false,email:null};
+  switchStateOwner('');navigate('login');
+}
+
+async function bootstrapCloud(){
+  if(!window.supabase)return;
+  try{
+    await completeGoogleLogin();
+    const{data:{session}}=await supabaseClient().auth.getSession();
+    if(!session){currentUser=null;cloudReady=false;return}
+    currentUser=session.user;switchStateOwner(currentUser.id);
+    if(!navigator.onLine)return;
+    const {data:profile,error}=await sb.from('profiles').select('*').eq('id',currentUser.id).maybeSingle();
+    if(error&&/JWT|session|auth/i.test(error.message)){await signOut();return}
+    cloudReady=true;currentRole=profile?.role||'user';accountBlocked=!!profile?.blocked;
+    if(profile){state.profile={...state.profile,displayName:profile.name||profile.display_name||state.profile.displayName,holiooId:profile.holioo_id||state.profile.holiooId,university:profile.university??state.profile.university,faculty:profile.faculty??state.profile.faculty,program:profile.program??state.profile.program,level:profile.level??state.profile.level,semester:profile.semester??state.profile.semester,academicYear:profile.academic_year??state.profile.academicYear,publicProfile:!!(profile.public_profile||profile.is_public),email:profile.email||currentUser.email,avatarUrl:profile.avatar_url??state.profile.avatarUrl};saveState()}
     else{const hid=`h${currentUser.id.replace(/-/g,'').slice(0,10)}`;state.profile.holiooId=hid;saveState();await sb.from('profiles').insert({...profilePayload(),holioo_id:hid})}
+    if(accountBlocked)return;
     try{driveStatus=await Drive.status(sb,currentUser.id)}catch{driveStatus={connected:false,email:null}}
     sb.channel('public-materials-live').on('postgres_changes',{event:'*',schema:'public',table:'public_materials'},()=>{if(currentView==='library')render()}).subscribe();
     await refreshSyncIndicator();if(driveStatus.connected&&state.settings.autoDriveSync)queueSync('bootstrap');

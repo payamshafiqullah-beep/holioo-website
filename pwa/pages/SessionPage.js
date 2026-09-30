@@ -5,6 +5,7 @@ async function renderSession(){
   app.innerHTML=`<section class="screen">
     ${PageHeader({back:true,title:`${course.name} · ${section.name}`})}
     ${PageIntro({eyebrow:'SÉANCE',title:session.title,subtitle:`${plural(n,'photo')} · ${fmtDate(session.createdAt)}`})}
+    ${ActionButton({label:n?'Ajouter des photos':'Prendre des photos',id:'addSessionPhotos',variant:'capture',iconName:'camera',attrs:'data-nav="capture"'})}
     ${n?`${SectionTitle('Galerie',{action:'Plein écran',id:'openFirstPhoto'})}
       <div class="thumbs" id="sessionThumbs"></div>
       <p class="reorder-hint">${icon('more',{size:14})}Maintenez une photo ou faites glisser sa poignée pour changer l’ordre.</p>
@@ -15,7 +16,7 @@ async function renderSession(){
         ${ActionButton({label:'Exporter les images',id:'exportImages',variant:'ghost',iconName:'share'})}
         ${ActionButton({label:'Renommer la séance',id:'renameSession',variant:'ghost',iconName:'pencil'})}
       </div>`
-    :`${EmptyState({iconName:'camera',title:'Aucune photo',text:'Cette séance ne contient pas encore de photos.'})}${ActionButton({label:'Prendre des photos',variant:'capture',iconName:'camera',attrs:'data-nav="capture"'})}`}
+    :`${EmptyState({iconName:'camera',title:'Aucune photo',text:'Cette séance ne contient pas encore de photos.'})}`}
   </section>`;
   byId('backBtn').onclick=()=>navigate('section');
   if(n){

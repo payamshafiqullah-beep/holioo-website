@@ -4,6 +4,7 @@ let cameraUsesHardwareZoom=false;
 let cameraZoomMin=1;
 let cameraZoomMax=4;
 let camDest=null;        // where the next photo goes: {courseId, sectionId, sessionId|null, source}
+let camEntryDestination=null; // explicit origin, consumed once when opening the camera
 let camShots=[];         // photos taken in this camera visit for the current destination (badge counter)
 let camThumbUrl='';
 let camStartToken=0;
@@ -20,12 +21,27 @@ function setCameraStatus(text){
 // Counter rule: it counts the photos of this camera visit for the current destination.
 // It resets when the camera screen is left or when the destination changes.
 
+function prepareCameraEntry(fromView){
+  camEntryDestination=null;
+  if(fromView==='scanReview'||fromView==='photoViewer')return;
+  camKeepBatch=false;
+  if(fromView!=='session'&&fromView!=='section')return;
+  const course=state.courses.find(c=>c.id===currentCourseId);
+  const section=course?.sections.find(s=>s.id===currentSectionId);
+  const session=fromView==='session'&&section?.sessions.find(s=>s.id===currentSessionId);
+  if(section&&(fromView==='section'||session)){
+    camEntryDestination={courseId:course.id,sectionId:section.id,sessionId:session?.id||null,source:'manual'};
+  }
+}
+
 function initCameraDestination(){
-  const keep=camKeepBatch&&camDest;camKeepBatch=false;
+  const entry=camEntryDestination;camEntryDestination=null;
+  const keep=!entry&&camKeepBatch&&camDest;camKeepBatch=false;
   if(!keep){
-    camDest=resolveCameraDestination({courses:state.courses,timetable:state.timetable,last:state.cameraLast});
+    camDest=entry||resolveCameraDestination({courses:state.courses,timetable:state.timetable,last:state.cameraLast});
     camShots=[];camRetakeId=null;
     setCameraThumb(null);
+    if(entry)rememberCameraDestination();
   }else{
     // Back from the review: same pages, same counter, last page shown.
     const last=camShots.at(-1);if(last)DB.get('photos',last).then(r=>{if(r)setCameraThumb(r.thumb||r.blob)});else setCameraThumb(null);

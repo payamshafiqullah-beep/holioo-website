@@ -35,6 +35,7 @@ async function renderFiles(){
     </div>
     <input id="genericFileImport" type="file" accept=".pdf,application/pdf,image/*" hidden multiple>
 
+    <div id="ocrResults" class="ocr-results" hidden></div>
     <div id="filesContent">
       <div data-filter-group>
         ${SectionTitle('Dossiers',{action:'Voir tout',nav:'courses'})}
@@ -73,6 +74,8 @@ async function renderFiles(){
 
   bindCourseCards();
   bindListFilter({searchId:'fileSearch',scope:'#filesContent',onChange:({shown})=>byId('filesEmpty').hidden=!!shown});
+  // The recognised text of photos is searched too.
+  byId('fileSearch')?.addEventListener('input',e=>{clearTimeout(renderFiles.t);renderFiles.t=setTimeout(()=>showOcrResults(e.target.value),250)});
   document.querySelectorAll('[data-file-open]').forEach(b=>b.onclick=()=>openPdfViewer(b.dataset.fileOpen,'files'));
   document.querySelectorAll('[data-file-delete]').forEach(b=>b.onclick=()=>confirmDeletePdf(b.dataset.fileDelete,'files'));
   document.querySelectorAll('[data-file-menu]').forEach(b=>b.onclick=()=>openFileMenu(b.dataset.fileMenu));

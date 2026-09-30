@@ -11,6 +11,8 @@ async function renderSession(){
       <div class="button-stack">
         ${ActionButton({label:'Créer un PDF',id:'buildPdf',iconName:'fileText'})}
         ${ActionButton({label:pub?'Publiée dans la bibliothèque':'Publier dans la bibliothèque',id:'publishSession',variant:pub?'soft':'ghost',iconName:pub?'checkCircle':'globe'})}
+        ${ActionButton({label:'Reconnaître le texte',id:'ocrSession',variant:'ghost',iconName:'scan'})}
+        ${ActionButton({label:'Exporter les images',id:'exportImages',variant:'ghost',iconName:'share'})}
         ${ActionButton({label:'Renommer la séance',id:'renameSession',variant:'ghost',iconName:'pencil'})}
       </div>`
     :`${EmptyState({iconName:'camera',title:'Aucune photo',text:'Cette séance ne contient pas encore de photos.'})}${ActionButton({label:'Prendre des photos',variant:'capture',iconName:'camera',attrs:'data-nav="capture"'})}`}
@@ -21,6 +23,9 @@ async function renderSession(){
     byId('openFirstPhoto').onclick=()=>openPhotoViewer(session.photoIds,0,{title:session.title,source:'session',sourceId:session.id,editable:true,returnView:'session',courseId:course.id,sectionId:section.id,sessionId:session.id});
   }
   byId('buildPdf')?.addEventListener('click',()=>navigate('pdfBuilder'));
+  byId('ocrSession')?.addEventListener('click',()=>recognizeSessionText(session));
+  byId('exportImages')?.addEventListener('click',()=>exportSessionImages(course,section,session));
+  if(n)updateSessionOcrLabel(session);
   byId('publishSession')?.addEventListener('click',()=>publishSession(course,section,session));
   byId('renameSession')?.addEventListener('click',()=>openSheet({title:'Renommer la séance',body:Field({label:'Titre',id:'renameValue',value:session.title}),onConfirm:()=>{session.title=byId('renameValue').value.trim()||session.title;saveState();render();queueSync();return true}}));
 }

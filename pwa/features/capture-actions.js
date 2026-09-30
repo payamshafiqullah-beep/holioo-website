@@ -21,9 +21,15 @@ function setCameraStatus(text){
 // It resets when the camera screen is left or when the destination changes.
 
 function initCameraDestination(){
-  camDest=resolveCameraDestination({courses:state.courses,timetable:state.timetable,last:state.cameraLast});
-  camShots=[];
-  setCameraThumb(null);
+  const keep=camKeepBatch&&camDest;camKeepBatch=false;
+  if(!keep){
+    camDest=resolveCameraDestination({courses:state.courses,timetable:state.timetable,last:state.cameraLast});
+    camShots=[];camRetakeId=null;
+    setCameraThumb(null);
+  }else{
+    // Back from the review: same pages, same counter, last page shown.
+    const last=camShots.at(-1);if(last)DB.get('photos',last).then(r=>{if(r)setCameraThumb(r.thumb||r.blob)});else setCameraThumb(null);
+  }
   renderCameraChip();
 }
 
@@ -101,11 +107,11 @@ function setCameraThumb(blob){
   btn?.classList.remove('pop');void btn?.offsetWidth;btn?.classList.add('pop');
 }
 
+// The counter opens the review of this capture's pages (reorder, retake, crop, filters…).
 function openCaptureReview(){
-  const ctx=camDest?.sessionId&&findSessionContext(camDest.sessionId);
-  const ids=ctx?.session.photoIds||[];
-  if(!ids.length){if(cameraQueue.pending())showToast(camT('pending',{n:cameraQueue.pending()}));return}
-  openPhotoViewer(ids,ids.length-1,{title:ctx.session.title,source:'session',sourceId:ctx.session.id,editable:false,returnView:'capture',courseId:ctx.course.id,sectionId:ctx.section.id,sessionId:ctx.session.id});
+  if(!camShots.length)return;
+  camKeepBatch=true;
+  navigate('scanReview');
 }
 
 // ─── Background save status ───────────────────────────────────
@@ -166,6 +172,12 @@ function showCameraPanel(kind){
     ${texts.how||''}
     ${texts.btn?`<button class="cam-btn primary" id="camPanelBtn">${esc(texts.btn)}</button>`:''}
   </div>`;
+  // Without the live camera, the phone's own camera app still works: its photo goes through the
+  // same crop / filter / text recognition pipeline.
+  if(kind!=='ask'){
+    panel.querySelector('.cam-panel-card').insertAdjacentHTML('beforeend',`<button class="cam-btn ghost" id="camFallbackBtn">${icon('camera',{size:18})} ${esc(camT('fallbackCamera'))}</button><p class="cam-panel-note">${esc(camT('fallbackHint'))}</p>`);
+    byId('camFallbackBtn').onclick=()=>camDest?byId('cameraFallbackInput')?.click():openDestinationPicker(camT('chooseFirst'));
+  }
   panel.classList.remove('hidden');
   const b=byId('camPanelBtn');
   if(b)b.onclick=()=>{try{localStorage.setItem('holioo_cam_asked','1')}catch{}startCamera({userAction:true})};
@@ -200,9 +212,11 @@ async function startCamera({userAction=false}={}){
   if(perm==='prompt'&&!asked&&!userAction){showCameraPanel('ask');return}
 
   let stream=null;
+  // Scan modes ask for the sharpest video the camera offers (text must stay readable).
+  const res=isScanMode(state.camMode)?{width:{ideal:3840},height:{ideal:2160}}:{width:{ideal:1920},height:{ideal:1080}};
   try{
     try{
-      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:cameraFacing},width:{ideal:1920},height:{ideal:1080}},audio:false});
+      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:cameraFacing},...res},audio:false});
     }catch(e){
       if(e?.name!=='OverconstrainedError'&&e?.name!=='NotFoundError')throw e;
       stream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});
@@ -265,9 +279,12 @@ async function startCamera({userAction=false}={}){
   });
 
   setCameraStatus(camT('ready'));
+  // (Re)start page detection for the current mode: after opening, a flip or a return from background.
+  if(currentView==='capture')applyCameraMode(camMode,{initial:true});
 }
 
 function stopCamera(){
+  if(typeof Scanner!=='undefined')Scanner.stop();
   cameraStream?.getTracks?.().forEach(t=>t.stop());
   cameraStream=null;
   cameraTrack=null;
@@ -377,12 +394,160 @@ async function toggleTorch(){
   btn?.setAttribute('aria-label',torchOn?camT('flashOn'):camT('flashOff'));
 }
 
+// ─── Scanner modes ────────────────────────────────────────────
+// Photo = plain photo. Document / Tableau / Livre / Carte = page detection + crop + filter.
+// QR = reads codes, takes no photo.
+
+let camMode='photo';
+let camIdFront=null;      // ID card: the front, waiting for the back
+let camRetakeId=null;     // review → "Reprendre": the next shot replaces this photo
+let camKeepBatch=false;   // coming back from the review keeps this capture's pages and counter
+let camTilt=null,camTiltListening=false;
+
+const isScanMode=m=>m!=='photo'&&m!=='qr';
+
+function applyCameraMode(mode,{initial=false}={}){
+  if(!SCAN_MODES.includes(mode))mode='photo';
+  const changed=mode!==camMode;
+  camMode=mode;state.camMode=mode;saveState();
+  if(changed)camIdFront=null;
+  const root=document.querySelector('.camera');if(root)root.dataset.mode=mode;
+  document.querySelectorAll('#camModes [data-mode]').forEach(b=>{const on=b.dataset.mode===mode;b.classList.toggle('active',on);b.setAttribute('aria-selected',String(on));if(on&&!initial)b.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'})});
+  renderScanTools();
+  if(!initial&&mode!=='photo')requestTiltPermission();
+  Scanner.stop();
+  if(mode==='photo'||!cameraStream){renderScanHint(null);return}
+  Scanner.start({video:byId('cameraVideo'),overlay:byId('scanOverlay'),mode,
+    getZoom:()=>({digital:cameraUsesHardwareZoom?1:Math.max(1,zoomValue||1),css:cameraUsesHardwareZoom?1:Math.max(1,zoomValue||1)}),
+    onAuto:()=>capturePhoto({auto:true}),onQr:showQrResult,onStatus:renderScanHint});
+  if(Scanner.state!=='ready'&&mode!=='qr')renderScanHint({state:'loading'});
+}
+
+function renderScanTools(){
+  const tools=byId('scanTools');if(!tools)return;
+  tools.classList.toggle('hidden',!isScanMode(camMode));
+  const auto=state.scanAuto!==false&&camMode!=='id',b=byId('scanAutoBtn');
+  if(b){b.textContent=auto?camT('scanAuto'):camT('scanManual');b.classList.toggle('on',auto);b.setAttribute('aria-pressed',String(auto));b.setAttribute('aria-label',camT('scanAutoLabel',{state:auto?camT('on'):camT('off')}));b.disabled=camMode==='id'}
+  const shutter=byId('shutter');if(shutter)shutter.hidden=camMode==='qr';
+}
+function toggleScanAuto(){state.scanAuto=state.scanAuto===false;saveState();renderScanTools();showToast(camT('scanAutoLabel',{state:state.scanAuto?camT('on'):camT('off')}))}
+function toggleCameraGrid(){
+  state.camGrid=state.camGrid===false;saveState();
+  byId('cameraGrid')?.classList.toggle('hidden',state.camGrid===false);
+  byId('gridBtn')?.setAttribute('aria-pressed',String(state.camGrid!==false));
+}
+
+// One short line above the preview: what to do, or what is wrong.
+function renderScanHint(s){
+  const el=byId('scanHint');if(!el)return;
+  if(!s||camMode==='photo'){el.classList.add('hidden');return}
+  let text='',warn=false;
+  const search={document:'searchDocument',board:'searchBoard',book:'searchBook',id:camIdFront?'searchIdBack':'searchId',qr:'qrAim'}[camMode];
+  if(camRetakeId)text=camT('retakeHint');
+  if(s.state==='loading')text=camT('scanLoading',{p:Math.round((Scanner.progress||0)*100)});
+  else if(s.state==='manual')text=camT('scanFailed');
+  else if(s.warn){warn=true;text=camT({dark:'warnDark',blur:'warnBlur',tilt:camMode==='board'?'warnTiltBoard':'warnTilt'}[s.warn])}
+  else if(s.state==='stable')text=s.auto?camT('holdStill'):camT('ready');
+  else if(s.state==='tracking')text=s.auto?camT('holdStill'):camT('ready');
+  else if(!text)text=camT(search);
+  el.textContent=text;el.classList.toggle('warn',warn);el.classList.remove('hidden');
+}
+Scanner.subscribe(s=>{if(currentView==='capture'&&s.cvState==='loading')renderScanHint({state:'loading'});if(currentView==='capture'&&s.cvState==='failed'&&isScanMode(camMode))renderScanHint({state:'manual'})});
+
+// "Hold the phone parallel": iPhone asks permission for motion sensors (from a tap).
+function requestTiltPermission(){
+  if(camTiltListening||typeof DeviceOrientationEvent==='undefined')return;
+  const listen=()=>{camTiltListening=true;addEventListener('deviceorientation',e=>{if(e.beta==null)return;camTilt={beta:e.beta,gamma:e.gamma};Scanner.setTilt(camTilt)})};
+  if(typeof DeviceOrientationEvent.requestPermission==='function')DeviceOrientationEvent.requestPermission().then(r=>{if(r==='granted')listen()}).catch(()=>{});
+  else listen();
+}
+
+// Tap to focus, where the browser lets the page steer the camera (mostly Android Chrome).
+function setupTapToFocus(){
+  const stage=byId('cameraStage');if(!stage||stage.dataset.focusReady)return;stage.dataset.focusReady='1';
+  stage.addEventListener('click',async e=>{
+    const caps=cameraTrack?.getCapabilities?.()||{};
+    const modes=caps.focusMode||[];if(!caps.pointsOfInterest&&!modes.includes('single-shot'))return;
+    const r=stage.getBoundingClientRect(),x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height;
+    const ring=byId('focusRing');if(ring){ring.style.left=`${e.clientX-r.left}px`;ring.style.top=`${e.clientY-r.top}px`;ring.classList.remove('hidden','go');void ring.offsetWidth;ring.classList.add('go')}
+    try{await cameraTrack.applyConstraints({advanced:[{...(caps.pointsOfInterest?{pointsOfInterest:[{x,y}]}:{}),...(modes.includes('single-shot')?{focusMode:'single-shot'}:{})}]})}catch{}
+  });
+}
+
+function showQrResult(text){
+  Scanner.pause(true);
+  const url=/^https?:\/\/\S+$/i.test(text.trim())?text.trim():null;
+  const safe=url&&/^https:/i.test(url);
+  openSheet({title:camT('qrTitle'),subtitle:url?camT('qrLink'):camT('qrText'),
+    body:`<p class="qr-result">${esc(text)}</p>${url&&!safe?`<div class="notice tone-peach">${esc(camT('qrUnsafe'))}</div>`:''}`,
+    confirmText:url?camT('qrOpen'):camT('qrCopy'),secondaryText:url?camT('qrCopy'):camT('cancel'),
+    onConfirm:()=>{if(url)window.open(url,'_blank','noopener,noreferrer');else copyText(text);return true},
+    onSecondary:()=>{if(url)copyText(text)}});
+  // Scanning resumes once the sheet is closed.
+  const watch=setInterval(()=>{if(!byId('activeSheet')){clearInterval(watch);Scanner.pause(false)}},400);
+}
+function copyText(t){navigator.clipboard?.writeText(t).then(()=>showToast(camT('qrCopied'))).catch(()=>{})}
+
+// Capture for a scan mode: the page outline found live becomes the crop of the stored photo.
+function queueScanCapture(canvas,dest){
+  const cur=Scanner.current(),quad=cur?.quad||null,W=canvas.width,H=canvas.height;
+  const blob=new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',0.93));
+  const thumb=canvasToJpeg(scaleCanvas(canvas,W,H));
+  const stored=id=>scanRenderQueue.add(id);
+  const mode=camRetakeId&&(camMode==='book'||camMode==='id')?'document':camMode;
+  const ids=[];
+  if(camRetakeId){
+    const id=camRetakeId;camRetakeId=null;
+    cameraQueue.add({id,blob,thumb,dest,createdAt:now(),replace:true,edit:scanEdit(mode,quad,W,H),extra:{scanMode:mode},onStored:id=>{stored(id);showToast(camT('retaken'));if(currentView==='capture'){camKeepBatch=true;navigate('scanReview')}}});
+    return[];
+  }
+  if(mode==='book'&&quad){
+    for(const half of ScanCore.splitSpread(quad,cur.gutter??.5)){
+      const id=uid();ids.push(id);
+      cameraQueue.add({id,blob,thumb,dest,createdAt:now(),edit:scanEdit('book',half,W,H),extra:{scanMode:'book'},onStored:stored});
+    }
+    showToast(camT('bookSplit'));
+    return ids;
+  }
+  if(mode==='id'){
+    const side={blob,edit:scanEdit('id',quad,W,H)};
+    if(!camIdFront){camIdFront=side;renderScanHint({state:'search'});showToast(camT('idFrontSaved'));return[]}
+    const front=camIdFront;camIdFront=null;
+    const page=(async()=>{const[fb,bb]=await Promise.all([front.blob,side.blob]);const r=await imageJob('idcard',{front:{blob:fb,edit:front.edit},back:{blob:bb,edit:side.edit}});return{...r,fb,bb}})();
+    const id=uid();ids.push(id);
+    cameraQueue.add({id,blob:page.then(r=>r.page),thumb:page.then(r=>r.thumb),dest,createdAt:now(),extra:{scanMode:'id'},
+      onStored:async id=>{try{const r=await page;await DB.patch('photos',id,{scanSources:[{blob:r.fb,edit:front.edit},{blob:r.bb,edit:side.edit}]})}catch{}if(typeof Ocr!=='undefined')Ocr.enqueue(id)}});
+    renderScanHint({state:'search'});showToast(camT('idDone'));
+    return ids;
+  }
+  const id=uid();ids.push(id);
+  cameraQueue.add({id,blob,thumb,dest,createdAt:now(),edit:scanEdit(mode,quad,W,H),extra:{scanMode:mode},onStored:stored});
+  return ids;
+}
+
+// Imported photos (gallery, or the phone's camera app as fallback) follow the same pipeline.
+async function importScanFiles(files,dest){
+  const ids=[];
+  for(const file of files){
+    let det=null;try{det=await Scanner.detectBlob(file,camMode==='id'?'id':camMode)}catch{}
+    const W=det?.width||1,H=det?.height||1,quad=det?.quad||null;
+    if(camMode==='book'&&quad){
+      for(const half of ScanCore.splitSpread(quad,det.gutter??.5)){const id=uid();ids.push(id);cameraQueue.add({id,blob:Promise.resolve(file),dest,createdAt:now(),edit:scanEdit('book',half,W,H),extra:{scanMode:'book'},onStored:id=>scanRenderQueue.add(id)})}
+    }else{
+      const id=uid();ids.push(id);
+      cameraQueue.add({id,blob:Promise.resolve(file),dest,createdAt:now(),edit:scanEdit(camMode==='id'?'id':camMode,quad,W,H),extra:{scanMode:camMode},onStored:id=>scanRenderQueue.add(id)});
+    }
+  }
+  return ids;
+}
+
 // ─── Capture ──────────────────────────────────────────────────
 // The shutter never waits: the frame is copied synchronously, then encoding and saving
 // run in cameraQueue (features/camera-queue.js) while the next photo can already be taken.
 
-function capturePhoto(){
-  if(!cameraDestContext()){openDestinationPicker(camT('chooseFirst'));return}
+function capturePhoto({auto=false}={}){
+  if(camMode==='qr')return;
+  if(!cameraDestContext()){if(!auto)openDestinationPicker(camT('chooseFirst'));return}
   const video=byId('cameraVideo');
   if(!cameraStream||!video?.videoWidth){
     showToast(camT('notReady'));
@@ -394,8 +559,9 @@ function capturePhoto(){
   const sh=video.videoHeight/digitalZoom;
   const sx=(video.videoWidth-sw)/2;
   const sy=(video.videoHeight-sh)/2;
-  const maxW=2000;
-  const outScale=Math.min(1,maxW/sw);
+  // Scans keep the full video resolution; plain photos stay light.
+  const maxW=isScanMode(camMode)?4096:2000;
+  const outScale=Math.min(1,maxW/Math.max(sw,sh));
 
   const canvas=document.createElement('canvas');
   canvas.width=Math.max(1,Math.round(sw*outScale));
@@ -406,6 +572,13 @@ function capturePhoto(){
 
   const dest=destinationForShot();
   if(!dest)return;
+  if(isScanMode(camMode)||camRetakeId){
+    const ids=isScanMode(camMode)?queueScanCapture(canvas,dest):(()=>{const id=camRetakeId;camRetakeId=null;const b=new Promise(r=>canvas.toBlob(r,'image/jpeg',.92));cameraQueue.add({id,blob:b,thumb:canvasToJpeg(scaleCanvas(canvas,canvas.width,canvas.height)),dest,createdAt:now(),replace:true,onStored:()=>{showToast(camT('retaken'));if(currentView==='capture'){camKeepBatch=true;navigate('scanReview')}}});return[]})();
+    camShots.push(...ids);
+    if(ids.length)canvasToJpeg(scaleCanvas(canvas,canvas.width,canvas.height)).then(b=>{if(b&&camShots.at(-1)===ids.at(-1))setCameraThumb(b)});
+    captureFeedback(auto);
+    return;
+  }
   const id=uid();
   const blob=new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',0.92));
   // The grid preview is made now from the same frame (a few ms), so grids never decode the full photo.
@@ -415,13 +588,16 @@ function capturePhoto(){
   const shotDest=camDest;
   thumb.then(b=>{if(b&&camShots.at(-1)===id&&camDest===shotDest)setCameraThumb(b)});
 
+  captureFeedback(false);
+}
+
+function captureFeedback(auto){
   const stage=byId('cameraStage');
   stage?.classList.remove('capture-flash');void stage?.offsetWidth;
   stage?.classList.add('capture-flash');
   setTimeout(()=>stage?.classList.remove('capture-flash'),120);
-
   updateCaptureCount();
-  navigator.vibrate?.(18);
+  navigator.vibrate?.(auto?[12,40,12]:18);
 }
 
 // Photos from the gallery go to the current destination too, in the order they were picked.
@@ -431,7 +607,9 @@ async function importGallery(e){
   if(!files.length)return;
   const dest=destinationForShot();
   if(!dest){openDestinationPicker(camT('chooseFirst'));return}
-  for(const file of files){
+  if(isScanMode(camMode)){
+    camShots.push(...await importScanFiles(files,dest));
+  }else for(const file of files){
     const id=uid();
     cameraQueue.add({id,blob:Promise.resolve(file),dest,createdAt:now()});
     camShots.push(id);
@@ -443,6 +621,7 @@ async function importGallery(e){
 
 function leaveCamera(){
   camStartToken++;
+  Scanner.stop();camIdFront=null;
   stopCamera();
   closeCameraPicker();
   setCameraThumb(null);

@@ -5,7 +5,7 @@
 // A photo stays in memory until it is stored; a failed write is retried and never dropped.
 
 const cameraQueue=(()=>{
-  const items=[];            // {id, blob: Promise<Blob>, thumb?: Promise<Blob>, dest:{courseId,sectionId,sessionId}, tries}
+  const items=[];            // {id, blob: Promise<Blob>, thumb?: Promise<Blob>, edit?, extra?, replace?, onStored?, dest, tries}
   const listeners=new Set();
   let running=false,failing=false,storageFull=false,retryTimer=null;
 
@@ -34,11 +34,20 @@ const cameraQueue=(()=>{
         const blob=await it.blob;
         if(!blob)throw new Error('encode');
         const thumb=await Promise.resolve(it.thumb).catch(()=>null);
-        await DB.put('photos',{id:it.id,blob,...(thumb?{thumb}:{}),createdAt:it.createdAt,syncState:'pending'});
-        fileIntoSession(it.id,it.dest);
+        const fields={blob,...(thumb?{thumb}:{}),...(it.edit?{edit:it.edit}:{}),...(it.extra||{})};
+        if(it.replace){
+          // Retake: new content for the same photo (same place in its session, same Drive file).
+          const old=await DB.get('photos',it.id);
+          const{rendered:_r,thumb:_t,edit:_e,...keep}=old||{};
+          await DB.put('photos',{...keep,id:it.id,...fields,createdAt:keep.createdAt||it.createdAt,editedAt:now(),syncState:'pending',driveNeedsUpdate:!!keep.driveFileId});
+        }else{
+          await DB.put('photos',{id:it.id,...fields,createdAt:it.createdAt,syncState:'pending'});
+          fileIntoSession(it.id,it.dest);
+        }
         saveState();
         items.shift();
         failing=false;storageFull=false;
+        try{it.onStored?.(it.id)}catch(e){console.warn(e)}
         emit();
       }catch(e){
         it.tries++;

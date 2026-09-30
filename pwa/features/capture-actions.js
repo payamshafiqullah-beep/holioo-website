@@ -3,80 +3,268 @@
 let cameraUsesHardwareZoom=false;
 let cameraZoomMin=1;
 let cameraZoomMax=4;
-let captureRailUrls=[];
-let cropEditor=null;
+let camDest=null;        // where the next photo goes: {courseId, sectionId, sessionId|null, source}
+let camShots=[];         // photos taken in this camera visit for the current destination (badge counter)
+let camThumbUrl='';
+let camStartToken=0;
+let camLifecycleReady=false;
 
 function clamp(v,min,max){return Math.min(max,Math.max(min,v))}
-
-function updateCaptureCount(){
-  const count=byId('captureCount');
-  if(count)count.textContent=String(captureIds.length);
-  const cropBtn=byId('cropLastBtn'),lastBtn=byId('lastPhotoBtn');
-  if(cropBtn)cropBtn.disabled=!captureIds.length;
-  if(lastBtn)lastBtn.classList.toggle('has-photo',!!captureIds.length);
-}
 
 function setCameraStatus(text){
   const el=byId('cameraStatus');
   if(el)el.textContent=text;
 }
 
-async function startCamera(){
+// ─── Destination ──────────────────────────────────────────────
+// Counter rule: it counts the photos of this camera visit for the current destination.
+// It resets when the camera screen is left or when the destination changes.
+
+function initCameraDestination(){
+  camDest=resolveCameraDestination({courses:state.courses,timetable:state.timetable,last:state.cameraLast});
+  camShots=[];
+  setCameraThumb(null);
+  renderCameraChip();
+}
+
+function cameraDestContext(d=camDest){
+  const course=d&&state.courses.find(c=>c.id===d.courseId);
+  const section=course?.sections.find(s=>s.id===d.sectionId);
+  return course&&section?{course,section}:null;
+}
+
+function renderCameraChip(){
+  const btn=byId('camDest'),text=byId('camDestText');if(!btn||!text)return;
+  const ok=!!cameraDestContext();
+  if(!ok)camDest=null;
+  const label=cameraDestinationLabel(camDest);
+  text.textContent=label;
+  btn.classList.toggle('empty',!ok);
+  btn.classList.toggle('auto',ok&&camDest.source==='timetable');
+  const dot=btn.querySelector('.cam-dest-dot');
+  if(dot)dot.style.background=ok?(cameraDestContext().course.color||'#5B67F1'):'';
+  btn.setAttribute('aria-label',ok?camT('destLabel',{dest:label})+(camDest.source==='timetable'?` (${camT('auto')})`:''):camT('chooseDest'));
+}
+
+function rememberCameraDestination(){
+  if(!camDest)return;
+  state.cameraLast={courseId:camDest.courseId,sectionId:camDest.sectionId,sessionId:camDest.sessionId||null};
+  state.cameraRecent=pushRecentDestination(state.cameraRecent,camDest);
+  saveState();
+}
+
+function setCameraDestination(d,source='manual'){
+  const same=camDest&&camDest.courseId===d.courseId&&camDest.sectionId===d.sectionId&&(camDest.sessionId||null)===(d.sessionId||null);
+  camDest={courseId:d.courseId,sectionId:d.sectionId,sessionId:d.sessionId||null,source};
+  if(!same){camShots=[];setCameraThumb(null);updateCaptureCount()}
+  rememberCameraDestination();
+  renderCameraChip();
+}
+
+function openDestinationPicker(message=''){
+  openCameraPicker({current:camDest,message,onPick:d=>setCameraDestination(d)});
+}
+
+// The destination of the next photo, with its session created now if it is a new one,
+// so that every photo taken right after goes to that same session.
+function destinationForShot(){
+  const ctx=cameraDestContext();if(!ctx)return null;
+  let session=camDest.sessionId&&ctx.section.sessions.find(s=>s.id===camDest.sessionId);
+  if(!session){
+    const num=nextSessionNumber(ctx.section);
+    session={id:uid(),number:num,title:`${ctx.section.name} ${num}`,photoIds:[],createdAt:now(),visibility:'private'};
+    ctx.section.sessions.push(session);
+    camDest.sessionId=session.id;
+    rememberCameraDestination();
+    renderCameraChip();
+  }
+  return{courseId:ctx.course.id,sectionId:ctx.section.id,sessionId:session.id};
+}
+
+// ─── Last photo + counter ─────────────────────────────────────
+
+function updateCaptureCount(){
+  const n=camShots.length;
+  const count=byId('captureCount'),btn=byId('lastPhotoBtn');
+  if(count){count.textContent=String(n);count.classList.toggle('hidden',!n)}
+  if(btn){btn.disabled=!n;btn.classList.toggle('has-photo',!!n);btn.setAttribute('aria-label',camT('lastPhoto',{n}))}
+}
+
+function setCameraThumb(blob){
+  const box=byId('camLastImg');
+  if(camThumbUrl){URL.revokeObjectURL(camThumbUrl);camThumbUrl=''}
+  if(!box)return;
+  if(!blob){box.innerHTML=icon('image',{size:24});return}
+  camThumbUrl=URL.createObjectURL(blob);
+  box.innerHTML=`<img src="${camThumbUrl}" alt="">`;
+  const btn=byId('lastPhotoBtn');
+  btn?.classList.remove('pop');void btn?.offsetWidth;btn?.classList.add('pop');
+}
+
+function openCaptureReview(){
+  const ctx=camDest?.sessionId&&findSessionContext(camDest.sessionId);
+  const ids=ctx?.session.photoIds||[];
+  if(!ids.length){if(cameraQueue.pending())showToast(camT('pending',{n:cameraQueue.pending()}));return}
+  openPhotoViewer(ids,ids.length-1,{title:ctx.session.title,source:'session',sourceId:ctx.session.id,editable:false,returnView:'capture',courseId:ctx.course.id,sectionId:ctx.section.id,sessionId:ctx.session.id});
+}
+
+// ─── Background save status ───────────────────────────────────
+
+function renderCameraSaveState(s){
+  const el=byId('camSaveState');
+  if(el){
+    const show=s.failing||s.pending>3;
+    el.classList.toggle('hidden',!show);
+    el.classList.toggle('warn',!!s.failing);
+    el.textContent=s.storageFull?camT('storageFull'):s.failing?camT('retrying'):camT('pending',{n:s.pending});
+  }
+  const shot=byId('lastPhotoBtn');
+  shot?.classList.toggle('saving',s.pending>0);
+}
+cameraQueue.subscribe(s=>{
+  if(currentView==='capture')renderCameraSaveState(s);
+  // Photos taken just before leaving the camera reach Drive once they are stored.
+  else if(!s.pending){queueSync();if(currentView==='session')render()}
+});
+
+async function checkCameraStorage(){
+  const el=byId('camStorage');if(!el)return;
+  try{
+    navigator.storage?.persist?.().catch(()=>{});
+    const est=await navigator.storage?.estimate?.();
+    const free=est&&est.quota?est.quota-est.usage:Infinity;
+    const low=free<150*1024*1024;
+    el.textContent=camT('storageLow');
+    el.classList.toggle('hidden',!low);
+  }catch{el.classList.add('hidden')}
+}
+
+// ─── Camera start / stop, permissions, lifecycle ──────────────
+
+async function cameraPermissionState(){
+  try{return(await navigator.permissions.query({name:'camera'})).state}catch{return'unknown'}
+}
+
+function hideCameraPanel(){byId('camPanel')?.classList.add('hidden')}
+
+function showCameraPanel(kind){
+  const panel=byId('camPanel');if(!panel)return;
+  const how=`<ul class="cam-panel-how"><li>${esc(camT('permHowIos'))}</li><li>${esc(camT('permHowAndroid'))}</li><li>${esc(camT('permHowApp'))}</li></ul>`;
+  const texts={
+    ask:{title:camT('permTitle'),body:camT('permAsk'),btn:camT('permAllow')},
+    denied:{title:camT('permTitle'),body:camT('permDenied'),btn:camT('retry'),how},
+    blocked:{title:camT('permTitle'),body:camT('permBlocked'),btn:camT('retry'),how},
+    nocamera:{title:camT('camError'),body:camT('noCamera'),btn:camT('retry')},
+    busy:{title:camT('camError'),body:camT('camBusy'),btn:camT('retry')},
+    insecure:{title:camT('camError'),body:camT('insecure')},
+    error:{title:camT('camError'),body:camT('camError'),btn:camT('retry')}
+  }[kind]||{};
+  panel.innerHTML=`<div class="cam-panel-card">
+    <span class="cam-panel-icon">${icon('camera',{size:26})}</span>
+    <h2>${esc(texts.title)}</h2>
+    <p>${esc(texts.body)}</p>
+    ${texts.how||''}
+    ${texts.btn?`<button class="cam-btn primary" id="camPanelBtn">${esc(texts.btn)}</button>`:''}
+  </div>`;
+  panel.classList.remove('hidden');
+  const b=byId('camPanelBtn');
+  if(b)b.onclick=()=>{try{localStorage.setItem('holioo_cam_asked','1')}catch{}startCamera({userAction:true})};
+  setCameraStatus(texts.body||'');
+}
+
+// Restart automatically when the user allows the camera in the browser settings.
+let camPermWatch=null;
+async function watchCameraPermission(){
+  if(camPermWatch)return;
+  try{
+    camPermWatch=await navigator.permissions.query({name:'camera'});
+    camPermWatch.onchange=()=>{if(camPermWatch.state==='granted'&&currentView==='capture'&&!cameraStream)startCamera()};
+  }catch{}
+}
+
+async function startCamera({userAction=false}={}){
   stopCamera();
   const video=byId('cameraVideo');
   if(!video)return;
+  const token=++camStartToken;
+  hideCameraPanel();
 
-  setCameraStatus('Ouverture…');
+  if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia){showCameraPanel('insecure');return}
 
+  setCameraStatus(camT('opening'));
+  const perm=await cameraPermissionState();
+  if(token!==camStartToken)return;
+  if(perm==='denied'){showCameraPanel('blocked');watchCameraPermission();return}
+  let asked=false;try{asked=localStorage.getItem('holioo_cam_asked')==='1'}catch{}
+  // First time ever: explain why before the browser asks.
+  if(perm==='prompt'&&!asked&&!userAction){showCameraPanel('ask');return}
+
+  let stream=null;
   try{
-    cameraStream=await navigator.mediaDevices.getUserMedia({
-      video:{
-        facingMode:{ideal:cameraFacing},
-        width:{ideal:1920},
-        height:{ideal:1080}
-      },
-      audio:false
-    });
-
-    video.srcObject=cameraStream;
-    await video.play().catch(()=>{});
-    cameraTrack=cameraStream.getVideoTracks()[0];
-
-    const caps=cameraTrack.getCapabilities?.()||{};
-    const zoomCaps=caps.zoom;
-    cameraUsesHardwareZoom=!!zoomCaps;
-    cameraZoomMin=zoomCaps?.min??1;
-    cameraZoomMax=zoomCaps?.max??4;
-    if(cameraZoomMax<=cameraZoomMin)cameraZoomMax=Math.max(4,cameraZoomMin);
-
-    const slider=byId('zoomRange');
-    if(slider){
-      slider.min=String(cameraZoomMin);
-      slider.max=String(cameraZoomMax);
-      slider.step=String(zoomCaps?.step||0.1);
+    try{
+      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:cameraFacing},width:{ideal:1920},height:{ideal:1080}},audio:false});
+    }catch(e){
+      if(e?.name!=='OverconstrainedError'&&e?.name!=='NotFoundError')throw e;
+      stream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});
     }
-
-    zoomValue=clamp(1,cameraZoomMin,cameraZoomMax);
-    await setCameraZoom(zoomValue,{silent:true});
-
-    const torch=byId('torchBtn');
-    if(torch){
-      torch.disabled=!caps.torch;
-      torch.classList.toggle('unavailable',!caps.torch);
-      torch.setAttribute('aria-label',caps.torch?'Flash':'Flash indisponible');
-    }
-
-    document.querySelectorAll('[data-zoom]').forEach(btn=>{
-      const z=Number(btn.dataset.zoom);
-      btn.disabled=z<cameraZoomMin||z>cameraZoomMax;
-    });
-
-    setCameraStatus('Caméra prête');
   }catch(e){
-    console.error(e);
-    setCameraStatus('Caméra indisponible');
-    showToast('Autorisez la caméra dans Safari');
+    if(token!==camStartToken)return;
+    try{localStorage.setItem('holioo_cam_asked','1')}catch{}
+    const name=e?.name||'';
+    console.warn('Camera start failed:',name);
+    if(name==='NotAllowedError'||name==='SecurityError'){
+      showCameraPanel((await cameraPermissionState())==='denied'?'blocked':'denied');
+      watchCameraPermission();
+    }else if(name==='NotFoundError'||name==='OverconstrainedError')showCameraPanel('nocamera');
+    else if(name==='NotReadableError'||name==='AbortError')showCameraPanel('busy');
+    else showCameraPanel('error');
+    return;
   }
+  try{localStorage.setItem('holioo_cam_asked','1')}catch{}
+
+  // The user left the camera, or another start began, while the browser was opening it.
+  if(token!==camStartToken||currentView!=='capture'||byId('cameraVideo')!==video){stream.getTracks().forEach(t=>t.stop());return}
+
+  cameraStream=stream;
+  video.srcObject=stream;
+  await video.play().catch(()=>{});
+  cameraTrack=stream.getVideoTracks()[0];
+  // Another app took the camera, or the permission was revoked.
+  cameraTrack.addEventListener('ended',()=>{if(cameraTrack&&currentView==='capture'&&!document.hidden)showCameraPanel('busy')});
+
+  const caps=cameraTrack.getCapabilities?.()||{};
+  const zoomCaps=caps.zoom;
+  cameraUsesHardwareZoom=!!zoomCaps;
+  cameraZoomMin=zoomCaps?.min??1;
+  cameraZoomMax=zoomCaps?.max??4;
+  if(cameraZoomMax<=cameraZoomMin)cameraZoomMax=Math.max(4,cameraZoomMin);
+
+  const slider=byId('zoomRange');
+  if(slider){
+    slider.min=String(cameraZoomMin);
+    slider.max=String(cameraZoomMax);
+    slider.step=String(zoomCaps?.step||0.1);
+  }
+
+  zoomValue=clamp(1,cameraZoomMin,cameraZoomMax);
+  await setCameraZoom(zoomValue,{silent:true});
+
+  // Flash is always off when the camera opens; it is never remembered.
+  const torch=byId('torchBtn');
+  if(torch){
+    torch.disabled=!caps.torch;
+    torch.classList.toggle('unavailable',!caps.torch);
+    torch.classList.remove('active');
+    torch.setAttribute('aria-pressed','false');
+    torch.setAttribute('aria-label',caps.torch?camT('flashOff'):camT('flashNone'));
+  }
+
+  document.querySelectorAll('[data-zoom]').forEach(btn=>{
+    const z=Number(btn.dataset.zoom);
+    btn.disabled=z<cameraZoomMin||z>cameraZoomMax;
+  });
+
+  setCameraStatus(camT('ready'));
 }
 
 function stopCamera(){
@@ -85,6 +273,20 @@ function stopCamera(){
   cameraTrack=null;
   torchOn=false;
   cameraUsesHardwareZoom=false;
+  const video=byId('cameraVideo');
+  if(video)video.srcObject=null;
+}
+
+// Release the camera when the app goes to the background, reopen it when it comes back.
+function setupCameraLifecycle(){
+  if(camLifecycleReady)return;
+  camLifecycleReady=true;
+  document.addEventListener('visibilitychange',()=>{
+    if(currentView!=='capture')return;
+    if(document.hidden){camStartToken++;stopCamera()}
+    else if(!cameraStream&&byId('camPanel')?.classList.contains('hidden'))startCamera();
+  });
+  window.addEventListener('pagehide',()=>{if(currentView==='capture'){camStartToken++;stopCamera()}});
 }
 
 async function setCameraZoom(value,{silent=false}={}){
@@ -100,16 +302,15 @@ async function setCameraZoom(value,{silent=false}={}){
       video.style.transform=`scale(${target})`;
     }
   }catch(e){
-    console.warn('Zoom constraint failed',e);
+    console.warn('Zoom constraint failed');
     cameraUsesHardwareZoom=false;
     if(video)video.style.transform=`scale(${target})`;
   }
 
   const slider=byId('zoomRange');
   if(slider)slider.value=String(target);
-  const label=byId('zoomLabel'),pinch=byId('pinchZoomLabel');
+  const pinch=byId('pinchZoomLabel');
   const text=`${target.toFixed(1)}×`;
-  if(label)label.textContent=text;
   if(pinch)pinch.textContent=text;
 
   document.querySelectorAll('[data-zoom]').forEach(btn=>{
@@ -155,32 +356,36 @@ function setupPinchZoom(){
   },{passive:true});
 }
 
-async function applyZoom(e){
-  await setCameraZoom(Number(e.target.value));
-}
-
 async function toggleTorch(){
   if(!cameraTrack)return;
   const caps=cameraTrack.getCapabilities?.()||{};
   if(!caps.torch){
-    showToast('La torche n’est pas disponible sur cette caméra');
+    showToast(camT('flashNone'));
     return;
   }
 
   torchOn=!torchOn;
+  const btn=byId('torchBtn');
   try{
     await cameraTrack.applyConstraints({advanced:[{torch:torchOn}]});
-    byId('torchBtn')?.classList.toggle('active',torchOn);
   }catch(e){
     torchOn=false;
-    showToast('Impossible d’activer la torche');
+    showToast(camT('flashError'));
   }
+  btn?.classList.toggle('active',torchOn);
+  btn?.setAttribute('aria-pressed',String(torchOn));
+  btn?.setAttribute('aria-label',torchOn?camT('flashOn'):camT('flashOff'));
 }
 
-async function capturePhoto(){
+// ─── Capture ──────────────────────────────────────────────────
+// The shutter never waits: the frame is copied synchronously, then encoding and saving
+// run in cameraQueue (features/camera-queue.js) while the next photo can already be taken.
+
+function capturePhoto(){
+  if(!cameraDestContext()){openDestinationPicker(camT('chooseFirst'));return}
   const video=byId('cameraVideo');
-  if(!video?.videoWidth){
-    showToast('La caméra n’est pas prête');
+  if(!cameraStream||!video?.videoWidth){
+    showToast(camT('notReady'));
     return;
   }
 
@@ -199,350 +404,61 @@ async function capturePhoto(){
     video,sx,sy,sw,sh,0,0,canvas.width,canvas.height
   );
 
-  const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',0.92));
-  if(!blob)return;
-
+  const dest=destinationForShot();
+  if(!dest)return;
   const id=uid();
-  await DB.put('photos',{id,blob,createdAt:now(),syncState:'pending'});
-  captureIds.push(id);
-  state.captureDraft.photoIds=[...captureIds];
-  saveState();
+  const blob=new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',0.92));
+  cameraQueue.add({id,blob,dest,createdAt:now()});
+  camShots.push(id);
+  const shotDest=camDest;
+  blob.then(b=>{if(b&&camShots.at(-1)===id&&camDest===shotDest)setCameraThumb(b)});
 
   const stage=byId('cameraStage');
+  stage?.classList.remove('capture-flash');void stage?.offsetWidth;
   stage?.classList.add('capture-flash');
   setTimeout(()=>stage?.classList.remove('capture-flash'),120);
 
   updateCaptureCount();
-  await renderCaptureGalleryRail();
   navigator.vibrate?.(18);
 }
 
+// Photos from the gallery go to the current destination too, in the order they were picked.
 async function importGallery(e){
   const files=[...(e.target.files||[])].filter(f=>f.type.startsWith('image/'));
+  e.target.value='';
+  if(!files.length)return;
+  const dest=destinationForShot();
+  if(!dest){openDestinationPicker(camT('chooseFirst'));return}
   for(const file of files){
     const id=uid();
-    await DB.put('photos',{id,blob:file,createdAt:now(),syncState:'pending'});
-    captureIds.push(id);
+    cameraQueue.add({id,blob:Promise.resolve(file),dest,createdAt:now()});
+    camShots.push(id);
   }
-
-  state.captureDraft.photoIds=[...captureIds];
-  saveState();
+  setCameraThumb(files.at(-1));
   updateCaptureCount();
-  await renderCaptureGalleryRail();
-  e.target.value='';
-  if(files.length)showToast(`${files.length} photo${files.length>1?'s':''} ajoutée${files.length>1?'s':''}`);
+  showToast(camT('imported',{n:files.length,dest:cameraDestinationLabel(camDest)}));
 }
 
-async function renderCaptureGalleryRail(){
-  const rail=byId('captureGalleryRail');
-  if(!rail)return;
-
-  for(const url of captureRailUrls)URL.revokeObjectURL(url);
-  captureRailUrls=[];
-  rail.innerHTML='';
-
-  const recent=[...captureIds].reverse().slice(0,10);
-  for(let i=0;i<recent.length;i++){
-    const id=recent[i];
-    const row=await DB.get('photos',id);
-    if(!row?.blob)continue;
-
-    const url=URL.createObjectURL(row.blob);
-    captureRailUrls.push(url);
-
-    const btn=document.createElement('button');
-    btn.className='rail-thumb';
-    btn.dataset.photoId=id;
-    btn.title='Ouvrir et recadrer';
-    btn.innerHTML=`<img src="${url}" alt="Photo ${captureIds.indexOf(id)+1}"><span>${icon('crop',{size:12,stroke:2.4})}</span>`;
-    btn.onclick=()=>openCropEditor(id);
-    rail.appendChild(btn);
-  }
-
-  const lastBtn=byId('lastPhotoBtn');
-  if(lastBtn){
-    const lastId=captureIds[captureIds.length-1];
-    const last=lastId?await DB.get('photos',lastId):null;
-    if(last?.blob){
-      const preview=URL.createObjectURL(last.blob);
-      captureRailUrls.push(preview);
-      lastBtn.innerHTML=`<img src="${preview}" alt="Dernière photo">`;
-    }else{
-      lastBtn.innerHTML=icon('image',{size:24});
-    }
-  }
-}
-
-async function openCropEditor(photoId){
-  const row=await DB.get('photos',photoId);
-  if(!row?.blob)return;
-
-  closeCropEditor();
-
-  const url=URL.createObjectURL(row.blob);
-  cropEditor={
-    photoId,
-    row,
-    url,
-    crop:null,
-    bounds:null,
-    ratio:null,
-    drag:null
-  };
-
-  const host=byId('cropEditorHost');
-  if(!host)return;
-
-  host.innerHTML=`<div class="crop-editor" id="cropEditor">
-    <div class="crop-editor-head">
-      <b>Recadrer</b>
-      <small>Déplacez le cadre ou tirez les coins</small>
-    </div>
-
-    <div class="crop-workspace" id="cropWorkspace">
-      <img id="cropImage" src="${url}" alt="Photo à recadrer" draggable="false">
-      <div class="crop-box" id="cropBox">
-        <span class="crop-grid-line v1"></span><span class="crop-grid-line v2"></span>
-        <span class="crop-grid-line h1"></span><span class="crop-grid-line h2"></span>
-        <i class="crop-handle nw" data-handle="nw"></i>
-        <i class="crop-handle ne" data-handle="ne"></i>
-        <i class="crop-handle sw" data-handle="sw"></i>
-        <i class="crop-handle se" data-handle="se"></i>
-      </div>
-    </div>
-
-    <div class="crop-bar">
-      <div class="crop-ratios">
-        <button class="crop-ratio active" data-ratio="free">Libre</button>
-        <button class="crop-ratio" data-ratio="1">1:1</button>
-        <button class="crop-ratio" data-ratio="1.333333">4:3</button>
-        <button class="crop-ratio" data-ratio="0.707071">A4</button>
-      </div>
-      <div class="crop-actions">
-        <button class="crop-text-btn" id="cancelCrop">Annuler</button>
-        <button class="crop-save-btn" id="saveCrop">${icon('check',{size:18,stroke:2.4})}Enregistrer</button>
-      </div>
-    </div>
-  </div>`;
-
-  byId('cancelCrop').onclick=closeCropEditor;
-  byId('saveCrop').onclick=saveCrop;
-  document.querySelectorAll('[data-ratio]').forEach(btn=>btn.onclick=()=>setCropRatio(btn.dataset.ratio));
-  byId('cropImage').onload=()=>requestAnimationFrame(initCropBox);
-}
-
-function initCropBox(){
-  if(!cropEditor)return;
-  const workspace=byId('cropWorkspace'),img=byId('cropImage'),box=byId('cropBox');
-  if(!workspace||!img||!box)return;
-
-  const wr=workspace.getBoundingClientRect();
-  const ir=img.getBoundingClientRect();
-  cropEditor.bounds={
-    x:ir.left-wr.left,
-    y:ir.top-wr.top,
-    w:ir.width,
-    h:ir.height
-  };
-
-  const inset=Math.min(20,Math.max(8,ir.width*0.05));
-  cropEditor.crop={
-    x:cropEditor.bounds.x+inset,
-    y:cropEditor.bounds.y+inset,
-    w:cropEditor.bounds.w-inset*2,
-    h:cropEditor.bounds.h-inset*2
-  };
-
-  updateCropBox();
-  setupCropInteractions();
-}
-
-function updateCropBox(){
-  const box=byId('cropBox');
-  if(!box||!cropEditor?.crop)return;
-  const c=cropEditor.crop;
-  Object.assign(box.style,{
-    left:`${c.x}px`,
-    top:`${c.y}px`,
-    width:`${c.w}px`,
-    height:`${c.h}px`
-  });
-}
-
-function setCropRatio(raw){
-  if(!cropEditor?.crop||!cropEditor.bounds)return;
-  document.querySelectorAll('[data-ratio]').forEach(b=>b.classList.toggle('active',b.dataset.ratio===raw));
-
-  if(raw==='free'){
-    cropEditor.ratio=null;
-    return;
-  }
-
-  const ratio=Number(raw);
-  cropEditor.ratio=ratio;
-  const b=cropEditor.bounds,c=cropEditor.crop;
-  const cx=c.x+c.w/2,cy=c.y+c.h/2;
-
-  let w=Math.min(c.w,b.w);
-  let h=w/ratio;
-  if(h>b.h){h=Math.min(c.h,b.h);w=h*ratio}
-  w=Math.min(w,b.w);h=Math.min(h,b.h);
-
-  cropEditor.crop={
-    x:clamp(cx-w/2,b.x,b.x+b.w-w),
-    y:clamp(cy-h/2,b.y,b.y+b.h-h),
-    w,h
-  };
-  updateCropBox();
-}
-
-function setupCropInteractions(){
-  const box=byId('cropBox'),workspace=byId('cropWorkspace');
-  if(!box||!workspace||box.dataset.ready==='1')return;
-  box.dataset.ready='1';
-
-  box.addEventListener('pointerdown',e=>{
-    if(!cropEditor?.crop)return;
-    e.preventDefault();
-    const handle=e.target.dataset.handle||'move';
-    cropEditor.drag={
-      pointerId:e.pointerId,
-      handle,
-      startX:e.clientX,
-      startY:e.clientY,
-      crop:{...cropEditor.crop}
-    };
-    box.setPointerCapture?.(e.pointerId);
-  });
-
-  box.addEventListener('pointermove',e=>{
-    const d=cropEditor?.drag;
-    if(!d||d.pointerId!==e.pointerId)return;
-    e.preventDefault();
-
-    const dx=e.clientX-d.startX,dy=e.clientY-d.startY;
-    const b=cropEditor.bounds,s=d.crop,min=56;
-    let x=s.x,y=s.y,w=s.w,h=s.h;
-
-    if(d.handle==='move'){
-      x=clamp(s.x+dx,b.x,b.x+b.w-s.w);
-      y=clamp(s.y+dy,b.y,b.y+b.h-s.h);
-    }else{
-      if(d.handle.includes('e'))w=clamp(s.w+dx,min,b.x+b.w-s.x);
-      if(d.handle.includes('s'))h=clamp(s.h+dy,min,b.y+b.h-s.y);
-      if(d.handle.includes('w')){
-        const nx=clamp(s.x+dx,b.x,s.x+s.w-min);
-        w=s.w+(s.x-nx);x=nx;
-      }
-      if(d.handle.includes('n')){
-        const ny=clamp(s.y+dy,b.y,s.y+s.h-min);
-        h=s.h+(s.y-ny);y=ny;
-      }
-    }
-
-    cropEditor.crop={x,y,w,h};
-    updateCropBox();
-  });
-
-  const finish=e=>{
-    if(cropEditor?.drag?.pointerId===e.pointerId)cropEditor.drag=null;
-  };
-  box.addEventListener('pointerup',finish);
-  box.addEventListener('pointercancel',finish);
-}
-
-async function saveCrop(){
-  if(!cropEditor?.crop||!cropEditor.bounds)return;
-  const img=byId('cropImage');
-  if(!img?.naturalWidth)return;
-
-  const b=cropEditor.bounds,c=cropEditor.crop;
-  const sx=(c.x-b.x)/b.w*img.naturalWidth;
-  const sy=(c.y-b.y)/b.h*img.naturalHeight;
-  const sw=c.w/b.w*img.naturalWidth;
-  const sh=c.h/b.h*img.naturalHeight;
-
-  const maxSide=2400;
-  const scale=Math.min(1,maxSide/Math.max(sw,sh));
-  const canvas=document.createElement('canvas');
-  canvas.width=Math.max(1,Math.round(sw*scale));
-  canvas.height=Math.max(1,Math.round(sh*scale));
-  const ctx=canvas.getContext('2d',{alpha:false});
-  ctx.drawImage(img,sx,sy,sw,sh,0,0,canvas.width,canvas.height);
-
-  const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',0.93));
-  if(!blob)return;
-
-  const old=cropEditor.row;
-  await DB.put('photos',{
-    ...old,
-    blob,
-    syncState:'pending',
-    syncError:null,
-    driveFileId:null,
-    driveWebViewLink:null,
-    driveParentId:null,
-    driveName:null,
-    croppedAt:now()
-  });
-
-  closeCropEditor();
-  await renderCaptureGalleryRail();
-  showToast('Recadrage enregistré');
-}
-
-function closeCropEditor(){
-  if(cropEditor?.url)URL.revokeObjectURL(cropEditor.url);
-  cropEditor=null;
-  const host=byId('cropEditorHost');
-  if(host)host.innerHTML='';
+function leaveCamera(){
+  camStartToken++;
+  stopCamera();
+  closeCameraPicker();
+  setCameraThumb(null);
+  queueSync();
 }
 
 function closeCaptureScreen(){
-  closeCropEditor();
-  stopCamera();
-  for(const url of captureRailUrls)URL.revokeObjectURL(url);
-  captureRailUrls=[];
-
-  if(captureIds.length){
-    state.inbox.unshift({
-      id:state.captureDraft.id,
-      title:'Capture interrompue',
-      photoIds:[...captureIds],
-      createdAt:state.captureDraft.createdAt
-    });
-    showToast('Photos gardées dans Captures');
-  }
-
-  state.captureDraft=null;
-  captureIds=[];
-  saveState();
-  queueSync();
+  leaveCamera();
   navigate('home');
 }
 
+// Photos are already filed: "Terminé" opens the session they went to.
 function finishCapture(){
-  if(!captureIds.length){
-    showToast('Prenez au moins une photo');
-    return;
-  }
-
-  closeCropEditor();
-  stopCamera();
-  for(const url of captureRailUrls)URL.revokeObjectURL(url);
-  captureRailUrls=[];
-
-  currentBatch={
-    id:state.captureDraft?.id||uid(),
-    photoIds:[...captureIds],
-    selected:new Set(captureIds),
-    createdAt:state.captureDraft?.createdAt||now(),
-    splitQueue:[]
-  };
-  state.captureDraft=null;
-  captureIds=[];
-  saveState();
-  navigate('captureComplete');
+  const ctx=camShots.length&&camDest?.sessionId&&findSessionContext(camDest.sessionId);
+  if(ctx)showToast(camT('savedTo',{dest:cameraDestinationLabel(camDest)}));
+  leaveCamera();
+  if(ctx)navigate('session',{courseId:ctx.course.id,sectionId:ctx.section.id,sessionId:ctx.session.id});
+  else navigate('home');
 }
 
 async function fillThumbs(containerId,ids,{selectable=false,split=false,viewerTitle='Galerie',reorder=false}={}){

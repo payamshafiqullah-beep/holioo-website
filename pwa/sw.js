@@ -1,75 +1,87 @@
-const VERSION='holioo-camera-v1';
-const CORE=["./","./index.html","./styles.css?v=20260930-camera-v1","./db.js?v=20260930-camera-v1","./drive.js?v=20260930-camera-v1","./core.js?v=20260930-camera-v1","./ui/icons.js?v=20260930-camera-v1","./ui/components.js?v=20260930-camera-v1","./ui/reorder.js?v=20260930-camera-v1","./ui/shell.js?v=20260930-camera-v1","./features/media-viewer.js?v=20260930-camera-v1","./features/course-actions.js?v=20260930-camera-v1","./ui/camera-picker.js?v=20260930-camera-v1","./features/camera-i18n.js?v=20260930-camera-v1","./features/camera-destination.js?v=20260930-camera-v1","./features/camera-queue.js?v=20260930-camera-v1","./features/capture-actions.js?v=20260930-camera-v1","./features/pdf-actions.js?v=20260930-camera-v1","./features/community-actions.js?v=20260930-camera-v1","./pages/LoginPage.js?v=20260930-camera-v1","./pages/AdminPage.js?v=20260930-camera-v1","./pages/AcademicSetupPage.js?v=20260930-camera-v1","./pages/HomePage.js?v=20260930-camera-v1","./pages/CoursesPage.js?v=20260930-camera-v1","./pages/CourseDetailPage.js?v=20260930-camera-v1","./pages/SectionPage.js?v=20260930-camera-v1","./pages/SessionPage.js?v=20260930-camera-v1","./pages/CapturePage.js?v=20260930-camera-v1","./pages/CaptureCompletePage.js?v=20260930-camera-v1","./pages/SplitBatchPage.js?v=20260930-camera-v1","./pages/OrganizeBatchPage.js?v=20260930-camera-v1","./pages/InboxPage.js?v=20260930-camera-v1","./pages/PhotoViewerPage.js?v=20260930-camera-v1","./pages/PdfBuilderPage.js?v=20260930-camera-v1","./pages/PdfViewerPage.js?v=20260930-camera-v1","./pages/FilesPage.js?v=20260930-camera-v1","./pages/AcademicLibraryPage.js?v=20260930-camera-v1","./pages/ProfilePage.js?v=20260930-camera-v1","./pages/SyncPage.js?v=20260930-camera-v1","./app.js?v=20260930-camera-v1","./manifest.webmanifest","./icon.svg?v=hq-ho-v3","./icon-180.png?v=hq-ho-v3","./icon-192.png?v=hq-ho-v3","./icon-512.png?v=hq-ho-v3"];
+// Holioo service worker.
+// - App files carry ?v=<release>: served from the cache first (instant start, even on bad Wi-Fi);
+//   a new release changes the URLs, so nothing stale is ever served.
+// - The page itself: network first with a short timeout, cached copy when offline or slow.
+// - Libraries (Supabase, jsPDF, pdf.js) and fonts from CDNs: kept in a separate cache that survives
+//   releases, so PDF creation and viewing work offline once they were loaded online.
+// - A new version installs in the background; the page reloads into it only when that can't
+//   interrupt anything (see reloadIfSafe in app.js).
+const VERSION='holioo-review-v1';
+const RUNTIME='holioo-cdn-v1';
+const CORE=["./", "./index.html", "./icon.svg?v=hq-ho-v3", "./icon-180.png?v=hq-ho-v3", "./styles.css?v=20260930-review-v1", "./db.js?v=20260930-review-v1", "./drive.js?v=20260930-review-v1", "./core.js?v=20260930-review-v1", "./ui/icons.js?v=20260930-review-v1", "./ui/components.js?v=20260930-review-v1", "./ui/reorder.js?v=20260930-review-v1", "./ui/shell.js?v=20260930-review-v1", "./ui/camera-picker.js?v=20260930-review-v1", "./features/media-viewer.js?v=20260930-review-v1", "./features/course-actions.js?v=20260930-review-v1", "./features/thumbs.js?v=20260930-review-v1", "./features/camera-i18n.js?v=20260930-review-v1", "./features/camera-destination.js?v=20260930-review-v1", "./features/camera-queue.js?v=20260930-review-v1", "./features/capture-actions.js?v=20260930-review-v1", "./features/pdf-actions.js?v=20260930-review-v1", "./features/community-actions.js?v=20260930-review-v1", "./pages/LoginPage.js?v=20260930-review-v1", "./pages/AdminPage.js?v=20260930-review-v1", "./pages/AcademicSetupPage.js?v=20260930-review-v1", "./pages/HomePage.js?v=20260930-review-v1", "./pages/CoursesPage.js?v=20260930-review-v1", "./pages/CourseDetailPage.js?v=20260930-review-v1", "./pages/SectionPage.js?v=20260930-review-v1", "./pages/SessionPage.js?v=20260930-review-v1", "./pages/CapturePage.js?v=20260930-review-v1", "./pages/CaptureCompletePage.js?v=20260930-review-v1", "./pages/SplitBatchPage.js?v=20260930-review-v1", "./pages/OrganizeBatchPage.js?v=20260930-review-v1", "./pages/InboxPage.js?v=20260930-review-v1", "./pages/PhotoViewerPage.js?v=20260930-review-v1", "./pages/PdfBuilderPage.js?v=20260930-review-v1", "./pages/PdfViewerPage.js?v=20260930-review-v1", "./pages/FilesPage.js?v=20260930-review-v1", "./pages/AcademicLibraryPage.js?v=20260930-review-v1", "./pages/ProfilePage.js?v=20260930-review-v1", "./pages/SyncPage.js?v=20260930-review-v1", "./app.js?v=20260930-review-v1", "./manifest.webmanifest"];
+const CDN=["https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2", "https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"];
+const CDN_HOSTS=['cdn.jsdelivr.net','cdnjs.cloudflare.com','fonts.googleapis.com','fonts.gstatic.com'];
+const NAV_TIMEOUT=3500;
 
 self.addEventListener('install',event=>{
-  event.waitUntil(
-    caches.open(VERSION)
-      .then(cache=>cache.addAll(CORE))
-      .then(()=>self.skipWaiting())
-  );
+  event.waitUntil((async()=>{
+    await (await caches.open(VERSION)).addAll(CORE);
+    // Best effort: a CDN hiccup must not block the update.
+    const cdn=await caches.open(RUNTIME);
+    await Promise.all(CDN.map(async url=>{if(!(await cdn.match(url)))await cdn.add(new Request(url,{mode:'cors'})).catch(()=>{})}));
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener('activate',event=>{
   event.waitUntil((async()=>{
     const keys=await caches.keys();
-    await Promise.all(keys.filter(k=>k!==VERSION).map(k=>caches.delete(k)));
+    await Promise.all(keys.filter(k=>k!==VERSION&&k!==RUNTIME).map(k=>caches.delete(k)));
     await self.clients.claim();
-
-    // Force already-open / installed PWA windows to load the new shell once
-    // a new service worker takes control.
-    const clients=await self.clients.matchAll({type:'window',includeUncontrolled:true});
-    await Promise.all(clients.map(async client=>{
-      try{await client.navigate(client.url)}catch{}
-    }));
   })());
 });
+
+const timeout=ms=>new Promise((_,reject)=>setTimeout(()=>reject(new Error('timeout')),ms));
 
 self.addEventListener('fetch',event=>{
   const req=event.request;
   if(req.method!=='GET')return;
-
   const url=new URL(req.url);
-  if(url.hostname.includes('supabase.co')||url.hostname.includes('googleapis.com')||url.hostname.includes('accounts.google.com'))return;
+  if(url.hostname.endsWith('supabase.co')||url.hostname.endsWith('googleapis.com')&&url.hostname!=='fonts.googleapis.com'||url.hostname==='accounts.google.com')return;
 
-  // Navigation: network first, cached shell only when offline.
+  // The page: network first, but never wait more than a few seconds for it.
   if(req.mode==='navigate'){
     event.respondWith((async()=>{
-      try{
-        const fresh=await fetch(req,{cache:'no-store'});
-        const cache=await caches.open(VERSION);
-        cache.put('./index.html',fresh.clone()).catch(()=>{});
-        return fresh;
-      }catch{
-        return (await caches.match(req))||(await caches.match('./index.html'));
+      const cache=await caches.open(VERSION);
+      const network=fetch(req,{cache:'no-store'}).then(res=>{if(res.ok)cache.put('./index.html',res.clone()).catch(()=>{});return res});
+      event.waitUntil(network.catch(()=>{}));
+      try{return await Promise.race([network,timeout(NAV_TIMEOUT)])}
+      catch{
+        const cached=await cache.match('./index.html');
+        return cached||network;
       }
     })());
     return;
   }
 
-  // JS/CSS: prefer the newest network copy when online, keep cache as fallback.
-  if(url.origin===self.location.origin&&(/\.js$/.test(url.pathname)||/\.css$/.test(url.pathname))){
+  if(url.origin===self.location.origin){
+    // Versioned app files: cache first.
+    if(url.searchParams.has('v')){
+      event.respondWith((async()=>{
+        const cache=await caches.open(VERSION);
+        const cached=await cache.match(req);if(cached)return cached;
+        const res=await fetch(req);if(res.ok)cache.put(req,res.clone()).catch(()=>{});
+        return res;
+      })());
+      return;
+    }
+    // Anything else of ours (manifest, worker scripts…): network first, cache when offline.
     event.respondWith((async()=>{
       const cache=await caches.open(VERSION);
-      try{
-        const fresh=await fetch(req,{cache:'no-store'});
-        if(fresh?.ok)cache.put(req,fresh.clone()).catch(()=>{});
-        return fresh;
-      }catch{
-        return (await cache.match(req))||(await caches.match(req,{ignoreSearch:true}));
-      }
+      try{const res=await fetch(req);if(res.ok)cache.put(req,res.clone()).catch(()=>{});return res}
+      catch{return(await cache.match(req))||(await cache.match(req,{ignoreSearch:true}))||Response.error()}
     })());
     return;
   }
 
-  // Icons and other static assets can remain cache-first.
-  event.respondWith(
-    caches.match(req)
-      .then(cached=>cached||fetch(req).then(res=>{
-        if(res&&res.ok){
-          const copy=res.clone();
-          caches.open(VERSION).then(cache=>cache.put(req,copy));
-        }
-        return res;
-      }))
-  );
+  // Libraries and fonts: cache first, fetched once.
+  if(CDN_HOSTS.includes(url.hostname)){
+    event.respondWith((async()=>{
+      const cache=await caches.open(RUNTIME);
+      const cached=await cache.match(req,{ignoreVary:true});if(cached)return cached;
+      const res=await fetch(req);
+      if(res.ok||res.type==='opaque')cache.put(req,res.clone()).catch(()=>{});
+      return res;
+    })());
+  }
 });

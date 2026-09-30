@@ -5,7 +5,7 @@
 // A photo stays in memory until it is stored; a failed write is retried and never dropped.
 
 const cameraQueue=(()=>{
-  const items=[];            // {id, blob: Promise<Blob>, dest:{courseId,sectionId,sessionId}, tries}
+  const items=[];            // {id, blob: Promise<Blob>, thumb?: Promise<Blob>, dest:{courseId,sectionId,sessionId}, tries}
   const listeners=new Set();
   let running=false,failing=false,storageFull=false,retryTimer=null;
 
@@ -33,7 +33,8 @@ const cameraQueue=(()=>{
       try{
         const blob=await it.blob;
         if(!blob)throw new Error('encode');
-        await DB.put('photos',{id:it.id,blob,createdAt:it.createdAt,syncState:'pending'});
+        const thumb=await Promise.resolve(it.thumb).catch(()=>null);
+        await DB.put('photos',{id:it.id,blob,...(thumb?{thumb}:{}),createdAt:it.createdAt,syncState:'pending'});
         fileIntoSession(it.id,it.dest);
         saveState();
         items.shift();

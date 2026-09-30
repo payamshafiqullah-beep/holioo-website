@@ -56,15 +56,15 @@ function renderPdfBuilder(){
     host.innerHTML='';
 
     for(let i=0;i<photoOrder.length;i++){
-      const id=photoOrder[i],row=await DB.get('photos',id);
+      const id=photoOrder[i],url=await photoThumbUrl(id);
       if(token!==orderRenderToken)return;
-      if(!row?.blob)continue;
-      const url=URL.createObjectURL(row.blob);pdfBuilderUrls.push(url);
+      if(!url)continue;
+      pdfBuilderUrls.push(url);
       const entry=photoContext.get(id);
       const card=document.createElement('div');
       card.className='thumb selected pdf-order-thumb';
       card.dataset.photoId=id;
-      card.innerHTML=`<img src="${url}" alt="Photo ${i+1}" draggable="false"><span class="num">${i+1}</span><span class="pdf-order-hint" aria-hidden="true">${icon('more',{size:18})}</span>`;
+      card.innerHTML=`<img src="${url}" alt="Photo ${i+1}" draggable="false" decoding="async"><span class="num">${i+1}</span><span class="pdf-order-hint" aria-hidden="true">${icon('more',{size:18})}</span>`;
       card.title=entry?`${entry.section.name} · ${entry.session.title}`:'';
       host.appendChild(card);
     }

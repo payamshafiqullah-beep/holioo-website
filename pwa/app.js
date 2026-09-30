@@ -1,4 +1,4 @@
-const VIEWS={login:()=>renderLogin(),blocked:()=>renderBlocked(),admin:()=>renderAdmin(),academicSetup:()=>renderAcademicSetup(),home:()=>renderHome(),courses:()=>renderCourses(),course:()=>renderCourse(),section:()=>renderSection(),session:()=>renderSession(),capture:()=>renderCapture(),captureComplete:()=>renderCaptureComplete(),split:()=>renderSplit(),organize:()=>renderOrganize(),inbox:()=>renderInbox(),photoViewer:()=>renderPhotoViewer(),pdfBuilder:()=>renderPdfBuilder(),pdfViewer:()=>renderPdfViewer(),files:()=>renderFiles(),library:()=>renderLibrary(),profile:()=>renderProfile(),sync:()=>renderSync()};
+const VIEWS={login:()=>renderLogin(),blocked:()=>renderBlocked(),admin:()=>renderAdmin(),academicSetup:()=>renderAcademicSetup(),home:()=>renderHome(),courses:()=>renderCourses(),course:()=>renderCourse(),section:()=>renderSection(),session:()=>renderSession(),capture:()=>renderCapture(),scanReview:()=>renderScanReview(),captureComplete:()=>renderCaptureComplete(),split:()=>renderSplit(),organize:()=>renderOrganize(),inbox:()=>renderInbox(),photoViewer:()=>renderPhotoViewer(),pdfBuilder:()=>renderPdfBuilder(),pdfViewer:()=>renderPdfViewer(),files:()=>renderFiles(),library:()=>renderLibrary(),profile:()=>renderProfile(),sync:()=>renderSync()};
 async function render(){
   destroyReorderables();
   // Sign-in is mandatory. Offline, the last signed-in account on this device keeps working locally.
@@ -8,7 +8,7 @@ async function render(){
   else if(currentView==='login'||currentView==='blocked')currentView='home';
   if(currentView==='admin'&&currentRole!=='admin')currentView='profile';
   if(signedIn&&!state.onboardingComplete&&currentView==='home')currentView='academicSetup';
-  setChrome(['login','blocked','academicSetup','photoViewer','pdfViewer','capture','admin'].includes(currentView));
+  setChrome(['login','blocked','academicSetup','photoViewer','pdfViewer','capture','scanReview','admin'].includes(currentView));
   releaseThumbUrls();
   await VIEWS[currentView]?.();
   applyChromeStatus();

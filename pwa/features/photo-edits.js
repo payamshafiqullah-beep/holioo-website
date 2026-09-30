@@ -37,9 +37,15 @@ function imageJob(type,payload){
 }
 
 // Same work on the main thread (older iPhones without OffscreenCanvas in workers).
-async function imageJobInline(type,{blob,edit,maxSide,quality,thumbSide,crop}){
+async function imageJobInline(type,{blob,edit,maxSide,quality,thumbSide,crop,front,back}){
   await new Promise(r=>setTimeout(r)); // let the UI paint first
+  if(type==='idcard'){
+    const side=async s=>HoliooImage.renderEdited(await createImageBitmap(s.blob),s.edit,{maxSide:1400});
+    const page=HoliooImage.composeIdPage(await side(front),await side(back));
+    return{page:await HoliooImage.toBlob(page,'image/jpeg',.9),thumb:await HoliooImage.toBlob(HoliooImage.scaleTo(page,480),'image/jpeg',.82)};
+  }
   const src=await createImageBitmap(blob);
+  if(type==='encode'){const c=HoliooImage.scaleTo(src,maxSide||2400);return{blob:await HoliooImage.toBlob(c,'image/jpeg',quality||.85),width:c.width,height:c.height}}
   const toBitmap=c=>createImageBitmap(c);
   if(type==='proxy')return{bitmap:await toBitmap(HoliooImage.scaleTo(src,maxSide||1600)),width:src.width,height:src.height};
   if(type==='preview')return{bitmap:await toBitmap(HoliooImage.renderEdited(src,edit,{maxSide:maxSide||1400,crop:!!crop}))};

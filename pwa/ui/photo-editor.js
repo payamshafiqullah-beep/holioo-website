@@ -7,9 +7,8 @@
 // GPU at 60fps; the real pixels are rendered off the main thread only on "Terminé"
 // (features/photo-edits.js). Edits never touch the original image.
 
-const PE_FILTERS=[['original','Original'],['document','Document'],['whiteboard','Tableau'],['gray','Gris'],['contrast','Contraste']];
+const PE_FILTERS=[['original','Original'],['auto','Auto'],['gray','Gris'],['bw','N&B'],['lighten','Éclaircir'],['shadows','Ombres'],['board','Tableau'],['board-dark','Tableau noir']];
 const PE_ASPECTS=[['free','Libre'],['original','Original'],['a4','A4'],['4:3','4:3'],['16:9','16:9'],['1:1','Carré']];
-const OPENCV_URL='https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.10.0-release.1/dist/opencv.js';
 const PE_DRAFT_KEY='holioo_editor_draft';
 let peOpen=null;
 
@@ -343,7 +342,7 @@ async function openPhotoEditor({ids,index=0,fromEl=null,onSaved=null}){
         <div class="pe-row">
           <button class="pe-pill-btn" data-act="rotate">${icon('rotateCw',{size:18})}<span>90°</span></button>
           <button class="pe-pill-btn" data-act="flip">${icon('flip',{size:18})}<span>Miroir</span></button>
-          ${it.edit.mode==='quad'?`<button class="pe-pill-btn" data-act="quadview">${icon(ed.quadView==='preview'?'scan':'maximize',{size:18})}<span>${ed.quadView==='preview'?'Ajuster les coins':'Aperçu'}</span></button>`:''}
+          ${it.edit.mode==='quad'?`<button class="pe-pill-btn" data-act="full">${icon('maximize',{size:18})}<span>Image entière</span></button><button class="pe-pill-btn" data-act="quadview">${icon(ed.quadView==='preview'?'scan':'maximize',{size:18})}<span>${ed.quadView==='preview'?'Ajuster les coins':'Aperçu'}</span></button>`:''}
           <button class="pe-pill-btn" data-act="reset">${icon('refresh',{size:18})}<span>Réinitialiser</span></button>
           ${list.length>1?`<button class="pe-pill-btn" data-act="aspect-all">${icon('layers',{size:18})}<span>Format pour toutes</span></button>`:''}
         </div>`;
@@ -359,7 +358,7 @@ async function openPhotoEditor({ids,index=0,fromEl=null,onSaved=null}){
       paintFilterThumbs(it);
     }else if(ed.tool==='auto'){
       panel.innerHTML=`<div class="pe-auto"><p>Détection des bords du tableau ou de la feuille, puis correction de la perspective.</p>
-        <div class="pe-row"><button class="pe-pill-btn primary" data-act="detect">${icon('wand',{size:18})}<span>Détecter</span></button><button class="pe-pill-btn" data-act="manual">${icon('scan',{size:18})}<span>4 coins manuels</span></button></div>
+        <div class="pe-row"><button class="pe-pill-btn primary" data-act="detect">${icon('wand',{size:18})}<span>${it.edit.mode==='quad'?'Détecter à nouveau':'Détecter les bords'}</span></button><button class="pe-pill-btn" data-act="manual">${icon('scan',{size:18})}<span>4 coins manuels</span></button><button class="pe-pill-btn" data-act="full">${icon('maximize',{size:18})}<span>Image entière</span></button></div>
         <div class="pe-progress" hidden><i></i></div></div>`;
     }
   }
@@ -433,52 +432,31 @@ async function openPhotoEditor({ids,index=0,fromEl=null,onSaved=null}){
     catch(e){console.warn(e)}finally{setBusy(false)}
   }
 
-  // "Auto": OpenCV.js is downloaded once, on first use, and cached by the service worker.
+  // "Auto": edges found by the scanner worker (OpenCV.js, downloaded once on first use and kept
+  // offline). Offline before that, or on failure: 4 corners to place by hand, no error.
   async function autoDetect(it){
     const prog=root.querySelector('.pe-progress');
+    const off=Scanner.subscribe(st=>{if(prog&&st.cvState==='loading'){prog.hidden=false;prog.querySelector('i').style.width=`${Math.round(st.cvProgress*100)}%`}});
     let quad=null;
     try{
-      const cv=await loadOpenCV(p=>{if(prog){prog.hidden=false;prog.querySelector('i').style.width=`${Math.round(p*100)}%`}});
+      if(!(await Scanner.prepare()))throw new Error('unavailable');
       if(prog)prog.hidden=true;
-      quad=detectDocument(cv,it);
+      setBusy(true,'');
+      const small=HoliooImage.scaleTo(it.oriented,640),c=document.createElement('canvas');c.width=small.width;c.height=small.height;
+      const x=c.getContext('2d');x.drawImage(small,0,0);
+      const r=await Scanner.detectImage(x.getImageData(0,0,c.width,c.height),'document');
+      if(r?.quad)quad=ScanCore.toEditQuad(r.quad,c.width,c.height);
     }catch(e){
       console.warn('Auto detection unavailable',e);
-      if(prog)prog.hidden=true;
       showToast(navigator.onLine?'Détection indisponible — ajustez les 4 coins':'Hors ligne — ajustez les 4 coins');
-      enterQuad(it,null,'adjust');return;
-    }
-    if(!quad){showToast('Bords non trouvés — ajustez les 4 coins');enterQuad(it,null,'adjust');return}
+      enterQuad(it,it.edit.quad,'adjust');return;
+    }finally{off();if(prog)prog.hidden=true;setBusy(false)}
+    if(!quad){showToast('Bords non trouvés — ajustez les 4 coins');enterQuad(it,it.edit.quad,'adjust');return}
     ed.detected=quad;
     enterQuad(it,quad,'adjust');
     ed.glow=true;draw();haptic();
     await new Promise(r=>setTimeout(r,900));
     ed.glow=false;ed.quadView='preview';renderPanel();loadQuadPreview(it);
-  }
-
-  function detectDocument(cv,it){
-    const small=HoliooImage.scaleTo(it.oriented,700),c=document.createElement('canvas');
-    c.width=small.width;c.height=small.height;c.getContext('2d').drawImage(small,0,0);
-    const src=cv.imread(c),gray=new cv.Mat(),edges=new cv.Mat(),contours=new cv.MatVector(),hier=new cv.Mat();
-    let best=null;
-    try{
-      cv.cvtColor(src,gray,cv.COLOR_RGBA2GRAY);
-      cv.GaussianBlur(gray,gray,new cv.Size(5,5),0);
-      cv.Canny(gray,edges,40,130);
-      const k=cv.getStructuringElement(cv.MORPH_RECT,new cv.Size(5,5));cv.dilate(edges,edges,k);k.delete();
-      cv.findContours(edges,contours,hier,cv.RETR_LIST,cv.CHAIN_APPROX_SIMPLE);
-      const minArea=c.width*c.height*.18;let bestArea=0;
-      for(let i=0;i<contours.size();i++){
-        const cnt=contours.get(i),area=cv.contourArea(cnt);
-        if(area>minArea&&area>bestArea){
-          const approx=new cv.Mat(),peri=cv.arcLength(cnt,true);
-          cv.approxPolyDP(cnt,approx,.02*peri,true);
-          if(approx.rows===4&&cv.isContourConvex(approx)){best=[];for(let j=0;j<4;j++)best.push([approx.data32S[j*2]/c.width,approx.data32S[j*2+1]/c.width]);bestArea=area}
-          approx.delete();
-        }
-        cnt.delete();
-      }
-    }finally{src.delete();gray.delete();edges.delete();contours.delete();hier.delete()}
-    return best?HoliooImage.orderQuad(best):null;
   }
 
   // ---------- switching photos, chrome ----------
@@ -552,6 +530,7 @@ async function openPhotoEditor({ids,index=0,fromEl=null,onSaved=null}){
       case'quadview':ed.quadView=ed.quadView==='preview'?'adjust':'preview';renderPanel();if(ed.quadView==='preview')loadQuadPreview(it);else{it.quadPreview=null;draw()}break;
       case'detect':autoDetect(it);break;
       case'manual':enterQuad(it,it.edit.quad,'adjust');break;
+      case'full':enterQuad(it,[[0,0],[1,0],[1,it.ratio],[0,it.ratio]],'preview');break;
       case'filter-all':for(const x of items.values()){if(x===it)continue;x.edit={...x.edit,filter:it.edit.filter};x.filterThumbs={};x.display=null;x.quadPreview=null}saveDraft();updateChrome();showToast('Filtre appliqué à toutes les photos');break;
       case'aspect-all':for(const x of items.values()){if(x===it)continue;x.edit={...x.edit,mode:'rect',quad:null,aspect:it.edit.aspect,box:x.ratio?HoliooImage.boxForAspect(x.ratio,it.edit.aspect,x.edit.angle):null}}saveDraft();updateChrome();showToast('Format appliqué à toutes les photos');break;
     }
@@ -567,32 +546,4 @@ async function openPhotoEditor({ids,index=0,fromEl=null,onSaved=null}){
     stage.animate([{transformOrigin:'0 0',transform:`translate(${from.left-r.left}px,${from.top-r.top}px) scale(${s})`,opacity:.5,borderRadius:'16px'},{transformOrigin:'0 0',transform:'none',opacity:1,borderRadius:'0'}],{duration:320,easing:'cubic-bezier(.2,.8,.2,1)'});
   }
   requestAnimationFrame(()=>root.classList.remove('pe-entering'));
-}
-
-// Downloads OpenCV.js once with a progress callback; the service worker keeps it for later.
-let openCvPromise=null;
-function loadOpenCV(onProgress){
-  if(window.cv?.Mat&&typeof window.cv.then!=='function')return Promise.resolve(window.cv);
-  if(openCvPromise)return openCvPromise;
-  openCvPromise=(async()=>{
-    if(!navigator.onLine&&!(await caches.match(OPENCV_URL)))throw new Error('offline');
-    const res=await fetch(OPENCV_URL);if(!res.ok)throw new Error(`HTTP ${res.status}`);
-    const total=+res.headers.get('content-length')||9.5e6,reader=res.body.getReader(),chunks=[];let got=0;
-    for(;;){const{done,value}=await reader.read();if(done)break;chunks.push(value);got+=value.length;onProgress?.(Math.min(.98,got/total))}
-    const url=URL.createObjectURL(new Blob(chunks,{type:'text/javascript'}));
-    await new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=url;s.onload=resolve;s.onerror=()=>reject(new Error('OpenCV load failed'));document.head.appendChild(s)});
-    const cv=window.cv;if(!cv)throw new Error('OpenCV missing');
-    // The OpenCV module is "thenable" but resolves to itself: awaiting it (or returning it from
-    // an async function) never finishes. Wait for readiness explicitly, then drop `then`.
-    if(!cv.Mat)await new Promise((resolve,reject)=>{
-      const t=setTimeout(()=>reject(new Error('OpenCV init timeout')),30000);
-      const ready=()=>{clearTimeout(t);clearInterval(poll);resolve()};
-      const poll=setInterval(()=>{if(cv.Mat)ready()},100);
-      if(typeof cv.then==='function')cv.then(()=>ready());else cv.onRuntimeInitialized=ready;
-    });
-    if(typeof cv.then==='function'){try{delete cv.then}catch{}if(typeof cv.then==='function')cv.then=undefined}
-    onProgress?.(1);return cv;
-  })();
-  openCvPromise.catch(()=>{openCvPromise=null});
-  return openCvPromise;
 }

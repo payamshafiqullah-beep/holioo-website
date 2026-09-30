@@ -13,7 +13,7 @@ async function decode(key,blob){
 
 self.onmessage=async({data:m})=>{
   try{
-    const src=await decode(m.key,m.blob);
+    const src=m.blob?await decode(m.key,m.blob):null;
     if(m.type==='proxy'){
       // Downscaled, unedited original for the editor to display and transform at 60fps.
       const c=HoliooImage.scaleTo(src,m.maxSide||1600);
@@ -24,6 +24,16 @@ self.onmessage=async({data:m})=>{
       const c=HoliooImage.renderEdited(src,m.edit,{maxSide:m.maxSide||1400,crop:!!m.crop});
       const bmp=c.transferToImageBitmap?c.transferToImageBitmap():await createImageBitmap(c);
       self.postMessage({id:m.id,ok:true,bitmap:bmp},[bmp]);
+    }else if(m.type==='idcard'){
+      // ID card: both sides cropped and cleaned, then placed on one A4 page at true size.
+      const side=async s=>HoliooImage.renderEdited(await createImageBitmap(s.blob),s.edit,{maxSide:1400});
+      const page=HoliooImage.composeIdPage(await side(m.front),await side(m.back));
+      const out=await HoliooImage.toBlob(page,'image/jpeg',.9),thumb=await HoliooImage.toBlob(HoliooImage.scaleTo(page,480),'image/jpeg',.82);
+      self.postMessage({id:m.id,ok:true,page:out,thumb});
+    }else if(m.type==='encode'){
+      // Re-encoded copy for export (PDF quality settings).
+      const c=HoliooImage.scaleTo(src,m.maxSide||2400);
+      self.postMessage({id:m.id,ok:true,blob:await HoliooImage.toBlob(c,'image/jpeg',m.quality||.85),width:c.width,height:c.height});
     }else if(m.type==='render'){
       // Final image + thumbnail, stored next to the untouched original.
       const c=HoliooImage.renderEdited(src,m.edit,{maxSide:m.maxSide||3200});

@@ -30,7 +30,14 @@ function renderPdfBuilder(){
     <div class="list-stack">
       ${toggle('pdfCover','Page de couverture','Page de titre sans photo, au début du PDF',false)}
       ${toggle('pdfToc','Table des matières','Liste des séances, sans photo',false)}
-      ${toggle('pdfNumbers','Numéroter les photos','Numéro affiché sous chaque photo')}
+      ${toggle('pdfNumbers','Numéroter les pages','« 3 / 12 » en bas de chaque page')}
+      ${toggle('pdfSearchable','Texte recherchable','Le texte reconnu sur l’appareil est ajouté (invisible) : recherche et copie dans le PDF')}
+    </div>
+    ${SectionTitle('Export')}
+    <div class="form-card">
+      <div class="field"><label for="pdfPageSize">Format des pages</label><select id="pdfPageSize"><option value="a4">A4</option><option value="letter">Letter (US)</option><option value="image">Adapté à chaque photo</option></select></div>
+      <div class="field"><label for="pdfQuality">Qualité</label><select id="pdfQuality"><option value="high">Haute (fichier plus lourd)</option><option value="standard" selected>Standard</option><option value="small">Compacte (pour l’envoyer)</option></select></div>
+      <p class="field-note" id="pdfOcrNote"></p>
     </div>
     ${ActionButton({label:'Générer le PDF',id:'generatePdf',iconName:'fileText'})}
   </section>`;
@@ -82,9 +89,27 @@ function renderPdfBuilder(){
       cover:byId('pdfCover').checked,
       toc:byId('pdfToc').checked,
       numbers:byId('pdfNumbers').checked,
+      searchable:byId('pdfSearchable').checked,
+      pageSize:byId('pdfPageSize').value,
+      quality:byId('pdfQuality').value,
       photoOrder:[...photoOrder]
     })
   };
 
+  // Last export settings are remembered.
+  const prefs=state.pdfPrefs||{};
+  if(prefs.pageSize)byId('pdfPageSize').value=prefs.pageSize;
+  if(prefs.quality)byId('pdfQuality').value=prefs.quality;
+  ['pdfPageSize','pdfQuality'].forEach(id=>byId(id).onchange=()=>{state.pdfPrefs={pageSize:byId('pdfPageSize').value,quality:byId('pdfQuality').value};saveState()});
   syncPhotoOrder();
+  updatePdfOcrNote([...photoOrder]);
+}
+
+// How many photos already have their text recognised (for the searchable PDF).
+async function updatePdfOcrNote(ids){
+  const el=byId('pdfOcrNote');if(!el)return;
+  let n=0;for(const id of ids){if(await Ocr.get(id))n++}
+  if(!byId('pdfOcrNote'))return;
+  el.innerHTML=ids.length&&n<ids.length?`${n}/${ids.length} photo(s) avec texte reconnu. <button class="link-btn" id="pdfRunOcr">Reconnaître le texte maintenant</button>`:ids.length?`Texte reconnu sur toutes les photos (${n}).`:'';
+  byId('pdfRunOcr')?.addEventListener('click',()=>{Ocr.enqueue(ids);showToast('Reconnaissance du texte en arrière-plan…');const off=Ocr.subscribe(s=>{if(!byId('pdfOcrNote')){off();return}if(!s.pending){off();updatePdfOcrNote(ids)}})});
 }

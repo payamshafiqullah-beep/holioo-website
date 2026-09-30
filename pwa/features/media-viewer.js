@@ -77,6 +77,7 @@ function viewerMoveCurrent(){
 // Remove bytes before changing references; failed storage operations leave the UI intact.
 async function removeLocalPhoto(id){
   await DB.del('photos',id);
+  await DB.del('kv',`ocr:${id}`).catch(()=>{});
   for(const c of state.courses)for(const section of c.sections)for(const session of section.sessions)session.photoIds=session.photoIds.filter(x=>x!==id);
   for(const batch of state.inbox)batch.photoIds=batch.photoIds.filter(x=>x!==id);
   state.inbox=state.inbox.filter(batch=>batch.photoIds.length);

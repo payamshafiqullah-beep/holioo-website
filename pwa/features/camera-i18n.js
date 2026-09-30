@@ -42,7 +42,27 @@ const CAMERA_STRINGS={
     ttEmpty:'Aucun créneau. Ajoutez vos cours de la semaine.',ttAdd:'Ajouter un créneau',ttSave:'Ajouter',ttDelete:'Supprimer le créneau',
     ttDay:'Jour',ttStart:'Début',ttEnd:'Fin',ttInvalid:'L’heure de fin doit être après le début',ttBack:'Retour',
     days:['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'],
-    auto:'Auto · emploi du temps'
+    auto:'Auto · emploi du temps',
+    // Scanner
+    modes:'Mode de capture',mode_photo:'Photo',mode_document:'Document',mode_board:'Tableau',mode_book:'Livre',mode_id:'Carte',mode_qr:'QR',
+    grid:'Grille',scanAuto:'Auto',scanManual:'Manuel',scanAutoLabel:'Capture automatique : {state}',on:'activée',off:'désactivée',
+    scanLoading:'Préparation du scanner… {p} %',scanFailed:'Détection indisponible — cadrez la page, vous pourrez ajuster les coins ensuite',
+    searchDocument:'Cadrez la page',searchBoard:'Cadrez tout le tableau',searchBook:'Cadrez les deux pages du livre',searchId:'Cadrez le recto de la carte',searchIdBack:'Retournez la carte : cadrez le verso',
+    holdStill:'Ne bougez plus…',ready:'Prêt — touchez le déclencheur',
+    warnDark:'Trop sombre — approchez-vous de la lumière',warnBlur:'Image floue — tenez le téléphone immobile',
+    warnTilt:'Tenez le téléphone parallèle à la page',warnTiltBoard:'Tenez le téléphone droit, face au tableau',
+    qrAim:'Visez un code QR',qrTitle:'Code QR',qrLink:'Lien',qrText:'Texte',qrOpen:'Ouvrir le lien',qrCopy:'Copier',qrCopied:'Copié',qrUnsafe:'Ce lien n’est pas sécurisé (pas https). Ouvrez-le seulement si vous lui faites confiance.',
+    idFrontSaved:'Recto enregistré — retournez la carte',idFrontReady:'Recto de la carte : touchez le déclencheur',idBackShort:'Verso',idBackReady:'Verso de la carte : touchez le déclencheur',idDone:'Carte recto-verso ajoutée',
+    bookSplit:'2 pages ajoutées',retakeHint:'Reprenez la page',retaken:'Page remplacée',
+    fallbackCamera:'Prendre une photo avec l’appareil photo',fallbackHint:'Vous pouvez aussi utiliser l’appareil photo du téléphone : la photo sera recadrée et nettoyée de la même façon.',
+    focus:'Mise au point',
+    // Review of the pages
+    reviewAdd:'Caméra',reviewPages:'{n} page(s)',reviewHint:'Touchez une page pour la recadrer, changer son filtre ou la reprendre. Maintenez-la pour changer l’ordre.',
+    reviewAddPages:'Ajouter',reviewFilterAll:'Filtre pour toutes',reviewPdf:'Créer un PDF',reviewProcessing:'Traitement en cours',reviewOrder:'Ordre enregistré',
+    reviewAll:'Toutes',reviewPageN:'Page {i} / {n}',reviewPrev:'Page précédente',reviewNext:'Page suivante',reviewFilters:'Filtres',
+    reviewCrop:'Recadrer',reviewRotate:'Pivoter',reviewRetake:'Reprendre',reviewApplyAll:'À toutes',reviewDelete:'Supprimer',
+    reviewSaveError:'Modification impossible. Réessayez.',reviewApplying:'Filtre appliqué à {n} page(s)…',reviewApplied:'Filtre appliqué à toutes les pages',
+    reviewDeleted:'Page supprimée',reviewUndo:'Annuler'
   }
 };
 const cameraLang='fr';

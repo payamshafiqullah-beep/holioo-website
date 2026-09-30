@@ -4,7 +4,7 @@ const read=p=>fs.readFileSync(new URL(p,import.meta.url),'utf8');
 
 const pageFiles=[
   './pages/LoginPage.js','./pages/AdminPage.js','./pages/AcademicSetupPage.js','./pages/HomePage.js','./pages/CoursesPage.js',
-  './pages/CourseDetailPage.js','./pages/SectionPage.js','./pages/SessionPage.js','./pages/CapturePage.js',
+  './pages/CourseDetailPage.js','./pages/SectionPage.js','./pages/SessionPage.js','./pages/CapturePage.js','./pages/ScanReviewPage.js',
   './pages/CaptureCompletePage.js','./pages/SplitBatchPage.js','./pages/OrganizeBatchPage.js','./pages/InboxPage.js',
   './pages/PhotoViewerPage.js','./pages/PdfBuilderPage.js','./pages/PdfViewerPage.js','./pages/FilesPage.js',
   './pages/AcademicLibraryPage.js','./pages/ProfilePage.js','./pages/SyncPage.js'
@@ -12,7 +12,7 @@ const pageFiles=[
 const uiFiles=['./ui/icons.js','./ui/components.js','./ui/reorder.js','./ui/shell.js','./ui/camera-picker.js','./ui/photo-editor.js'];
 const featureFiles=[
   './features/media-viewer.js','./features/course-actions.js','./features/image-pipeline.js','./features/photo-edits.js','./features/thumbs.js','./features/camera-i18n.js','./features/camera-destination.js',
-  './features/camera-queue.js','./features/capture-actions.js',
+  './features/camera-queue.js','./features/scan-core.js','./features/scanner.js','./features/ocr.js','./features/text-actions.js','./features/capture-actions.js',
   './features/pdf-actions.js','./features/community-actions.js'
 ];
 
@@ -28,7 +28,7 @@ const drive=read('./drive.js');
 const html=read('./index.html');
 const sw=read('./sw.js');
 const manifest=JSON.parse(read('./manifest.webmanifest'));
-if(!html.includes('20260930-editor-v2'))throw new Error('Asset cache-bust version missing');
+if(!html.includes('20260930-scanner-v1'))throw new Error('Asset cache-bust version missing');
 
 const required=[
   'Diviser le lot','Organiser les photos','Captures à trier','Section personnalisée','Nouvelle séance',
@@ -38,7 +38,7 @@ const required=[
 ];
 for(const s of required)if(!app.includes(s))throw new Error(`Flow missing: ${s}`);
 // Home, tabs and shared components required by the UI v2 spec.
-for(const s of ['Prêt à apprendre aujourd’hui ?','CONTINUER','Reprendre','Mes cours','Révisions du jour','Rechercher un cours...','Rechercher dans la bibliothèque...','Rechercher un fichier...','Cours enregistrés','PDF récents','Notes privées','Sessions partagées','Dossiers','Récents','Exports','Archives','PHOTO'])if(!app.includes(s))throw new Error(`UI v2 text missing: ${s}`);
+for(const s of ['Prêt à apprendre aujourd’hui ?','CONTINUER','Reprendre','Mes cours','Révisions du jour','Rechercher un cours...','Rechercher dans la bibliothèque...','Rechercher un fichier...','Cours enregistrés','PDF récents','Notes privées','Sessions partagées','Dossiers','Récents','Exports','Archives','mode_photo'])if(!app.includes(s))throw new Error(`UI v2 text missing: ${s}`);
 for(const c of ['PageHeader','BottomNav','FloatingCaptureButton','SearchBar','SectionTitle','HeroCard','CourseCard','CategoryCard','ListCard','StatCard','ProgressBar','FilterChips','IconBadge','EmptyState','ActionButton','AvatarButton'])if(!app.includes(`function ${c}(`))throw new Error(`Shared component missing: ${c}`);
 for(const l of ['Accueil','Cours','Capture','Bibliothèque','Fichiers'])if(!app.includes(`label:'${l}'`))throw new Error(`Bottom nav item missing: ${l}`);
 if(/data-left=|data-right=/.test(app))throw new Error('Old left/right photo arrows still present');
@@ -67,9 +67,13 @@ if(sw.includes('client.navigate'))throw new Error('The service worker must not r
 if(/supabase-js@2"/.test(html))throw new Error('Pin the Supabase library to an exact version');
 for(const s of ['pushItem','updateContent','useFolderCache'])if(!drive.includes(s))throw new Error(`Drive sync fix missing: ${s}`);
 // Photo editor: one non-destructive editor, opened from the viewer; PDF, publishing and Drive use the edited image.
-for(const s of ['openPhotoEditor','savePhotoEdit','viewerEdit','photoBlob(p)','photoBlob(ph)','driveNeedsUpdate'])if(!(app+drive).includes(s))throw new Error(`Photo editor wiring missing: ${s}`);
+for(const s of ['openPhotoEditor','savePhotoEdit','viewerEdit','blob:photoBlob(row)','photoBlob(ph)','driveNeedsUpdate'])if(!(app+drive).includes(s))throw new Error(`Photo editor wiring missing: ${s}`);
 if(!sw.includes('./workers/image-worker.js?v='))throw new Error('Image worker missing from the offline cache');
 if(!read('./styles.css').includes('.pe-stage'))throw new Error('Photo editor styles missing');
+// Document scanner: modes, live detection in a worker, review, OCR, searchable PDF with pdf-lib.
+for(const s of ['SCAN_MODES','Scanner.start','queueScanCapture','renderScanReview','Ocr.enqueue','buildPdfDocument','setTextRenderingMode','cameraFallbackInput','capture="environment"'])if(!app.includes(s))throw new Error(`Scanner missing: ${s}`);
+for(const f of ['./workers/scanner-worker.js','./features/scan-detect.js'])if(!sw.includes(f))throw new Error(`Offline cache missing: ${f}`);
+if(html.includes('jspdf'))throw new Error('jsPDF replaced by pdf-lib (loaded on demand)');
 console.log(`Holioo modular smoke test: PASS (${pageFiles.length} page files)`);
 
 for(const s of ['HOLIOO UI v2','--bg:#F7F7FB','--accent:#5B67F1','.bottom-nav','.capture-orb','.shutter','.cam-dest','.cam-sheet'])if(!read('./styles.css').includes(s))throw new Error(`UI v2 style missing: ${s}`);

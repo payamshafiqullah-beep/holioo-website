@@ -31,6 +31,7 @@ function renderProfile(){
       </div>
     </details>
     <div class="list-stack">
+      <label class="list-card static toggle-row">${IconBadge('pencil','mint','md')}<span class="list-card-copy"><strong>Dessiner avec le doigt</strong><small>Désactivé par défaut pour éviter les marques avec la main.</small></span><input type="checkbox" id="pDrawFinger" class="switch" ${state.settings.drawWithFinger?'checked':''}></label>
       ${ListCard({iconName:'cloud',tone:'sky',title:'Google Drive & synchronisation',attrs:'data-nav="sync"'})}
       ${ListCard({iconName:'search',tone:'mint',title:'Rechercher un Holioo ID',attrs:'id="searchId"'})}
       ${currentRole==='admin'?ListCard({iconName:'users',tone:'lavender',title:'Administration des utilisateurs',attrs:'data-nav="admin"'}):''}
@@ -40,6 +41,7 @@ function renderProfile(){
     <p class="legal-links"><a href="/confidentialite.html" target="_blank" rel="noopener">Politique de confidentialité</a> · <a href="/conditions.html" target="_blank" rel="noopener">Conditions d’utilisation</a></p>
   </section>`;
   byId('backBtn').onclick=()=>navigate('home');
+  byId('pDrawFinger')?.addEventListener('change',e=>{state.settings.drawWithFinger=e.target.checked;saveState();showToast(e.target.checked?'Dessin au doigt activé':'Dessin au doigt désactivé')});
   byId('guestToGoogle')?.addEventListener('click',()=>startGoogleLogin());
   byId('logoutBtn').onclick=guestMode?()=>openSheet({title:'Quitter le mode test ?',subtitle:'Vos cours de test restent sur cet appareil et réapparaîtront si vous revenez en mode test.',confirmText:'Quitter',onConfirm:()=>{signOut();return true}}):()=>openSheet({title:'Se déconnecter ?',subtitle:'Vos cours restent enregistrés sur cet appareil et réapparaîtront à votre prochaine connexion.',confirmText:'Se déconnecter',onConfirm:()=>{signOut();return true}});
   byId('avatarInput').onchange=async e=>{

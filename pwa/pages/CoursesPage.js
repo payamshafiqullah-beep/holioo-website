@@ -38,7 +38,9 @@ function openNewCourseSheet(){
 function confirmDeleteCourse(id){
   const course=state.courses.find(c=>c.id===id);if(!course)return;
   openSheet({title:`Supprimer « ${course.name} » ?`,subtitle:'Le cours et ses séances seront retirés. Ses photos seront conservées dans « Captures à trier » et les PDF resteront dans vos fichiers.',confirmText:'Supprimer',confirmClass:'coral',onConfirm:()=>{
-    removeCourse(id);saveState();queueSync();render();showToast('Cours supprimé');return true;
+    const sessionIds=course.sections.flatMap(s=>s.sessions.map(q=>q.id));
+    removeCourse(id);saveState();queueSync();render();showToast('Cours supprimé');
+    purgeSessionInk(sessionIds).catch(console.warn);return true;
   }});
 }
 

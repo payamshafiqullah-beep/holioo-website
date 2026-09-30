@@ -67,7 +67,8 @@ async function openPhotoEditor({ids,index=0,fromEl=null,onSaved=null}){
       it.proxy={bitmap:r.bitmap,w:r.width,h:r.height};
     }
     refreshOriented(it);
-    await refreshDisplay(it);
+    // The filtered preview arrives in the background: tools are usable right away.
+    refreshDisplay(it);
   }
   function refreshOriented(it){
     it.oriented=HoliooImage.drawOriented(it.proxy.bitmap,it.edit.rot,it.edit.flip);
@@ -103,6 +104,9 @@ async function openPhotoEditor({ids,index=0,fromEl=null,onSaved=null}){
     const geo=edit.rot!==it.edit.rot||edit.flip!==it.edit.flip,filt=edit.filter!==it.edit.filter;
     it.edit=peClone(edit);it.lastCommitted=peClone(edit);
     if(geo)refreshOriented(it);
+    // A state without a crop box (reset, or undo back to a photo never cropped) means the whole photo.
+    if(it.edit.mode==='rect'&&!it.edit.box)it.edit.box=HoliooImage.boxForAspect(it.ratio,it.edit.aspect,it.edit.angle);
+    if(it.edit.mode==='quad'&&!it.edit.quad){it.edit.mode='rect';it.edit.box=HoliooImage.boxForAspect(it.ratio,it.edit.aspect,it.edit.angle)}
     if(geo||filt)refreshDisplay(it);else draw();
     fitView(false);saveDraft();updateChrome();renderPanel();
   }
@@ -495,7 +499,7 @@ async function openPhotoEditor({ids,index=0,fromEl=null,onSaved=null}){
   }
   async function show(i){
     ed.index=i;ed.detected=null;ed.quadView=cur().edit.mode==='quad'?'preview':'adjust';updateChrome();
-    setBusy(true,'');await loadItem(cur());setBusy(false);
+    setBusy(true,'');await loadItem(cur());if(cur().edit.filter==='original')setBusy(false);
     ed.view=null;fitView(false);renderPanel();
     if(cur().edit.mode==='quad'&&ed.quadView==='preview')loadQuadPreview(cur());
   }
@@ -519,14 +523,17 @@ async function openPhotoEditor({ids,index=0,fromEl=null,onSaved=null}){
     }else close();
   }
   function close(){
-    document.removeEventListener('visibilitychange',onHide);removeEventListener('resize',onResize);
+    document.removeEventListener('visibilitychange',onHide);removeEventListener('resize',onResize);stageObserver?.disconnect();
     for(const u of ed.urls||[])URL.revokeObjectURL(u);
     root.classList.add('pe-closing');document.body.classList.remove('pe-lock');
     setTimeout(()=>root.remove(),220);peOpen=null;
   }
   const onHide=()=>{if(document.hidden)saveDraft()};
-  const onResize=()=>{fitView(false)};
+  const onResize=()=>{if(!ed.gesture)fitView(false)};
   document.addEventListener('visibilitychange',onHide);addEventListener('resize',onResize);
+  // The stage also changes size when the tool panel below it grows or shrinks: redraw at the
+  // new size, otherwise the canvas is stretched and the crop frame no longer matches the photo.
+  const stageObserver=typeof ResizeObserver!=='undefined'?new ResizeObserver(onResize):null;stageObserver?.observe(stage);
 
   root.addEventListener('click',async e=>{
     const it=cur(),act=e.target.closest('[data-act]')?.dataset.act,tool=e.target.closest('[data-tool]')?.dataset.tool;
@@ -565,7 +572,7 @@ async function openPhotoEditor({ids,index=0,fromEl=null,onSaved=null}){
 // Downloads OpenCV.js once with a progress callback; the service worker keeps it for later.
 let openCvPromise=null;
 function loadOpenCV(onProgress){
-  if(window.cv?.Mat)return Promise.resolve(window.cv);
+  if(window.cv?.Mat&&typeof window.cv.then!=='function')return Promise.resolve(window.cv);
   if(openCvPromise)return openCvPromise;
   openCvPromise=(async()=>{
     if(!navigator.onLine&&!(await caches.match(OPENCV_URL)))throw new Error('offline');
@@ -574,10 +581,17 @@ function loadOpenCV(onProgress){
     for(;;){const{done,value}=await reader.read();if(done)break;chunks.push(value);got+=value.length;onProgress?.(Math.min(.98,got/total))}
     const url=URL.createObjectURL(new Blob(chunks,{type:'text/javascript'}));
     await new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=url;s.onload=resolve;s.onerror=()=>reject(new Error('OpenCV load failed'));document.head.appendChild(s)});
-    let cv=window.cv;
-    if(cv&&typeof cv.then==='function')cv=await cv;
-    if(!cv?.Mat)await new Promise((resolve,reject)=>{const t=setTimeout(()=>reject(new Error('OpenCV init timeout')),20000);cv.onRuntimeInitialized=()=>{clearTimeout(t);resolve()}});
-    window.cv=cv;onProgress?.(1);return cv;
+    const cv=window.cv;if(!cv)throw new Error('OpenCV missing');
+    // The OpenCV module is "thenable" but resolves to itself: awaiting it (or returning it from
+    // an async function) never finishes. Wait for readiness explicitly, then drop `then`.
+    if(!cv.Mat)await new Promise((resolve,reject)=>{
+      const t=setTimeout(()=>reject(new Error('OpenCV init timeout')),30000);
+      const ready=()=>{clearTimeout(t);clearInterval(poll);resolve()};
+      const poll=setInterval(()=>{if(cv.Mat)ready()},100);
+      if(typeof cv.then==='function')cv.then(()=>ready());else cv.onRuntimeInitialized=ready;
+    });
+    if(typeof cv.then==='function'){try{delete cv.then}catch{}if(typeof cv.then==='function')cv.then=undefined}
+    onProgress?.(1);return cv;
   })();
   openCvPromise.catch(()=>{openCvPromise=null});
   return openCvPromise;

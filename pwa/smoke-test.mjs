@@ -9,9 +9,9 @@ const pageFiles=[
   './pages/PhotoViewerPage.js','./pages/PdfBuilderPage.js','./pages/PdfViewerPage.js','./pages/FilesPage.js',
   './pages/AcademicLibraryPage.js','./pages/ProfilePage.js','./pages/SyncPage.js'
 ];
-const uiFiles=['./ui/icons.js','./ui/components.js','./ui/reorder.js','./ui/shell.js','./ui/camera-picker.js'];
+const uiFiles=['./ui/icons.js','./ui/components.js','./ui/reorder.js','./ui/shell.js','./ui/camera-picker.js','./ui/photo-editor.js'];
 const featureFiles=[
-  './features/media-viewer.js','./features/course-actions.js','./features/thumbs.js','./features/camera-i18n.js','./features/camera-destination.js',
+  './features/media-viewer.js','./features/course-actions.js','./features/image-pipeline.js','./features/photo-edits.js','./features/thumbs.js','./features/camera-i18n.js','./features/camera-destination.js',
   './features/camera-queue.js','./features/capture-actions.js',
   './features/pdf-actions.js','./features/community-actions.js'
 ];
@@ -28,7 +28,7 @@ const drive=read('./drive.js');
 const html=read('./index.html');
 const sw=read('./sw.js');
 const manifest=JSON.parse(read('./manifest.webmanifest'));
-if(!html.includes('20260930-review-v1'))throw new Error('Asset cache-bust version missing');
+if(!html.includes('20260930-editor-v1'))throw new Error('Asset cache-bust version missing');
 
 const required=[
   'Diviser le lot','Organiser les photos','Captures à trier','Section personnalisée','Nouvelle séance',
@@ -66,6 +66,10 @@ if(/state\.inbox=state\.inbox\.filter\(x=>x\.id!==batch\.id\)/.test(app))throw n
 if(sw.includes('client.navigate'))throw new Error('The service worker must not reload open windows (it can interrupt a capture)');
 if(/supabase-js@2"/.test(html))throw new Error('Pin the Supabase library to an exact version');
 for(const s of ['pushItem','updateContent','useFolderCache'])if(!drive.includes(s))throw new Error(`Drive sync fix missing: ${s}`);
+// Photo editor: one non-destructive editor, opened from the viewer; PDF, publishing and Drive use the edited image.
+for(const s of ['openPhotoEditor','savePhotoEdit','viewerEdit','photoBlob(p)','photoBlob(ph)','driveNeedsUpdate'])if(!(app+drive).includes(s))throw new Error(`Photo editor wiring missing: ${s}`);
+if(!sw.includes('./workers/image-worker.js?v='))throw new Error('Image worker missing from the offline cache');
+if(!read('./styles.css').includes('.pe-stage'))throw new Error('Photo editor styles missing');
 console.log(`Holioo modular smoke test: PASS (${pageFiles.length} page files)`);
 
 for(const s of ['HOLIOO UI v2','--bg:#F7F7FB','--accent:#5B67F1','.bottom-nav','.capture-orb','.shutter','.cam-dest','.cam-sheet'])if(!read('./styles.css').includes(s))throw new Error(`UI v2 style missing: ${s}`);

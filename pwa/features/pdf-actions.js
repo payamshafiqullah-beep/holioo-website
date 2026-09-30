@@ -26,7 +26,7 @@ async function generatePdfFile(course,sessionIds,opts){
       const e=photoContext.get(photoId),p=await DB.get('photos',photoId);
       if(!e||!p?.blob)continue;
       addPage();photoNo++;
-      const data=await blobToDataURL(p.blob),props=doc.getImageProperties(data),ratio=Math.min(178/props.width,245/props.height),w=props.width*ratio,h=props.height*ratio;
+      const data=await blobToDataURL(photoBlob(p)),props=doc.getImageProperties(data),ratio=Math.min(178/props.width,245/props.height),w=props.width*ratio,h=props.height*ratio;
       doc.addImage(data,props.fileType||'JPEG',(210-w)/2,14,w,h,undefined,'FAST');
       if(opts.numbers){doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(40);doc.text(String(photoNo),105,Math.min(14+h+9,278),{align:'center'})}
       doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(120);doc.text(`${course.name} • ${e.section.name} • ${e.session.title}`,105,289,{align:'center',maxWidth:180});doc.setTextColor(0);

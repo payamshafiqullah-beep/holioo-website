@@ -1,7 +1,7 @@
 'use strict';
 // Image work off the main thread: decoding, previews and full-size renders of edited photos.
 // Messages: {id, type, blob, edit, maxSide, quality, thumbSide} → {id, ok, ...result} | {id, ok:false, error}
-importScripts('../features/image-pipeline.js');
+importScripts(`../features/image-pipeline.js${self.location.search}`); // same release as this worker
 
 const cache=new Map(); // blob → decoded bitmap, so previews of the same photo don't decode again
 async function decode(key,blob){

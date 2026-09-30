@@ -13,6 +13,7 @@ function revokeViewerUrl(){
 }
 
 function photoStatusLabel(row){
+  if(row?.driveNeedsUpdate)return{label:navigator.onLine?'À SYNC':'LOCAL',cls:navigator.onLine?'orange':'gray'};
   if(row?.driveFileId)return{label:'DRIVE',cls:'green'};
   if(row?.syncState==='drive_full')return{label:'DRIVE PLEIN',cls:'coral'};
   if(row?.syncState==='error')return{label:'ERREUR',cls:'coral'};

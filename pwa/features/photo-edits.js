@@ -12,6 +12,8 @@ const photoBlob=row=>row?.rendered||row?.blob||null;
 const photoThumbBlob=row=>row?.thumb||row?.rendered||row?.blob||null;
 
 // ---- Image jobs: in a worker when the browser can draw off the main thread ----
+// Same ?v= as this script, so a new release never mixes old and new worker code.
+const IMAGE_WORKER_URL=`./workers/image-worker.js${document.currentScript?new URL(document.currentScript.src).search:''}`;
 let imageWorker=null,imageJobId=0;
 const imageJobs=new Map();
 const workerDrawing=typeof Worker!=='undefined'&&typeof OffscreenCanvas!=='undefined'&&'transferToImageBitmap' in OffscreenCanvas.prototype;
@@ -20,7 +22,7 @@ function imageJob(type,payload){
   if(workerDrawing){
     try{
       if(!imageWorker){
-        imageWorker=new Worker('./workers/image-worker.js?v=20260930-editor-v1');
+        imageWorker=new Worker(IMAGE_WORKER_URL);
         imageWorker.onmessage=({data})=>{const j=imageJobs.get(data.id);if(!j)return;imageJobs.delete(data.id);data.ok?j.resolve(data):j.reject(new Error(data.error))};
         imageWorker.onerror=e=>{console.warn('Image worker failed, using main thread',e);imageWorker=null;for(const[,j] of imageJobs)j.retry();imageJobs.clear()};
       }

@@ -1,27 +1,74 @@
 // Séance — galerie de photos, PDF, publication.
+let sessionViewMode='gallery';
+function sessionViewToggle(active){
+  return `<div class="session-view-toggle" id="sessionViewToggle" role="tablist" aria-label="Mode d’affichage">
+    <button class="view-toggle-btn ${active==='gallery'?'active':''}" type="button" data-session-view="gallery" role="tab" aria-selected="${active==='gallery'}">${icon('image',{size:16})}<span>Galerie</span></button>
+    <button class="view-toggle-btn ${active==='notebook'?'active':''}" type="button" data-session-view="notebook" role="tab" aria-selected="${active==='notebook'}">${icon('pencil',{size:16})}<span>Carnet</span></button>
+  </div>`;
+}
+
+function notebookToolbar(){
+  const tool=(name,label,color,active=false)=>`<button class="ink-tool ${active?'active':''}" type="button" data-ink-tool="${name}" title="${esc(label)}" aria-label="${esc(label)}"><span class="ink-swatch" style="--swatch:${color}"></span></button>`;
+  return `<div class="ink-toolbar" id="notebookToolbar" aria-label="Outils d’écriture">
+    ${tool('pen-black','Stylo noir','#111827',true)}
+    ${tool('pen-blue','Stylo bleu','#2563EB')}
+    ${tool('pen-red','Stylo rouge','#E5484D')}
+    ${tool('highlighter','Surligneur jaune','#FACC15')}
+    <button class="ink-tool" type="button" data-ink-eraser title="Gomme" aria-label="Gomme">${icon('eraser',{size:18})}</button>
+    <button class="ink-tool" type="button" data-ink-ruler title="Règle" aria-label="Règle">${icon('ruler',{size:18})}</button>
+    <button class="ink-tool" type="button" id="inkUndo" data-ink-undo title="Annuler" aria-label="Annuler">${icon('undo',{size:18})}</button>
+    <button class="ink-tool" type="button" id="inkRedo" data-ink-redo title="Rétablir" aria-label="Rétablir">${icon('redo',{size:18})}</button>
+  </div>`;
+}
+
 async function renderSession(){
   const ctx=findSessionContext();if(!ctx){navigate('courses');return}
   const{course,section,session}=ctx,n=session.photoIds.length,pub=session.visibility==='public';
-  app.innerHTML=`<section class="screen">
-    ${PageHeader({back:true,title:`${course.name} · ${section.name}`})}
-    ${PageIntro({eyebrow:'SÉANCE',title:session.title,subtitle:`${plural(n,'photo')} · ${fmtDate(session.createdAt)}`})}
-    ${ActionButton({label:n?'Ajouter des photos':'Prendre des photos',id:'addSessionPhotos',variant:'capture',iconName:'camera',attrs:'data-nav="capture"'})}
-    ${n?`${SectionTitle('Galerie',{action:'Plein écran',id:'openFirstPhoto'})}
-      <div class="thumbs" id="sessionThumbs"></div>
-      <p class="reorder-hint">${icon('more',{size:14})}Maintenez une photo ou faites glisser sa poignée pour changer l’ordre.</p>
-      <div class="button-stack">
+  const active=sessionViewMode==='notebook'?'notebook':'gallery';
+  const actions=n?`<div class="button-stack">
         ${ActionButton({label:'Créer un PDF',id:'buildPdf',iconName:'fileText'})}
         ${ActionButton({label:pub?'Publiée dans la bibliothèque':'Publier dans la bibliothèque',id:'publishSession',variant:pub?'soft':'ghost',iconName:pub?'checkCircle':'globe'})}
         ${ActionButton({label:'Reconnaître le texte',id:'ocrSession',variant:'ghost',iconName:'scan'})}
         ${ActionButton({label:'Exporter les images',id:'exportImages',variant:'ghost',iconName:'share'})}
         ${ActionButton({label:'Renommer la séance',id:'renameSession',variant:'ghost',iconName:'pencil'})}
-      </div>`
-    :`${EmptyState({iconName:'camera',title:'Aucune photo',text:'Cette séance ne contient pas encore de photos.'})}`}
+      </div>`:'';
+  const galleryView=n?`${SectionTitle('Galerie',{action:'Plein écran',id:'openFirstPhoto'})}
+      <div class="thumbs" id="sessionThumbs"></div>
+      <p class="reorder-hint">${icon('more',{size:14})}Maintenez une photo ou faites glisser sa poignée pour changer l’ordre.</p>
+      ${actions}`
+    :`${EmptyState({iconName:'camera',title:'Aucune photo',text:'Cette séance ne contient pas encore de photos.'})}${actions}`;
+  const notebookView=active!=='notebook'?'':`${SectionTitle('Carnet',{action:'+ Page blanche',id:'addBlankPage'})}
+      <div class="session-notebook-help">${icon('pencil',{size:15})}<span>Écrivez au stylet. Le doigt sert à faire défiler la page.</span></div>
+      <div class="notebook" id="sessionNotebook"></div>
+      ${notebookToolbar()}
+      ${actions}`;
+  app.innerHTML=`<section class="screen${active==='notebook'?' screen-wide':''}">
+    ${PageHeader({back:true,title:`${course.name} · ${section.name}`})}
+    ${PageIntro({eyebrow:'SÉANCE',title:session.title,subtitle:`${plural(n,'photo')} · ${fmtDate(session.createdAt)}`})}
+    ${ActionButton({label:n?'Ajouter des photos':'Prendre des photos',id:'addSessionPhotos',variant:'capture',iconName:'camera',attrs:'data-nav="capture"'})}
+    ${sessionViewToggle(active)}
+    <div class="session-gallery-view ${active==='gallery'?'':'hidden'}">${galleryView}</div>
+    <div class="session-notebook-view ${active==='notebook'?'':'hidden'}">${notebookView}</div>
   </section>`;
   byId('backBtn').onclick=()=>navigate('section');
-  if(n){
+  byId('sessionViewToggle')?.addEventListener('click',async e=>{
+    const next=e.target.closest('[data-session-view]')?.dataset.sessionView;
+    if(!next||next===sessionViewMode)return;
+    sessionViewMode=next;
+    await render();
+  });
+  if(active==='gallery'&&n){
     await fillSessionThumbs(session);
     byId('openFirstPhoto').onclick=()=>openPhotoViewer(session.photoIds,0,{title:session.title,source:'session',sourceId:session.id,editable:true,returnView:'session',courseId:course.id,sectionId:section.id,sessionId:session.id});
+  }
+  if(active==='notebook'){
+    await renderSessionNotebook({course,section,session});
+    byId('addBlankPage')?.addEventListener('click',async()=>{
+      addBlankNotebookBlock(notebookRuntime.doc,notebookSelectedBlockId);
+      await saveNotebookDoc(notebookRuntime.doc);
+      await renderSessionNotebook({course,section,session});
+      [...document.querySelectorAll('.notebook-block')].find(b=>b.dataset.blockId===notebookSelectedBlockId)?.scrollIntoView({behavior:'smooth',block:'center'});
+    });
   }
   byId('buildPdf')?.addEventListener('click',()=>navigate('pdfBuilder'));
   byId('ocrSession')?.addEventListener('click',()=>recognizeSessionText(session));

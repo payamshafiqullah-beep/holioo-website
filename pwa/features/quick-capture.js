@@ -121,6 +121,7 @@ function syncQuickCapture(){
 quickCaptureMenu=createRadialMenu({
   anchor:quickCaptureButton(),
   isEnabled:quickCaptureEnabled,
+  fanRight:()=>matchMedia('(min-width: 720px)').matches,
   origin:()=>{const r=quickCaptureButton().querySelector('.capture-orb').getBoundingClientRect();return{x:r.left+r.width/2,y:r.top+r.height/2}},
   items:quickCaptureItems,
   overflowItem:()=>({id:'more',more:true,label:camT('qcMoreSections'),short:'•••',color:'#8A8FA3',aria:camT('qcMoreSections')}),

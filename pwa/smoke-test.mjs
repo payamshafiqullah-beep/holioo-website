@@ -13,12 +13,14 @@ const uiFiles=['./ui/icons.js','./ui/components.js','./ui/reorder.js','./ui/shel
 const featureFiles=[
   './features/media-viewer.js','./features/course-actions.js','./features/image-pipeline.js','./features/photo-edits.js','./features/thumbs.js','./features/camera-i18n.js','./features/camera-destination.js',
   './features/camera-queue.js','./features/scan-core.js','./features/scanner.js','./features/ocr.js','./features/text-actions.js','./features/capture-actions.js','./features/quick-capture.js',
-  './features/pdf-actions.js','./features/community-actions.js'
+  './features/pdf-actions.js','./features/community-actions.js','./features/notebook-ink.js'
 ];
+const vendorFiles=['./vendor/perfect-freehand.js'];
 
 const app=[
   read('./core.js'),
   ...uiFiles.map(read),
+  ...vendorFiles.map(read),
   ...featureFiles.map(read),
   ...pageFiles.map(read),
   read('./app.js')
@@ -28,13 +30,14 @@ const drive=read('./drive.js');
 const html=read('./index.html');
 const sw=read('./sw.js');
 const manifest=JSON.parse(read('./manifest.webmanifest'));
-if(!html.includes('20260930-quick-capture-v1'))throw new Error('Asset cache-bust version missing');
+if(!html.includes('20260930-notebook-ink-v2'))throw new Error('Asset cache-bust version missing');
 
 const required=[
   'Diviser le lot','Organiser les photos','Captures à trier','Section personnalisée','Nouvelle séance',
   'Créer un PDF','Bibliothèque','Rechercher un Holioo ID','Google Drive','Synchroniser automatiquement',
   'movePhotoToSession','renderPdfBuilder','renderSplit','publishSession','openPhotoViewer','renderPhotoViewer',
-  'openPdfViewer','renderPdfViewer','Partager','Synchroniser vers Drive','setupPinchZoom','openCameraPicker','resolveCameraDestination','cameraQueue','camDest','cameraStatus','finishCapture','zoomRange','importLocalFiles','toggleFavorite','startGoogleLogin','google-login-exchange','Continuer avec Google','Essayer sans compte','enterGuestMode','makeReorderable','Maintenez une photo','renderAdmin','admin-users','Bloquer l’accès','Supprimer le compte'
+  'openPdfViewer','renderPdfViewer','Partager','Synchroniser vers Drive','setupPinchZoom','openCameraPicker','resolveCameraDestination','cameraQueue','camDest','cameraStatus','finishCapture','zoomRange','importLocalFiles','toggleFavorite','startGoogleLogin','google-login-exchange','Continuer avec Google','Essayer sans compte','enterGuestMode','makeReorderable','Maintenez une photo','renderAdmin','admin-users','Bloquer l’accès','Supprimer le compte',
+  'renderSessionNotebook','notebookToolbar','Dessiner avec le doigt','HoliooPerfectFreehand','strokeTouchesPath'
 ];
 for(const s of required)if(!app.includes(s))throw new Error(`Flow missing: ${s}`);
 // Home, tabs and shared components required by the UI v2 spec.
@@ -48,14 +51,14 @@ if(!app.includes('gallery-shortcut'))throw new Error('Modern gallery control mis
 if(/openCropEditor|captureDraft\.photoIds=/.test([read('./features/capture-actions.js'),read('./pages/CapturePage.js')].join(' ')))throw new Error('Old camera draft/crop flow still present');
 for(const s of ['Choisir la destination','Nouvelle séance','Emploi du temps','permBlocked','visibilitychange'])if(!app.includes(s))throw new Error(`Camera v2 missing: ${s}`);
 
-for(const p of [...pageFiles,...uiFiles,...featureFiles,'./db.js','./drive.js','./core.js','./app.js','./manifest.webmanifest']){
+for(const p of [...pageFiles,...uiFiles,...vendorFiles,...featureFiles,'./db.js','./drive.js','./core.js','./app.js','./manifest.webmanifest']){
   const htmlPath=p.replace('./','./');
   if(p.endsWith('.js')&&!html.includes(`src="${htmlPath}`))throw new Error(`HTML dependency missing: ${htmlPath}`);
 }
 
 if(app.includes('device-bootstrap'))throw new Error('Anonymous device sign-in must stay retired');
 for(const s of ['drive-auth-start','drive-access-token','drive-disconnect','syncAll'])if(!drive.includes(s))throw new Error(`Drive integration missing: ${s}`);
-for(const p of [...pageFiles,...uiFiles,...featureFiles,'./app.js','./core.js','./db.js','./drive.js'])if(!sw.includes(p))throw new Error(`Offline cache missing: ${p}`);
+for(const p of [...pageFiles,...uiFiles,...vendorFiles,...featureFiles,'./app.js','./core.js','./db.js','./drive.js'])if(!sw.includes(p))throw new Error(`Offline cache missing: ${p}`);
 
 if(manifest.display!=='standalone'||manifest.scope!=='./')throw new Error('PWA manifest invalid');
 if(/GOOGLE_CLIENT_SECRET|SUPABASE_SERVICE_ROLE_KEY/.test(app+drive))throw new Error('Sensitive server secret referenced in frontend');

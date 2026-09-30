@@ -32,6 +32,13 @@ const radialPoint=(o,r,a)=>({x:o.x+r*Math.cos(a*Math.PI/180),y:o.y-r*Math.sin(a*
 // or null. vp = {w, h, top, bottom} (top / bottom: safe areas, in px).
 function radialRange(o,r,size,vp,opt=RADIAL){
   const half=size/2+opt.margin;
+  if(opt.right){   // fan opening to the right (button in the left rail): angles around 0, inside all four edges
+    if(o.x+r>vp.w-half)return null;
+    const up=(o.y-(vp.top||0)-half)/r,down=(vp.h-(vp.bottom||0)-half-o.y)/r;
+    if(up<-1||down<-1)return null;
+    const hi=Math.min(radDeg(Math.asin(Math.min(1,up))),90-opt.minAngle),lo=Math.max(-radDeg(Math.asin(Math.min(1,down))),opt.minAngle-90);
+    return hi>=lo?[lo,hi]:null;
+  }
   const cHi=(vp.w-half-o.x)/r,cLo=(half-o.x)/r;
   if(cHi<-1||cLo>1)return null;
   const sMin=(o.y-(vp.h-(vp.bottom||0)-half))/r;   // below the screen bottom
@@ -43,6 +50,7 @@ function radialRange(o,r,size,vp,opt=RADIAL){
 }
 
 // n angles `step` apart around `center`, left to right.
+const radialMid=opt=>opt.right?0:90;
 const radialAngles=(n,center,step)=>Array.from({length:n},(_,i)=>center+(n-1)*step/2-i*step);
 
 // First ring for n items. Items shrink (down to minSize) and the ring grows until everything fits
@@ -53,27 +61,27 @@ function radialFit(n,o,vp,opt=RADIAL){
     for(let s=opt.size;s>=opt.minSize;s-=2){
       const rMin=Math.max(opt.minR1,opt.anchorR+s/2+opt.gap);
       // The second ring (r1 + s + ringGap) must fit below the top of the screen.
-      const rMax=strict?o.y-(vp.top||0)-opt.margin-s/2-(s+opt.ringGap):Math.max(vp.w,vp.h);
+      const rMax=strict?(opt.right?vp.w-o.x:o.y-(vp.top||0))-opt.margin-s/2-(s+opt.ringGap):Math.max(vp.w,vp.h);
       for(let r=rMin;r<=rMax;r+=2){
         const range=radialRange(o,r,s,vp,opt);if(!range)continue;
         const span=Math.min(range[1]-range[0],opt.spanMax),min=radialMinStep(r,s,opt.gap);
         if(n>1&&(n-1)*min>span+1e-9)continue;
         const step=n>1?Math.max(min,Math.min(opt.stepMax,span/(n-1))):0,total=(n-1)*step;
-        const center=Math.min(Math.max(90,range[0]+total/2),range[1]-total/2);
+        const center=Math.min(Math.max(radialMid(opt),range[0]+total/2),range[1]-total/2);
         return{size:s,r1:r,r2:r+s+opt.ringGap,step1:step,angles1:radialAngles(n,center,step)};
       }
     }
     return null;
   };
   // A tiny window where nothing fits: smallest items, evenly spread, even if they touch.
-  return tryFit(true)||tryFit(false)||(()=>{const s=opt.minSize,r=opt.minR1,step=n>1?156/(n-1):0;return{size:s,r1:r,r2:r+s+opt.ringGap,step1:step,angles1:radialAngles(n,90,step)}})();
+  return tryFit(true)||tryFit(false)||(()=>{const s=opt.minSize,r=opt.minR1,step=n>1?156/(n-1):0;return{size:s,r1:r,r2:r+s+opt.ringGap,step1:step,angles1:radialAngles(n,radialMid(opt),step)}})();
 }
 
 // Second ring: k children around their parent's angle, as close to it as the screen allows.
 // `shown` < k when they don't all fit: the caller then turns the last one into a "more" item.
 function radialChildren(k,parentAngle,o,vp,fit,opt=RADIAL){
   const s=fit.size,r=fit.r2;
-  const range=radialRange(o,r,s,vp,opt)||[90,90];
+  const range=radialRange(o,r,s,vp,opt)||[radialMid(opt),radialMid(opt)];
   const step=radialMinStep(r,s,opt.gap)*1.08;
   const capacity=Math.max(1,Math.floor((range[1]-range[0])/step+1e-9)+1);
   const shown=Math.min(k,capacity),total=(shown-1)*step;
@@ -89,7 +97,7 @@ function radialHit(p,o,fit,ring2=null,opt=RADIAL){
   const dead=Math.min(44,fit.r1-fit.size/2-6);
   if(d<dead)return{center:true};
   if(d<=fit.r1+fit.size/2+opt.ringGap/2){
-    if(dy<=0)return null;
+    if(dy<=0&&!opt.right)return null;
     const a=radDeg(Math.atan2(dy,dx)),tol=Math.max(fit.step1/2,16);
     let best=-1,err=Infinity;
     fit.angles1.forEach((b,i)=>{const e=Math.abs(a-b);if(e<err){err=e;best=i}});
@@ -132,6 +140,9 @@ function createRadialMenu(o){
   let press=null;      // the pointer on the button, before the menu opens and while dragging
   let swallowUntil=0;  // the click a mouse sends after a gesture that was already handled (one only)
   let safeTop=null;
+  let safe={bottom:0,right:0};   // insets, measured once; only used by the rail layout
+  const fanRight=()=>!!o.fanRight?.();
+  const radialOpt=()=>fanRight()?{...RADIAL,right:true}:RADIAL;
   let touchHandled=false;  // this touch was handled here: its touchend must not become a click
 
   // Touch needs none: the button's touchend cancels the browser's click (see below).
@@ -142,9 +153,13 @@ function createRadialMenu(o){
   function viewport(){
     if(safeTop===null){
       const p=document.createElement('div');p.style.cssText='position:fixed;top:0;left:0;height:0;padding-top:env(safe-area-inset-top);visibility:hidden;pointer-events:none';
-      document.body.appendChild(p);safeTop=p.offsetHeight||0;p.remove();
+      document.body.appendChild(p);safeTop=p.offsetHeight||0;
+      p.style.cssText+=';padding:0;padding-bottom:env(safe-area-inset-bottom);padding-right:env(safe-area-inset-right)';
+      safe={bottom:parseFloat(getComputedStyle(p).paddingBottom)||0,right:parseFloat(getComputedStyle(p).paddingRight)||0};p.remove();
     }
-    return{w:window.innerWidth,h:window.innerHeight,top:safeTop,bottom:0};
+    const vp={w:window.innerWidth,h:window.innerHeight,top:safeTop,bottom:0};
+    if(fanRight()){vp.bottom=safe.bottom;vp.w-=safe.right}
+    return vp;
   }
   function originPoint(){
     if(o.origin)return o.origin();
@@ -162,12 +177,12 @@ function createRadialMenu(o){
     if(st)return true;
     const items=o.items();
     if(!items.length){o.onEmpty?.();return false}
-    const vp=viewport(),org=originPoint(),fit=radialFit(items.length,org,vp);
+    const vp=viewport(),org=originPoint(),opt=radialOpt(),fit=radialFit(items.length,org,vp,opt);
     const el=document.createElement('div');
     el.className='radial';el.dataset.mode=mode;
     el.setAttribute('role','menu');el.setAttribute('aria-label',o.label||'');
     el.style.setProperty('--s',`${fit.size}px`);
-    st={mode,items,fit,o:org,vp,el,parent:-1,children:[],ring2:null,hot:null,openedAt:performance.now()};
+    st={mode,items,fit,opt,o:org,vp,el,parent:-1,children:[],ring2:null,hot:null,openedAt:performance.now()};
     el.innerHTML=`<div class="radial-backdrop"></div>
       <div class="radial-title" aria-hidden="true" style="left:${org.x}px"><b></b><span></span></div>
       <button type="button" class="radial-center" aria-label="${escHtml(o.closeLabel||'Fermer')}" style="left:${org.x}px;top:${org.y}px">${o.centerHtml||'×'}</button>
@@ -239,6 +254,13 @@ function createRadialMenu(o){
     box.querySelector('b').textContent=t.title||'';
     box.querySelector('span').textContent=t.sub||'';
     // Just above the outer ring (it grows upwards when the text takes two lines), never under the status bar.
+    if(st.opt.right){   // above the topmost item, kept inside the screen
+      const top=Math.min(...st.fit.angles1.map(a=>radialPoint(st.o,st.fit.r2,a).y))-st.fit.size*.6-12-box.offsetHeight;
+      box.style.top=`${Math.max(st.vp.top+8,top)}px`;
+      const half=box.offsetWidth/2,x=st.o.x+st.fit.r1;
+      box.style.left=`${Math.min(Math.max(x,half+8),st.vp.w-half-8)}px`;
+      return;
+    }
     box.style.top=`${Math.max(st.vp.top+8,st.o.y-st.fit.r2-st.fit.size*.6-12-box.offsetHeight)}px`;
   }
 
@@ -250,7 +272,7 @@ function createRadialMenu(o){
     st.parent=i;
     const pNode=nodeAt(1,i);pNode?.classList.add('parent');pNode?.setAttribute('aria-expanded','true');
     if(!kids.length)return;
-    let layout=radialChildren(kids.length,st.fit.angles1[i],st.o,st.vp,st.fit);
+    let layout=radialChildren(kids.length,st.fit.angles1[i],st.o,st.vp,st.fit,st.opt);
     if(layout.shown<kids.length)kids=o.overflowItem?[...kids.slice(0,layout.shown-1),o.overflowItem(parent)]:kids.slice(0,layout.shown);
     st.children=kids;st.ring2=layout;
     const from=radialPoint(st.o,st.fit.r1,st.fit.angles1[i]);
@@ -282,7 +304,7 @@ function createRadialMenu(o){
 
   // Gesture: the finger moves over the rings.
   function track(x,y){
-    const h=radialHit({x,y},st.o,st.fit,st.ring2);
+    const h=radialHit({x,y},st.o,st.fit,st.ring2,st.opt);
     if(h?.ring===1){
       if(st.items[h.index].children)openChildren(h.index);else closeChildren();
       setHot(h);
@@ -292,7 +314,7 @@ function createRadialMenu(o){
   }
   // Gesture: the finger is lifted.
   function release(x,y){
-    const h=radialHit({x,y},st.o,st.fit,st.ring2);
+    const h=radialHit({x,y},st.o,st.fit,st.ring2,st.opt);
     if(h?.ring===2){choose(st.children[h.index],st.items[st.parent]);return}
     if(h?.ring===1){
       const it=st.items[h.index];

@@ -13,6 +13,7 @@
 // Angles are in degrees, 0 = right, 90 = straight up, counter-clockwise.
 
 const RADIAL={
+  drag:10,         // px the finger moves before a press is a drag (a tap leaves the menu open)
   size:56,minSize:44,gap:8,ringGap:14,
   margin:10,       // min distance between an item and the screen edge
   stepMax:40,      // widest spacing between two neighbours of the first ring
@@ -23,6 +24,8 @@ const RADIAL={
   dwell:180,       // ms the finger rests on another course before its sections replace the open ones
   anim:150
 };
+// Selection lens (liquid glass under the finger): see lensPoint in createRadialMenu.
+const LENS={grow:9,snap:1.4,free:.7,speed:1600,stiffness:520,damping:34};
 const radDeg=r=>r*180/Math.PI;
 const radNorm=a=>((a%360)+360)%360;
 const radDiff=(a,b)=>Math.abs(((a-b)%360+540)%360-180);
@@ -220,7 +223,7 @@ function createRadialMenu(o){
   function itemHtml(it,ring,i,p,from){
     const dx=p.x-st.o.x,dy=p.y-st.o.y,c=it.color||'#5B67F1',t=String(it.short??it.label);
     const k=t.length<=2?.32:t.length===3?.27:.22;   // longer text, smaller font: it stays inside the circle
-    return`<button type="button" role="menuitem" tabindex="-1" class="radial-item r${ring}${it.marked?' marked':''}${it.more?' more':''}${from?' pre':''}" data-ring="${ring}" data-i="${i}" aria-label="${escHtml(it.aria||it.label)}"${it.children?' aria-haspopup="menu" aria-expanded="false"':''} style="left:${st.o.x}px;top:${st.o.y}px;--dx:${dx.toFixed(1)}px;--dy:${dy.toFixed(1)}px;${from?`--px:${from.x.toFixed(1)}px;--py:${from.y.toFixed(1)}px;`:''}--c:${escHtml(c)};--fg:${radialInk(c)};--k:${k}"><span class="mag-blob" aria-hidden="true"></span><span class="mag-glyph"><span class="radial-dot">${escHtml(t)}</span>${ring===1&&it.label!==it.short?`<small>${escHtml(it.label)}</small>`:''}</span></button>`;
+    return`<button type="button" role="menuitem" tabindex="-1" class="radial-item r${ring}${it.marked?' marked':''}${it.more?' more':''}${from?' pre':''}" data-ring="${ring}" data-i="${i}" aria-label="${escHtml(it.aria||it.label)}"${it.children?' aria-haspopup="menu" aria-expanded="false"':''} style="left:${st.o.x}px;top:${st.o.y}px;--dx:${dx.toFixed(1)}px;--dy:${dy.toFixed(1)}px;${from?`--px:${from.x.toFixed(1)}px;--py:${from.y.toFixed(1)}px;`:''}--c:${escHtml(c)};--fg:${radialInk(c)};--k:${k}"><span class="radial-dot">${escHtml(t)}</span>${ring===1&&it.label!==it.short?`<small>${escHtml(it.label)}</small>`:''}</button>`;
   }
 
   // mode 'gesture': the finger is down, the menu ignores clicks (the trigger has the pointer).
@@ -236,19 +239,35 @@ function createRadialMenu(o){
     el.style.setProperty('--s',`${fit.size}px`);
     st={mode,items,fit,o:org,vp,el,parent:-1,children:[],ring2:null,hot:null,openedAt:performance.now()};
     st.box=menuBox();
+    const D=fit.size+2*LENS.grow;
     el.innerHTML=`<div class="radial-backdrop"></div>
+      <div class="radial-lens" aria-hidden="true" style="width:${D}px;height:${D}px"></div>
       <div class="radial-title" aria-hidden="true"><b></b><span></span></div>
       <button type="button" class="radial-center" aria-label="${escHtml(o.closeLabel||'Fermer')}" style="left:${org.x}px;top:${org.y}px">${o.centerHtml||'×'}</button>
-      ${items.map((it,i)=>itemHtml(it,1,i,radialPoint(org,fit.r1,fit.angles1[i]))).join('')}`;
+      ${items.map((it,i)=>itemHtml(it,1,i,radialPoint(org,fit.r1,fit.angles1[i]))).join('')}
+      <div class="radial-lens-label" aria-hidden="true"></div>`;
+    st.lens={el:el.querySelector('.radial-lens'),label:el.querySelector('.radial-lens-label'),D,x:0,y:0,vx:0,vy:0,k:1,kv:0,target:null,snap:null,shown:false,raf:0,last:0};
     el.addEventListener('click',onOverlayClick);
     el.addEventListener('keydown',onKey);
     el.addEventListener('focusin',e=>{const b=e.target.closest?.('.radial-item');if(b)describe(itemAt(+b.dataset.ring,+b.dataset.i),+b.dataset.ring===2?st.items[st.parent]:null)});
     el.addEventListener('contextmenu',e=>e.preventDefault());
     el.addEventListener('touchmove',e=>{if(e.cancelable)e.preventDefault()},{passive:false});
     el.addEventListener('wheel',e=>e.preventDefault(),{passive:false});
+    // Menu left open by a tap (or opened from the keyboard): the lens follows the finger here, and the
+    // lift picks what it is on. The touch's own click is cancelled (the menu may be gone by then).
+    let down=null,tapEnd=false;
+    el.addEventListener('pointerdown',e=>{if(!st||st.mode==='gesture'||!e.isPrimary)return;down=e.pointerId;lensPoint(e.clientX,e.clientY)});
+    el.addEventListener('pointermove',e=>{if(st&&e.pointerId===down)lensPoint(e.clientX,e.clientY)});
+    el.addEventListener('pointerup',e=>{
+      if(!st||e.pointerId!==down)return;
+      down=null;tapEnd=e.pointerType==='touch';
+      if(!tapEnd)radialSwallowUntil=performance.now()+350;
+      pick(e.clientX,e.clientY);
+    });
+    el.addEventListener('pointercancel',e=>{if(e.pointerId===down){down=null;lensHide()}});
+    el.addEventListener('touchend',e=>{if(tapEnd&&e.cancelable)e.preventDefault();tapEnd=false},{passive:false});
     document.body.appendChild(el);
     fitLabels();
-    st.drops=typeof createDrops==='function'?createDrops():null;syncDrops();
     document.documentElement.classList.add('radial-lock');
     try{window.getSelection()?.removeAllRanges()}catch{}
     trigger.setAttribute('aria-expanded','true');trigger.classList.add('radial-active');
@@ -275,28 +294,17 @@ function createRadialMenu(o){
     const pts=st.items.map((_,i)=>radialPoint(st.o,st.fit.r1,st.fit.angles1[i]));
     const solid=[...pts.map(p=>box(p.x,p.y-s/2,s,s)),box(st.o.x,st.o.y-36,72,72)];
     const labels=[...st.el.querySelectorAll('.radial-item.r1 small')];
-    const boxes=labels.map(sm=>{const i=+sm.closest('.radial-item').dataset.i,p=pts[i];return{own:i,...box(p.x,p.y+s/2+5,sm.offsetWidth,sm.offsetHeight)}});
+    const boxes=labels.map(sm=>{const p=pts[+sm.parentElement.dataset.i];return{own:+sm.parentElement.dataset.i,...box(p.x,p.y+s/2+5,sm.offsetWidth,sm.offsetHeight)}});
     const hit=(a,b)=>a.x0<b.x1&&a.x1>b.x0&&a.y0<b.y1&&a.y1>b.y0;
     const clash=boxes.some((b,k)=>b.x0<0||b.x1>st.vp.w||b.y1>st.vp.h||solid.some((r,j)=>j!==b.own&&hit(b,r))||boxes.some((q,m)=>m!==k&&hit(b,q)));
     if(clash)labels.forEach(sm=>sm.remove());
-  }
-
-  // The circles on screen, for the water drops (ui/magnet.js): each one with its resting box.
-  function syncDrops(){
-    if(!st?.drops)return;
-    const s=st.fit.size;
-    st.drops.set([...st.el.querySelectorAll('.radial-item')].map(n=>{
-      const ring=+n.dataset.ring,i=+n.dataset.i;
-      const p=radialPoint(st.o,ring===2?st.fit.r2:st.fit.r1,ring===2?st.ring2.angles[i]:st.fit.angles1[i]);
-      return{el:n,blob:n.querySelector('.mag-blob'),glyph:n.querySelector('.mag-glyph'),shape:magnetShape({left:p.x-s/2,top:p.y-s/2,width:s,height:s})};
-    }));
   }
 
   function teardown(){
     if(!st)return null;
     const s=st;st=null;press=null;
     clearTimeout(s.dwell?.t);
-    s.drops?.stop();
+    if(s.lens?.raf)cancelAnimationFrame(s.lens.raf);
     if(radialPress?.trigger===trigger)radialPress=null;
     radialOpen.delete(api);
     window.removeEventListener('resize',onResize);
@@ -359,7 +367,6 @@ function createRadialMenu(o){
     st.el.insertAdjacentHTML('beforeend',kids.map((k,j)=>itemHtml(k,2,j,radialPoint(st.o,st.fit.r2,layout.angles[j]),rel)).join(''));
     void st.el.offsetWidth;
     st.el.querySelectorAll('.radial-item.r2.pre').forEach(n=>n.classList.remove('pre'));
-    syncDrops();
   }
   function closeChildren(){
     if(!st||st.parent<0)return;
@@ -367,7 +374,6 @@ function createRadialMenu(o){
     st.el.querySelectorAll('.radial-item.r2').forEach(n=>n.remove());
     st.parent=-1;st.children=[];st.ring2=null;
     if(st.hot?.ring===2)st.hot=null;
-    syncDrops();
   }
 
   const sameHot=(a,b)=>(a?.ring??(a?.center?0:-1))===(b?.ring??(b?.center?0:-1))&&(a?.index??-1)===(b?.index??-1);
@@ -383,12 +389,14 @@ function createRadialMenu(o){
     else describe(st.parent>=0&&!h?.center?st.items[st.parent]:null,null,!!h?.center);
   }
 
-  // The finger moves: the circles near it reach for it like water drops, and what is under it
-  // lights up (nothing is chosen yet).
+  // The finger moves: light up what is under it (nothing is chosen yet), and the lens follows it.
   function track(x,y){
     if(!st)return;
+    trackHit(x,y);
+    lensPoint(x,y);
+  }
+  function trackHit(x,y){
     const h=radialHit({x,y},st.o,st.fit,st.ring2,st.parent);
-    st.drops?.point(h?.center?null:{x,y});            // back on the trigger: the drops settle
     // Passing over another course while its neighbour's sections are open: switch only if the
     // finger stays there a moment (it may just be on its way to a far section).
     if(h?.tentative){
@@ -403,25 +411,98 @@ function createRadialMenu(o){
     else if(h?.center){closeChildren();setHot(h)}
     else setHot(null);
   }
-  // The finger lifts: a child (or an item without children) is chosen; anywhere else cancels.
+  // The finger lifts: the item the lens sits on is chosen (a section, or an item without
+  // children); anywhere else cancels.
   function release(x,y){
     if(!st)return;
-    const h=radialHit({x,y},st.o,st.fit,st.ring2,st.parent);
-    if(h?.ring===2){choose(st.children[h.index],st.items[st.parent]);return}
-    if(h?.ring===1&&!st.items[h.index].children){choose(st.items[h.index],null);return}
+    lensPoint(x,y);
+    const t=st.lens.snap;
+    if(t?.ring===2){choose(st.children[t.i],st.items[st.parent]);return}
+    if(t?.ring===1&&!st.items[t.i].children){choose(st.items[t.i],null);return}
     close();
   }
+  // Tap mode: the same, except that a course opens its sections (next tap: the section).
+  function pick(x,y){
+    lensPoint(x,y);
+    const t=st.lens.snap;
+    if(t?.ring===1&&st.items[t.i].children){openChildren(t.i);setHot({ring:1,index:t.i});lensHide();return}
+    release(x,y);
+  }
+  // A tap on the trigger (the finger did not move): the menu stays open, choose with taps.
+  function toTapMode(){st.mode='tap';st.el.dataset.mode='tap';lensHide();setHot(null)}
 
-  // Keyboard / screen reader mode only: clicks on the items (Enter on a focused item is a click).
+  // ─── Selection lens: a small round liquid glass under the finger ───
+  // Follows the finger (≈70% opacity, kept within the menu's area); within 1.4 × an item's size it
+  // snaps onto that item (item radius + 9 px, full opacity), the item's label grows ×1.2 and its
+  // name shows in a pill above. Spring movement, slightly stretched along its speed, settling back
+  // to a circle; with reduced motion it jumps. Only transform and opacity change.
+  function lensPoint(x,y){
+    const L=st.lens,s=st.fit.size,R=s/2;
+    let best=null,bd=LENS.snap*s;
+    const near=(ring,list,r,angles)=>list.forEach((it,i)=>{if(angles?.[i]==null)return;const p=radialPoint(st.o,r,angles[i]),d=Math.hypot(x-p.x,y-p.y);if(d<=bd){bd=d;best={ring,i,p,item:it}}});
+    near(1,st.items,st.fit.r1,st.fit.angles1);
+    if(st.ring2)near(2,st.children,st.fit.r2,st.ring2.angles);
+    let tx,ty,k,op;
+    if(best){tx=best.p.x;ty=best.p.y;k=1;op=1}
+    else{
+      const lim=(st.ring2?st.fit.r2:st.fit.r1)+R,dx=x-st.o.x,dy=y-st.o.y,d=Math.hypot(dx,dy),f=d>lim?lim/d:1;
+      tx=st.o.x+dx*f;ty=st.o.y+dy*f;k=R/(R+LENS.grow);op=LENS.free;
+    }
+    L.target={x:tx,y:ty,k};
+    if(!L.shown){L.shown=true;L.x=tx;L.y=ty;L.k=k;L.vx=L.vy=L.kv=0}   // appears where the finger is
+    L.el.style.opacity=String(op);
+    const was=L.snap;
+    if(was?.ring!==best?.ring||was?.i!==best?.i){
+      if(was)nodeAt(was.ring,was.i)?.classList.remove('lensed');
+      L.snap=best&&{ring:best.ring,i:best.i};
+      if(best){
+        nodeAt(best.ring,best.i)?.classList.add('lensed');
+        L.label.textContent=best.item.label||'';
+        const w=L.label.offsetWidth,h=L.label.offsetHeight;
+        const lx=Math.min(Math.max(best.p.x-w/2,8),st.vp.w-w-8),ly=Math.max(st.vp.top+4,best.p.y-R-LENS.grow-6-h);
+        L.label.style.transform=`translate(${lx.toFixed(1)}px,${ly.toFixed(1)}px)`;
+      }
+      L.label.style.opacity=best?'1':'0';
+    }
+    if(!L.raf)L.raf=requestAnimationFrame(lensFrame);
+  }
+  function lensHide(){
+    const L=st?.lens;if(!L)return;
+    L.shown=false;L.el.style.opacity='0';L.label.style.opacity='0';
+    if(L.snap)nodeAt(L.snap.ring,L.snap.i)?.classList.remove('lensed');
+    L.snap=null;
+  }
+  function lensFrame(now){
+    const L=st?.lens;if(!L)return;
+    L.raf=0;
+    const T=L.target;if(!T)return;
+    const dt=L.last?Math.min(.05,(now-L.last)/1000):1/60;L.last=now;
+    if(reduced()){L.x=T.x;L.y=T.y;L.k=T.k;L.vx=L.vy=L.kv=0}
+    else{
+      const n=Math.max(1,Math.ceil(dt/.008)),h=dt/n;
+      for(let i=0;i<n;i++){
+        L.vx+=(LENS.stiffness*(T.x-L.x)-LENS.damping*L.vx)*h;L.x+=L.vx*h;
+        L.vy+=(LENS.stiffness*(T.y-L.y)-LENS.damping*L.vy)*h;L.y+=L.vy*h;
+        L.kv+=(LENS.stiffness*(T.k-L.k)-LENS.damping*L.kv)*h;L.k+=L.kv*h;
+      }
+    }
+    // Stretched along its movement (max +35% / -20%), a circle again when it stops.
+    const sp=Math.hypot(L.vx,L.vy),q=Math.min(1,sp/LENS.speed),a=Math.atan2(L.vy,L.vx)*180/Math.PI,half=L.D/2;
+    L.el.style.transform=`translate(${(L.x-half).toFixed(2)}px,${(L.y-half).toFixed(2)}px) rotate(${a.toFixed(1)}deg) scale(${(L.k*(1+.35*q)).toFixed(4)},${(L.k*(1-.2*q)).toFixed(4)}) rotate(${(-a).toFixed(1)}deg)`;
+    const moving=Math.abs(T.x-L.x)>.3||Math.abs(T.y-L.y)>.3||sp>4||Math.abs(T.k-L.k)>.002||Math.abs(L.kv)>.01;
+    if(moving)L.raf=requestAnimationFrame(lensFrame);else L.last=0;
+  }
+
+  // Keyboard / screen reader clicks on the items (Enter on a focused item is a click).
   function onOverlayClick(e){
-    if(!st||st.mode!=='keys')return;
+    if(!st||st.mode==='gesture')return;
     const b=e.target.closest('.radial-item');
     if(!b){close({focus:true});return}
     const ring=+b.dataset.ring,i=+b.dataset.i;
     if(ring===2){choose(st.children[i],st.items[st.parent]);return}
     const it=st.items[i];
     if(!it.children){choose(it,null);return}
-    openChildren(i);setHot({ring:1,index:i});focusItem(2,0);
+    openChildren(i);setHot({ring:1,index:i});if(st.mode==='keys')focusItem(2,0);
   }
   function onKey(e){
     if(!st)return;
@@ -454,20 +535,22 @@ function createRadialMenu(o){
     if(st)close();
     try{trigger.setPointerCapture(e.pointerId)}catch{}
     if(!open('gesture'))return;
-    press={id:e.pointerId,x:e.clientX,y:e.clientY};
+    press={id:e.pointerId,x:e.clientX,y:e.clientY,sx:e.clientX,sy:e.clientY,moved:false};
     radialPress={id:e.pointerId,trigger,cancel};
     track(e.clientX,e.clientY);
   });
   trigger.addEventListener('pointermove',e=>{
     if(!press||e.pointerId!==press.id)return;
     press.x=e.clientX;press.y=e.clientY;
+    if(Math.hypot(press.x-press.sx,press.y-press.sy)>RADIAL.drag)press.moved=true;
     track(e.clientX,e.clientY);
   });
   // Finger up: choose or cancel, right here — so a camera opened by onSelect counts as a user action.
   trigger.addEventListener('pointerup',e=>{
     if(!press||e.pointerId!==press.id)return;
-    press=null;
+    const tap=!press.moved;press=null;
     if(e.pointerType!=='touch')radialSwallowUntil=performance.now()+350;   // the mouse's click that follows
+    if(tap&&st){toTapMode();return}
     release(e.clientX,e.clientY);
   });
   function cancel(){if(press){press=null;close()}}
@@ -482,12 +565,12 @@ function createRadialMenu(o){
   },{passive:false});
   trigger.addEventListener('touchmove',e=>{
     if(e.cancelable&&(press||st))e.preventDefault();
-    const t=e.touches[0];if(press&&t){press.x=t.clientX;press.y=t.clientY;track(t.clientX,t.clientY)}
+    const t=e.touches[0];if(press&&t){press.x=t.clientX;press.y=t.clientY;if(Math.hypot(press.x-press.sx,press.y-press.sy)>RADIAL.drag)press.moved=true;track(t.clientX,t.clientY)}
   },{passive:false});
   trigger.addEventListener('touchend',e=>{
     if(e.cancelable&&enabled())e.preventDefault();
     const t=e.changedTouches[0];
-    if(press&&t){press=null;release(t.clientX,t.clientY)}
+    if(press&&t){const tap=!press.moved;press=null;if(tap&&st)toTapMode();else release(t.clientX,t.clientY)}
   },{passive:false});
   trigger.addEventListener('touchcancel',cancel);
   trigger.addEventListener('contextmenu',e=>{if(enabled())e.preventDefault()});

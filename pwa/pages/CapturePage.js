@@ -1,10 +1,8 @@
 // Capture — interface caméra plein écran, avec le scanner de documents.
 // Camera, zoom, destination and saving live in features/capture-actions.js, live page detection
 // in features/scanner.js, the destination sheet in ui/camera-picker.js, texts in features/camera-i18n.js.
-// The action buttons are magnetic (ui/magnet.js): a blob that stretches + a glyph that stays sharp.
-const magBody=inner=>`<span class="mag-blob" aria-hidden="true"></span><span class="mag-glyph">${inner}</span>`;
 function renderCapture(){
-  const glass=(id,name,label,extra='',cls='',size=25)=>`<button class="glass-btn magnet ${cls}" id="${id}" aria-label="${esc(label)}" ${extra}>${magBody(icon(name,{size}))}</button>`;
+  const glass=(id,name,label,extra='')=>`<button class="glass-btn" id="${id}" aria-label="${esc(label)}" ${extra}>${icon(name,{size:21})}</button>`;
   camMode=SCAN_MODES.includes(state.camMode)?state.camMode:'photo';
   app.innerHTML=`<div class="camera" data-mode="${camMode}">
     <div class="camera-stage" id="cameraStage">
@@ -21,7 +19,7 @@ function renderCapture(){
     </div>
     <div class="scan-tools" id="scanTools">
       <button class="scan-tool" id="scanAutoBtn" aria-pressed="true"></button>
-      ${glass('gridBtn','layers',camT('grid'),`aria-pressed="${state.camGrid!==false}"`,'small',22)}
+      <button class="glass-btn small" id="gridBtn" aria-pressed="${state.camGrid!==false}" aria-label="${esc(camT('grid'))}">${icon('layers',{size:18})}</button>
     </div>
     <div class="cam-notices">
       <span class="visually-hidden" role="status" id="cameraStatus">${esc(camT('opening'))}</span>
@@ -44,15 +42,15 @@ function renderCapture(){
       </div>
 
       <div class="camera-controls">
-        <button class="gallery-shortcut cam-last magnet" id="lastPhotoBtn" aria-label="${esc(camT('lastPhoto',{n:0}))}" disabled>${magBody(`<span class="cam-last-img" id="camLastImg"></span><b class="cam-count hidden" id="captureCount">0</b>`)}</button>
-        <button class="shutter magnet" id="shutter" aria-label="${esc(camT('shutter'))}">${magBody('<span class="shutter-disc"></span>')}</button>
-        ${glass('flipCam','switchCamera',camT('switchCam'),'','round-lg',29)}
+        <button class="gallery-shortcut cam-last" id="lastPhotoBtn" aria-label="${esc(camT('lastPhoto',{n:0}))}" disabled><span class="cam-last-img" id="camLastImg"></span><b class="cam-count hidden" id="captureCount">0</b></button>
+        <button class="shutter" id="shutter" aria-label="${esc(camT('shutter'))}"><span></span></button>
+        <button class="glass-btn round-lg" id="flipCam" aria-label="${esc(camT('switchCam'))}">${icon('switchCamera',{size:24})}</button>
       </div>
 
       <div class="camera-footer">
-        <button class="camera-text-btn magnet" id="galleryBtn">${magBody(`${icon('upload',{size:18})}${esc(camT('importBtn'))}`)}</button>
+        <button class="camera-text-btn" id="galleryBtn">${icon('upload',{size:16})}${esc(camT('importBtn'))}</button>
         <span></span>
-        <button class="camera-done magnet" id="finishCapture">${magBody(esc(camT('done')))}</button>
+        <button class="camera-done" id="finishCapture">${esc(camT('done'))}</button>
         <input type="file" id="galleryInput" accept="image/*" multiple hidden>
         <input type="file" id="cameraFallbackInput" accept="image/*" capture="environment" hidden>
       </div>
@@ -62,7 +60,6 @@ function renderCapture(){
 
   initCameraDestination();
   setupCameraLifecycle();
-  attachMagnets(app.querySelector('.camera'));
   setTimeout(async()=>{await startCamera();setupPinchZoom();setupTapToFocus();checkCameraStorage();applyCameraMode(camMode,{initial:true})},0);
   byId('closeCam').onclick=()=>closeCaptureScreen();
   byId('camDest').onclick=()=>openDestinationPicker();

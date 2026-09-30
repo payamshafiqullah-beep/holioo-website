@@ -133,14 +133,21 @@ html.radial-lock,html.radial-lock body{overscroll-behavior:none;-webkit-user-sel
 .radial.center-hot .radial-center{transform:scale(1.12);background:var(--ink)}
 .radial-center:focus-visible{outline:3px solid #fff;outline-offset:4px}
 .radial-item{
-  position:absolute;display:grid;place-items:center;width:var(--s,56px);height:var(--s,56px);border-radius:50%;
-  background:#fff;color:var(--ink);box-shadow:0 8px 22px rgba(29,33,64,.2),inset 0 0 0 3px var(--c);
+  position:absolute;display:grid;place-items:center;width:var(--s,56px);height:var(--s,56px);border-radius:50%;isolation:isolate;
+  color:var(--ink);
   transform:translate(-50%,-50%) scale(.35);opacity:0;
-  transition:transform .15s var(--ease),opacity .15s var(--ease),background .12s,color .12s,box-shadow .12s;
+  transition:transform .15s var(--ease),opacity .15s var(--ease),color .12s;
 }
+/* Each circle is a water drop (ui/magnet.js): its background stretches toward the finger, the label only moves. */
+.radial-item .mag-blob{position:absolute;inset:0;z-index:-1;border-radius:50%;background:#fff;box-shadow:0 8px 22px rgba(29,33,64,.2),inset 0 0 0 3px var(--c);transform-origin:50% 50%;pointer-events:none;transition:background .12s,box-shadow .12s}
+.radial-item .mag-glyph{position:relative;display:grid;place-items:center;width:100%;height:100%;pointer-events:none}
+/* A course stretching toward the finger never hides the sections it is heading for. */
+.radial .radial-item.r2{z-index:3}
+.radial.open .radial-item.r2.hot{z-index:4}
 .radial.open .radial-item{transform:translate(-50%,-50%) translate(var(--dx),var(--dy));opacity:1}
 .radial.open .radial-item.hot{transform:translate(-50%,-50%) translate(var(--dx),var(--dy)) scale(1.2);z-index:2}
-.radial-item.hot,.radial-item.parent{background:var(--c);color:var(--fg);box-shadow:0 10px 26px rgba(29,33,64,.28),inset 0 0 0 3px rgba(255,255,255,.55)}
+.radial-item.hot,.radial-item.parent{color:var(--fg)}
+.radial-item.hot .mag-blob,.radial-item.parent .mag-blob{background:var(--c);box-shadow:0 10px 26px rgba(29,33,64,.28),inset 0 0 0 3px rgba(255,255,255,.55)}
 .radial.open .radial-item.pre,.radial-item.pre{transform:translate(-50%,-50%) translate(var(--px),var(--py)) scale(.35);opacity:0}
 .radial.closing .radial-item{transform:translate(-50%,-50%) scale(.35);opacity:0}
 .radial-dot{max-width:88%;overflow:hidden;font-size:calc(var(--s,56px)*var(--k,.3));font-weight:800;line-height:1.25;letter-spacing:-.02em;white-space:nowrap;text-overflow:clip}
@@ -460,13 +467,13 @@ html.radial-lock,html.radial-lock body{overscroll-behavior:none;-webkit-user-sel
 .glass-btn.unavailable{opacity:.4}
 .glass-btn.round-lg{width:54px;height:54px}
 
-.camera-top{position:absolute;z-index:5;left:0;right:0;top:0;display:flex;align-items:center;justify-content:space-between;gap:var(--s3);padding:calc(6px + env(safe-area-inset-top)) var(--s4) 0}
+.camera-top{position:absolute;z-index:5;left:0;right:0;top:0;display:flex;align-items:center;justify-content:space-between;gap:var(--s3);padding:calc(var(--s3) + env(safe-area-inset-top)) var(--s4) 0}
 .camera-top-actions{display:flex;gap:var(--s2)}
 
 .zoom-feedback{position:absolute;z-index:5;left:50%;top:42%;transform:translate(-50%,-50%) scale(.9);padding:8px 16px;border-radius:18px;background:rgba(20,22,32,.55);backdrop-filter:blur(12px);font-size:18px;font-weight:700;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s var(--ease)}
 .zoom-feedback.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
 
-.camera-bottom{position:absolute;z-index:5;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;gap:var(--s3);padding:0 var(--s4) calc(var(--s4) + env(safe-area-inset-bottom))}
+.camera-bottom{position:absolute;z-index:5;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;gap:var(--s4);padding:0 var(--s4) calc(var(--s4) + env(safe-area-inset-bottom))}
 
 .zoom-chips{display:flex;align-items:center;gap:6px;padding:4px;border-radius:22px;background:rgba(20,22,32,.42);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
 .zoom-chip{display:grid;place-items:center;min-width:38px;height:36px;padding:0 10px;border-radius:18px;font-size:13px;font-weight:700;color:rgba(255,255,255,.85);transition:background .2s,color .2s}
@@ -476,7 +483,7 @@ html.radial-lock,html.radial-lock body{overscroll-behavior:none;-webkit-user-sel
 .gallery-shortcut{display:grid;place-items:center;width:54px;height:54px;border-radius:16px;overflow:hidden;background:rgba(20,22,32,.42);backdrop-filter:blur(16px);border:2px solid rgba(255,255,255,.75);color:#fff}
 .gallery-shortcut img{width:100%;height:100%;object-fit:cover;display:block}
 .shutter{position:relative;display:grid;place-items:center;width:82px;height:82px;border-radius:50%;background:rgba(255,255,255,.18);border:4px solid #fff;transition:transform .12s var(--ease)}
-.shutter-disc{display:block;width:62px;height:62px;border-radius:50%;background:linear-gradient(145deg,#FFA062,var(--capture) 50%,var(--capture-2));box-shadow:0 0 22px rgba(255,138,76,.55)}
+.shutter span{width:62px;height:62px;border-radius:50%;background:linear-gradient(145deg,#FFA062,var(--capture) 50%,var(--capture-2));box-shadow:0 0 22px rgba(255,138,76,.55)}
 .shutter:active{transform:scale(.92)}
 
 .camera-footer{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;width:100%;max-width:360px}
@@ -484,35 +491,6 @@ html.radial-lock,html.radial-lock body{overscroll-behavior:none;-webkit-user-sel
 .camera-mode{font-size:12px;font-weight:800;letter-spacing:.2em;color:#FFD2B8}
 .camera-done{justify-self:end;display:inline-flex;align-items:center;gap:var(--s2);height:36px;padding:0 6px 0 14px;border-radius:18px;background:#fff;color:var(--ink);font-size:13px;font-weight:700}
 .camera-done b{display:grid;place-items:center;min-width:24px;height:24px;padding:0 6px;border-radius:12px;background:var(--capture-2);color:#fff;font-size:12px}
-
-/* Magnetic, liquid camera buttons (ui/magnet.js). The background lives in .mag-blob, which
-   stretches toward the finger like a drop; .mag-glyph (icon / text) only moves, so it stays sharp.
-   About 22–25% larger than before (the shutter was already 86 px); the touch area reaches ~30%
-   past each button in JS. Less spacing around them: the preview is not covered more than before. */
-.camera .glass-btn.magnet{width:54px;height:54px}
-.camera .glass-btn.magnet.round-lg{width:66px;height:66px}
-.camera .glass-btn.magnet.small{width:50px;height:50px}
-.camera .gallery-shortcut.magnet{width:66px;height:66px;border-radius:18px}
-.camera .camera-text-btn.magnet,.camera .camera-done.magnet{height:44px;border-radius:22px;font-size:14px}
-.camera .camera-text-btn.magnet{padding:0 14px}
-.camera .camera-done.magnet{padding:0 18px}
-.magnet{position:relative;isolation:isolate;touch-action:none;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;background:none!important;border-color:transparent!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;overflow:visible!important}
-.magnet:active{transform:none!important}
-.mag-blob{position:absolute;inset:0;z-index:-1;border-radius:inherit;pointer-events:none;transform-origin:50% 50%}
-.mag-glyph{position:relative;pointer-events:none;transform-origin:50% 50%;display:grid;place-items:center;width:100%;height:100%;border-radius:inherit}
-.camera-text-btn .mag-glyph,.camera-done .mag-glyph{display:inline-flex;align-items:center;gap:inherit;width:auto;height:auto}
-.glass-btn .mag-blob{background:rgba(20,22,32,.42);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.14);transition:background .2s}
-.glass-btn.active .mag-blob{background:#FFD66B;border-color:transparent}
-#gridBtn[aria-pressed="true"] .mag-blob{background:rgba(255,255,255,.22)}
-.gallery-shortcut .mag-blob{background:rgba(20,22,32,.42);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border:2px solid rgba(255,255,255,.75)}
-.gallery-shortcut .mag-glyph{padding:2px}
-.cam-last .cam-last-img{border-radius:15px}
-.shutter .mag-blob{background:rgba(255,255,255,.18);border:4px solid #fff}
-.camera-text-btn .mag-blob{background:rgba(20,22,32,.4);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.16)}
-.camera-done .mag-blob{background:#fff}
-.magnet:focus-visible{outline:none}
-.magnet:focus-visible .mag-blob{box-shadow:0 0 0 3px #0B0C12,0 0 0 6px #fff}
-.camera-top,.camera-controls,.camera-footer{touch-action:none}
 
 
 /* Destination chip, save notices, last photo + counter */
@@ -523,7 +501,7 @@ html.radial-lock,html.radial-lock body{overscroll-behavior:none;-webkit-user-sel
 .cam-dest.auto .cam-dest-dot{box-shadow:0 0 0 3px rgba(91,224,165,.5)}
 .cam-dest.empty{background:#FFD66B;color:#2A2410;border-color:transparent}
 .cam-dest.empty .cam-dest-dot{background:#2A2410}
-.cam-notices{position:absolute;z-index:5;left:0;right:0;top:calc(6px + env(safe-area-inset-top) + 62px);display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
+.cam-notices{position:absolute;z-index:5;left:0;right:0;top:calc(var(--s3) + env(safe-area-inset-top) + 52px);display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
 .cam-notice{pointer-events:auto;max-width:calc(100% - 32px);min-height:32px;padding:6px 14px;border-radius:16px;background:rgba(20,22,32,.62);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);color:#fff;font-size:12px;font-weight:600}
 .cam-notice.warn{background:rgba(229,72,107,.88)}
 .cam-last{position:relative;overflow:visible;padding:0}
@@ -534,7 +512,7 @@ html.radial-lock,html.radial-lock body{overscroll-behavior:none;-webkit-user-sel
 .cam-last.pop{animation:cam-pop .28s var(--ease)}
 @keyframes cam-pop{0%{transform:scale(.82)}60%{transform:scale(1.08)}100%{transform:scale(1)}}
 .shutter{width:86px;height:86px;touch-action:manipulation}
-.shutter-disc{width:66px;height:66px}
+.shutter span{width:66px;height:66px}
 
 /* Camera permission / error panel (the controls stay hidden behind it) */
 .cam-panel{position:absolute;z-index:4;inset:0;display:grid;place-items:center;padding:calc(env(safe-area-inset-top) + 72px) var(--s5) calc(env(safe-area-inset-bottom) + var(--s5));background:rgba(11,12,18,.86);overflow:auto}
@@ -808,7 +786,7 @@ body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
 .cam-modes::-webkit-scrollbar{display:none}
 .cam-mode{flex:none;scroll-snap-align:center;min-height:36px;padding:0 12px;border-radius:18px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.72)}
 .cam-mode.active{color:#FFD66B;background:rgba(255,214,107,.14)}
-.scan-tools{position:absolute;z-index:5;right:var(--s4);top:calc(6px + env(safe-area-inset-top) + 64px);display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.scan-tools{position:absolute;z-index:5;right:var(--s4);top:calc(var(--s3) + env(safe-area-inset-top) + 56px);display:flex;flex-direction:column;align-items:flex-end;gap:8px}
 .scan-tool{min-width:64px;min-height:36px;padding:0 12px;border-radius:18px;background:rgba(20,22,32,.5);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.16);color:#fff;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
 .scan-tool.on{background:#FFD66B;color:#2A2410;border-color:transparent}
 .scan-tool:disabled{opacity:.45}
@@ -834,10 +812,8 @@ body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
 /* Landscape phones: controls in a column on the right, preview uses the full height. */
 @media (orientation:landscape) and (max-height:520px){
   .camera-bottom{left:auto;top:0;bottom:0;width:208px;justify-content:center;gap:var(--s2);padding:calc(env(safe-area-inset-top) + 8px) calc(env(safe-area-inset-right) + 10px) calc(env(safe-area-inset-bottom) + 8px) 8px;background:linear-gradient(90deg,rgba(0,0,0,0),rgba(0,0,0,.45))}
-  .camera-controls{grid-template-columns:1fr 1fr;grid-template-areas:"shutter shutter" "last flip";gap:10px 12px;justify-items:center}
-  .camera-controls .shutter{grid-area:shutter}.camera-controls .cam-last{grid-area:last}.camera-controls #flipCam{grid-area:flip}
-  .camera-footer{grid-template-columns:auto auto;justify-content:space-between;gap:6px}.camera-footer>span{display:none}
-  .camera .camera-text-btn.magnet,.camera .camera-done.magnet{padding:0 10px;font-size:13px}
+  .camera-controls{grid-template-columns:1fr;row-gap:10px;justify-items:center}
+  .camera-footer{grid-template-columns:1fr 1fr}.camera-footer>span{display:none}
   .cam-modes{padding:2px 30%}
   .camera-top{right:220px}
   .scan-tools{right:224px}

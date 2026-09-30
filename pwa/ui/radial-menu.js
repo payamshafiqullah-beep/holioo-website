@@ -220,7 +220,7 @@ function createRadialMenu(o){
   function itemHtml(it,ring,i,p,from){
     const dx=p.x-st.o.x,dy=p.y-st.o.y,c=it.color||'#5B67F1',t=String(it.short??it.label);
     const k=t.length<=2?.32:t.length===3?.27:.22;   // longer text, smaller font: it stays inside the circle
-    return`<button type="button" role="menuitem" tabindex="-1" class="radial-item r${ring}${it.marked?' marked':''}${it.more?' more':''}${from?' pre':''}" data-ring="${ring}" data-i="${i}" aria-label="${escHtml(it.aria||it.label)}"${it.children?' aria-haspopup="menu" aria-expanded="false"':''} style="left:${st.o.x}px;top:${st.o.y}px;--dx:${dx.toFixed(1)}px;--dy:${dy.toFixed(1)}px;${from?`--px:${from.x.toFixed(1)}px;--py:${from.y.toFixed(1)}px;`:''}--c:${escHtml(c)};--fg:${radialInk(c)};--k:${k}"><span class="radial-dot">${escHtml(t)}</span>${ring===1&&it.label!==it.short?`<small>${escHtml(it.label)}</small>`:''}</button>`;
+    return`<button type="button" role="menuitem" tabindex="-1" class="radial-item r${ring}${it.marked?' marked':''}${it.more?' more':''}${from?' pre':''}" data-ring="${ring}" data-i="${i}" aria-label="${escHtml(it.aria||it.label)}"${it.children?' aria-haspopup="menu" aria-expanded="false"':''} style="left:${st.o.x}px;top:${st.o.y}px;--dx:${dx.toFixed(1)}px;--dy:${dy.toFixed(1)}px;${from?`--px:${from.x.toFixed(1)}px;--py:${from.y.toFixed(1)}px;`:''}--c:${escHtml(c)};--fg:${radialInk(c)};--k:${k}"><span class="mag-blob" aria-hidden="true"></span><span class="mag-glyph"><span class="radial-dot">${escHtml(t)}</span>${ring===1&&it.label!==it.short?`<small>${escHtml(it.label)}</small>`:''}</span></button>`;
   }
 
   // mode 'gesture': the finger is down, the menu ignores clicks (the trigger has the pointer).
@@ -248,6 +248,7 @@ function createRadialMenu(o){
     el.addEventListener('wheel',e=>e.preventDefault(),{passive:false});
     document.body.appendChild(el);
     fitLabels();
+    st.drops=typeof createDrops==='function'?createDrops():null;syncDrops();
     document.documentElement.classList.add('radial-lock');
     try{window.getSelection()?.removeAllRanges()}catch{}
     trigger.setAttribute('aria-expanded','true');trigger.classList.add('radial-active');
@@ -274,16 +275,28 @@ function createRadialMenu(o){
     const pts=st.items.map((_,i)=>radialPoint(st.o,st.fit.r1,st.fit.angles1[i]));
     const solid=[...pts.map(p=>box(p.x,p.y-s/2,s,s)),box(st.o.x,st.o.y-36,72,72)];
     const labels=[...st.el.querySelectorAll('.radial-item.r1 small')];
-    const boxes=labels.map(sm=>{const p=pts[+sm.parentElement.dataset.i];return{own:+sm.parentElement.dataset.i,...box(p.x,p.y+s/2+5,sm.offsetWidth,sm.offsetHeight)}});
+    const boxes=labels.map(sm=>{const i=+sm.closest('.radial-item').dataset.i,p=pts[i];return{own:i,...box(p.x,p.y+s/2+5,sm.offsetWidth,sm.offsetHeight)}});
     const hit=(a,b)=>a.x0<b.x1&&a.x1>b.x0&&a.y0<b.y1&&a.y1>b.y0;
     const clash=boxes.some((b,k)=>b.x0<0||b.x1>st.vp.w||b.y1>st.vp.h||solid.some((r,j)=>j!==b.own&&hit(b,r))||boxes.some((q,m)=>m!==k&&hit(b,q)));
     if(clash)labels.forEach(sm=>sm.remove());
+  }
+
+  // The circles on screen, for the water drops (ui/magnet.js): each one with its resting box.
+  function syncDrops(){
+    if(!st?.drops)return;
+    const s=st.fit.size;
+    st.drops.set([...st.el.querySelectorAll('.radial-item')].map(n=>{
+      const ring=+n.dataset.ring,i=+n.dataset.i;
+      const p=radialPoint(st.o,ring===2?st.fit.r2:st.fit.r1,ring===2?st.ring2.angles[i]:st.fit.angles1[i]);
+      return{el:n,blob:n.querySelector('.mag-blob'),glyph:n.querySelector('.mag-glyph'),shape:magnetShape({left:p.x-s/2,top:p.y-s/2,width:s,height:s})};
+    }));
   }
 
   function teardown(){
     if(!st)return null;
     const s=st;st=null;press=null;
     clearTimeout(s.dwell?.t);
+    s.drops?.stop();
     if(radialPress?.trigger===trigger)radialPress=null;
     radialOpen.delete(api);
     window.removeEventListener('resize',onResize);
@@ -346,6 +359,7 @@ function createRadialMenu(o){
     st.el.insertAdjacentHTML('beforeend',kids.map((k,j)=>itemHtml(k,2,j,radialPoint(st.o,st.fit.r2,layout.angles[j]),rel)).join(''));
     void st.el.offsetWidth;
     st.el.querySelectorAll('.radial-item.r2.pre').forEach(n=>n.classList.remove('pre'));
+    syncDrops();
   }
   function closeChildren(){
     if(!st||st.parent<0)return;
@@ -353,6 +367,7 @@ function createRadialMenu(o){
     st.el.querySelectorAll('.radial-item.r2').forEach(n=>n.remove());
     st.parent=-1;st.children=[];st.ring2=null;
     if(st.hot?.ring===2)st.hot=null;
+    syncDrops();
   }
 
   const sameHot=(a,b)=>(a?.ring??(a?.center?0:-1))===(b?.ring??(b?.center?0:-1))&&(a?.index??-1)===(b?.index??-1);
@@ -368,10 +383,12 @@ function createRadialMenu(o){
     else describe(st.parent>=0&&!h?.center?st.items[st.parent]:null,null,!!h?.center);
   }
 
-  // The finger moves: light up what is under it (nothing is chosen yet).
+  // The finger moves: the circles near it reach for it like water drops, and what is under it
+  // lights up (nothing is chosen yet).
   function track(x,y){
     if(!st)return;
     const h=radialHit({x,y},st.o,st.fit,st.ring2,st.parent);
+    st.drops?.point(h?.center?null:{x,y});            // back on the trigger: the drops settle
     // Passing over another course while its neighbour's sections are open: switch only if the
     // finger stays there a moment (it may just be on its way to a far section).
     if(h?.tentative){

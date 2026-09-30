@@ -125,7 +125,7 @@ function ListCard({iconName,tone='lavender',title,meta='',trailing='',attrs='',t
 
 // A list row with its own action menu button (two sibling buttons, never nested).
 function FileCard({id,iconName='fileText',tone='pink',title,meta='',tag='',search='',kind=''}){
-  return`<div class="list-card file-card" ${search?`data-search="${esc(search.toLowerCase())}"`:''} ${kind?`data-kind="${esc(kind)}"`:''}><button class="file-open" data-file-open="${id}">${IconBadge(iconName,tone,'md')}<span class="list-card-copy"><strong>${esc(title)}</strong>${meta?`<small>${esc(meta)}</small>`:''}</span>${tag}</button><button class="icon-btn flat" data-file-menu="${id}" aria-label="Actions pour ${esc(title)}">${icon('more',{size:20})}</button></div>`;
+  return`<div class="list-card file-card" ${search?`data-search="${esc(search.toLowerCase())}"`:''} ${kind?`data-kind="${esc(kind)}"`:''}><button class="file-open" data-file-open="${id}">${IconBadge(iconName,tone,'md')}<span class="list-card-copy"><strong>${esc(title)}</strong>${meta?`<small>${esc(meta)}</small>`:''}</span>${tag}</button><button class="icon-btn flat danger" data-file-delete="${id}" aria-label="Supprimer ${esc(title)}">${icon('trash',{size:20})}</button><button class="icon-btn flat" data-file-menu="${id}" aria-label="Actions pour ${esc(title)}">${icon('more',{size:20})}</button></div>`;
 }
 
 function StatCard({tone,iconName,value,label}){

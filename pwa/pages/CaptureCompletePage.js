@@ -6,7 +6,7 @@ async function renderCaptureComplete(){
     ${PageHeader({title:'Capture',actions:false})}
     <div class="success-hero">${IconBadge('checkCircle','mint','lg')}<p class="eyebrow">CAPTURE TERMINÉE</p><h1 class="hero-title">${plural(n,'photo capturée','photos capturées')}</h1><p class="lead">Que voulez-vous faire maintenant ?</p></div>
     <div class="thumbs" id="capturedThumbs"></div>
-    <p class="reorder-hint">${icon('more',{size:14})}Maintenez une photo puis glissez-la pour changer l’ordre.</p>
+    <p class="reorder-hint">${icon('more',{size:14})}Maintenez une photo ou faites glisser sa poignée pour changer l’ordre.</p>
     <div class="button-stack">
       ${ActionButton({label:'Organiser maintenant',id:'organizeNow',iconName:'folder'})}
       ${ActionButton({label:'Diviser le lot',id:'splitNow',variant:'soft',iconName:'scissors'})}

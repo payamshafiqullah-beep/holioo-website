@@ -61,18 +61,20 @@ async function renderFiles(){
   </section>`;
 
   // Images are loaded after the layout so the screen appears instantly.
-  const grid=byId('filesImages'),recentPhotos=photoRefs.slice(0,8);
+  const grid=byId('filesImages'),recentPhotos=photoRefs;
   for(const ref of recentPhotos){
     const url=await photoThumbUrl(ref.id);if(!url||!grid.isConnected)continue;
-    const b=document.createElement('button');b.className='image-tile';b.dataset.search=`${ref.session.title} ${ref.course.name}`.toLowerCase();
-    b.innerHTML=`<img src="${url}" alt="${esc(ref.session.title)}" loading="lazy" decoding="async">`;
-    b.onclick=()=>openPhotoViewer(ref.session.photoIds,ref.index,{title:ref.session.title,source:'session',sourceId:ref.session.id,editable:true,returnView:'files',courseId:ref.course.id,sectionId:ref.section.id,sessionId:ref.session.id});
+    const b=document.createElement('div');b.className='image-tile';b.dataset.search=`${ref.session.title} ${ref.course.name}`.toLowerCase();
+    b.innerHTML=`<button class="image-open" aria-label="Ouvrir ${esc(ref.session.title)}"><img src="${url}" alt="${esc(ref.session.title)}" loading="lazy" decoding="async"></button><button class="image-delete" aria-label="Supprimer cette photo">${icon('trash',{size:20})}</button>`;
+    b.querySelector('.image-open').onclick=()=>openPhotoViewer(ref.session.photoIds,ref.index,{title:ref.session.title,source:'session',sourceId:ref.session.id,editable:true,returnView:'files',courseId:ref.course.id,sectionId:ref.section.id,sessionId:ref.session.id});
+    b.querySelector('.image-delete').onclick=()=>confirmDeletePhoto(ref.id);
     grid.appendChild(b);
   }
 
   bindCourseCards();
   bindListFilter({searchId:'fileSearch',scope:'#filesContent',onChange:({shown})=>byId('filesEmpty').hidden=!!shown});
   document.querySelectorAll('[data-file-open]').forEach(b=>b.onclick=()=>openPdfViewer(b.dataset.fileOpen,'files'));
+  document.querySelectorAll('[data-file-delete]').forEach(b=>b.onclick=()=>confirmDeletePdf(b.dataset.fileDelete,'files'));
   document.querySelectorAll('[data-file-menu]').forEach(b=>b.onclick=()=>openFileMenu(b.dataset.fileMenu));
   document.querySelectorAll('[data-session-open]').forEach(b=>b.onclick=()=>{const ctx=findSessionContext(b.dataset.sessionOpen);if(!ctx)return;currentCourseId=ctx.course.id;currentSectionId=ctx.section.id;currentSessionId=ctx.session.id;navigate('session')});
   document.querySelectorAll('[data-jump]').forEach(b=>b.onclick=()=>{const g=byId(b.dataset.jump);if(g.hidden)showToast('Aucun PDF exporté vers Drive pour le moment');else g.scrollIntoView({behavior:'smooth',block:'start'})});
@@ -83,8 +85,10 @@ async function renderFiles(){
 
 async function openFileMenu(fileId){
   const meta=state.files.find(f=>f.id===fileId),row=meta?await DB.get('files',fileId):null;
-  if(!meta||!row?.blob){showToast('Fichier introuvable sur cet appareil');return}
+  if(!meta)return;
+  if(!row?.blob){confirmDeletePdf(fileId,'files');return}
   openActionSheet(meta.title,[
+    {label:'Supprimer le PDF',iconName:'trash',danger:true,onClick:()=>confirmDeletePdf(fileId,'files')},
     {label:'Ouvrir',iconName:'maximize',onClick:()=>openPdfViewer(fileId,'files')},
     {label:'Partager',iconName:'share',tone:'sky',onClick:()=>sharePdf(meta,row)},
     {label:'Publier dans la bibliothèque',iconName:'globe',tone:'mint',onClick:()=>publishPdfToLibrary(meta,row)},

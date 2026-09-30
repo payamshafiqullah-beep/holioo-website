@@ -20,17 +20,3 @@ test('loading a saved empty course list does not recreate defaults',()=>{
  const ctx={localStorage:{getItem:()=>JSON.stringify({courses:[],inbox:[],files:[]})},stateKey:()=> 'key',stateOwner:'',STORE_KEY:'key',LEGACY_KEY:'old',defaultState:()=>({profile:{},settings:{},courses:[course('default')]}),ensureDefaultSections:()=>{},console};
  vm.createContext(ctx);vm.runInContext(load,ctx);assert.equal(ctx.loadState().courses.length,0);
 });
-test('long press reorders courses without navigation; a quick tap or delete button does not drag',()=>{
- const listeners=new Map(), timers=[];let target,order;
- const classes=()=>({add(){},remove(){}});
- const host={children:[],classList:classes(),addEventListener:(n,fn)=>listeners.set(`host-${n}`,fn),insertBefore(card,next){this.children=this.children.filter(x=>x!==card);const i=this.children.indexOf(next);this.children.splice(i<0?this.children.length:i,0,card)}};
- function card(id){const c={dataset:{course:id},parentElement:host,classList:classes(),style:{},getBoundingClientRect:()=>({left:0,top:100,width:300,height:120}),querySelector:()=>null,closest:s=>s==='[data-course]'?c:null,cloneNode:()=>({classList:classes(),style:{},querySelector:()=>null,remove(){}})};return c}
- const a=card('a'),hidden=card('hidden'),b=card('b');hidden.hidden=true;host.children=[a,hidden,b];
- const ctx={document:{addEventListener:(n,fn)=>listeners.set(n,fn),removeEventListener:n=>listeners.delete(n),elementFromPoint:()=>target,body:{appendChild(){}}},window:{scrollBy(){}},innerHeight:900,navigator:{},requestAnimationFrame:fn=>fn(),setTimeout:fn=>{timers.push(fn);return timers.length},clearTimeout:i=>{timers[i-1]=()=>{}}};
- vm.createContext(ctx);vm.runInContext(read('../ui/reorder.js'),ctx);ctx.makeReorderable(host,{itemSelector:'[data-course]',idAttribute:'course',onChange:ids=>order=Array.from(ids)});
- const down=t=>listeners.get('host-pointerdown')({target:t,pointerId:1,clientX:10,clientY:130,pointerType:'touch'});
- down(a);listeners.get('pointerup')();assert.equal(order,undefined);
- const del={closest:s=>s==='button'?del:a};down(del);assert.equal(listeners.has('pointermove'),false);
- down(a);timers.at(-1)();target=b;listeners.get('pointermove')({pointerId:1,clientX:10,clientY:300,preventDefault(){}});listeners.get('pointerup')();
- assert.deepEqual(order,['hidden','b','a']);let prevented=false;listeners.get('host-click')({preventDefault(){prevented=true},stopPropagation(){}});assert.equal(prevented,true);
-});

@@ -9,7 +9,7 @@ function libraryItemCard(i,kind){
 function isFavorite(id){return state.favorites.some(f=>f.id===id)}
 function toggleFavorite(item){
   if(isFavorite(item.id))state.favorites=state.favorites.filter(f=>f.id!==item.id);
-  else state.favorites.unshift({id:item.id,title:item.title,type:item.type||'Photos',course:item.course,section:item.section,academic_year:item.academic_year,photo_count:item.photo_count,created_at:item.created_at,storage_paths:item.storage_paths||[],contributor_name:item.contributor_name||null});
+  else state.favorites.unshift({id:item.id,owner_id:item.owner_id,session_local_id:item.session_local_id,title:item.title,type:item.type||'Photos',course:item.course,section:item.section,academic_year:item.academic_year,photo_count:item.photo_count,created_at:item.created_at,storage_paths:item.storage_paths||[],contributor_name:item.contributor_name||null});
   saveState();
 }
 
@@ -22,7 +22,7 @@ async function renderLibrary(){
   const profileReady=!!(p.university&&p.program);
   let materials=[];
   if(cloud&&profileReady){
-    const{data}=await sb.from('public_materials').select('id,academic_year,title,type,course,section,created_at,photo_count,storage_paths,contributor_name').eq('university',p.university).eq('program',p.program).eq('level',p.level).eq('semester',p.semester).eq('is_published',true).order('created_at',{ascending:false});
+    const{data}=await sb.from('public_materials').select('id,owner_id,session_local_id,academic_year,title,type,course,section,created_at,photo_count,storage_paths,contributor_name').eq('university',p.university).eq('program',p.program).eq('level',p.level).eq('semester',p.semester).eq('is_published',true).order('created_at',{ascending:false});
     materials=data||[];
   }
   const publicCourses=[...new Set(materials.map(x=>x.course).filter(Boolean))];
@@ -57,7 +57,7 @@ async function renderLibrary(){
       </div>
       <div data-filter-group>
         ${SectionTitle('PDF récents',{action:'Voir tout',nav:'files'})}
-        <div class="list-stack">${pdfs.map(f=>ListCard({iconName:'fileText',tone:'pink',title:f.title,meta:`${fmtDate(f.createdAt)} · ${f.pages||'—'} pages`,attrs:`data-pdf-open="${f.id}"`,search:f.title,kind:'pdf'})).join('')}</div>
+        <div class="list-stack">${pdfs.map(f=>FileCard({id:f.id,iconName:'fileText',tone:'pink',title:f.title,meta:`${fmtDate(f.createdAt)} · ${f.pages||'—'} pages`,search:f.title,kind:'pdf'})).join('')}</div>
       </div>
       <div data-filter-group>
         ${SectionTitle('Notes privées')}
@@ -79,7 +79,9 @@ async function renderLibrary(){
   document.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>document.querySelector(`#libraryFilters [data-chip="${b.dataset.pick}"]`)?.click());
   document.querySelectorAll('[data-year]').forEach(b=>b.onclick=()=>{currentLibrary={step:'courses',year:b.dataset.year};render()});
   document.querySelectorAll('[data-libcourse-direct]').forEach(b=>b.onclick=()=>{currentLibrary={step:'sections',year:p.academicYear,course:b.dataset.libcourseDirect};render()});
-  document.querySelectorAll('[data-pdf-open]').forEach(b=>b.onclick=()=>openPdfViewer(b.dataset.pdfOpen,'library'));
+  document.querySelectorAll('[data-file-open]').forEach(b=>b.onclick=()=>openPdfViewer(b.dataset.fileOpen,'library'));
+  document.querySelectorAll('[data-file-menu]').forEach(b=>b.onclick=()=>openFileMenu(b.dataset.fileMenu));
+  document.querySelectorAll('[data-file-delete]').forEach(b=>b.onclick=()=>confirmDeletePdf(b.dataset.fileDelete,'library'));
   document.querySelectorAll('[data-note-open]').forEach(b=>b.onclick=()=>{const ctx=findSessionContext(b.dataset.noteOpen);if(!ctx)return;currentCourseId=ctx.course.id;currentSectionId=ctx.section.id;currentSessionId=ctx.session.id;navigate('session')});
   const all=[...materials,...state.favorites];
   document.querySelectorAll('[data-libitem-open]').forEach(b=>b.onclick=()=>{const item=all.find(x=>x.id===b.dataset.libitemOpen);if(item){currentLibrary={step:'item',year:item.academic_year,course:item.course,section:item.section,item,from:'years'};render()}});
@@ -116,8 +118,14 @@ async function renderLibraryDrill(){
   if(currentLibrary.step==='item')return renderLibraryItem();
 }
 
-function renderLibraryItem(){
-  const i=currentLibrary.item;if(!i){currentLibrary={step:'years'};return renderLibrary()}
+async function renderLibraryItem(){
+  let i=currentLibrary.item;
+  if(i&&sb&&navigator.onLine){
+    const{data,error}=await sb.from('public_materials').select('*').eq('id',i.id).maybeSingle();
+    if(!error&&!data){state.favorites=state.favorites.filter(f=>f.id!==i.id);saveState();currentLibrary={step:'years'};showToast('Cette publication a été supprimée');return renderLibrary()}
+    if(data){i=data;currentLibrary.item=data}
+  }
+  if(!i){currentLibrary={step:'years'};return renderLibrary()}
   const fav=isFavorite(i.id),pdf=isPdfMaterial(i);
   app.innerHTML=`<section class="screen">${PageHeader({back:true,title:'Bibliothèque'})}${PageIntro({eyebrow:'MATÉRIEL PARTAGÉ',title:i.title,subtitle:`${i.course} · ${i.section} · ${i.academic_year||''}`})}
     <p class="meta-line">${icon('user',{size:16})}${i.contributor_name?`Partagé par ${esc(i.contributor_name)}`:'Partagé par un étudiant'}</p>
@@ -125,6 +133,7 @@ function renderLibraryItem(){
     <div class="button-stack">
       ${pdf?ActionButton({label:'Ouvrir le PDF',id:'openPublicPdf',variant:'primary',iconName:'fileText'}):''}
       ${ActionButton({label:fav?'Retirer des favoris':'Ajouter aux favoris',id:'favMaterial',variant:fav?'soft':'primary',iconName:'star'})}
+      ${currentUser&&currentUser.id===i.owner_id?ActionButton({label:'Supprimer de la bibliothèque',id:'deletePublicMaterial',variant:'ghost',iconName:'trash'}):''}
       ${ActionButton({label:'Signaler ce matériel',id:'reportMaterial',variant:'ghost',iconName:'flag'})}
     </div></section>`;
   byId('backBtn').onclick=()=>{currentLibrary=currentLibrary.from==='items'?{...currentLibrary,step:'items',item:null}:{step:'years'};render()};
@@ -138,6 +147,7 @@ function renderLibraryItem(){
     for(let x=0;x<(i.storage_paths||[]).length;x++){const{data}=sb.storage.from('public-materials').getPublicUrl(i.storage_paths[x]),d=document.createElement('div');d.className='thumb';d.innerHTML=`<img src="${data.publicUrl}" alt="Photo publique ${x+1}" loading="lazy"><span class="num">${x+1}</span>`;byId('publicThumbs').appendChild(d)}
   }
   byId('favMaterial').onclick=()=>{toggleFavorite(i);showToast(isFavorite(i.id)?'Ajouté aux favoris':'Retiré des favoris');render()};
+  byId('deletePublicMaterial')?.addEventListener('click',()=>confirmDeletePublicMaterial(i));
   byId('reportMaterial').onclick=()=>reportMaterial(i);
 }
 

@@ -23,7 +23,7 @@ function renderPdfBuilder(){
     <div class="list-stack">${allSessions.map(({section,session:q})=>`<label class="check-card"><input type="checkbox" class="pdfSession" value="${q.id}" ${q.id===session.id?'checked':''}>${IconBadge('layers',sectionTone(section.name),'sm')}<span class="list-card-copy"><strong>${esc(q.title)}</strong><small>${esc(section.name)} · ${plural(q.photoIds.length,'photo')}</small></span><i class="check-mark">${icon('check',{size:16,stroke:2.6})}</i></label>`).join('')}</div>
 
     ${SectionTitle('Ordre des photos')}
-    <p class="lead">Maintenez une photo, puis faites-la glisser à l’endroit souhaité. L’ordre affiché sera celui du PDF.</p>
+    <p class="lead">Maintenez une photo ou faites glisser sa poignée à l’endroit souhaité. L’ordre affiché sera celui du PDF.</p>
     <div class="thumbs compact pdf-order-grid" id="pdfPhotoOrder" aria-label="Ordre des photos du PDF"></div>
 
     ${SectionTitle('Mise en page')}
@@ -53,6 +53,7 @@ function renderPdfBuilder(){
     const token=++orderRenderToken;
     for(const url of pdfBuilderUrls)URL.revokeObjectURL(url);
     pdfBuilderUrls=[];
+    host._reorder?.destroy();
     host.innerHTML='';
 
     for(let i=0;i<photoOrder.length;i++){

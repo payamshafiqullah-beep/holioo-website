@@ -9,7 +9,7 @@ async function renderPdfViewer(){
   app.innerHTML=`<div class="pdf-viewer">
     <header class="page-header">
       <div class="page-header-left"><button class="icon-btn" id="pdfBack" aria-label="Retour">${icon('chevronLeft',{size:22})}</button><span class="viewer-title"><strong>${esc(meta.title)}</strong><small>${esc(course?.name||'PDF')} · <span id="pdfPageCount">${meta.pages?plural(meta.pages,'page'):'—'}</span></small></span></div>
-      <div class="page-header-right">${Tag(status.label,status.tone)}</div>
+      <div class="page-header-right">${Tag(status.label,status.tone)}<button class="icon-btn danger" id="pdfDelete" aria-label="Supprimer le PDF">${icon('trash',{size:22})}</button></div>
     </header>
     <div class="pdf-frame-wrap"><div class="pdf-pages" id="pdfPages"><p class="pdf-loading">Chargement du PDF…</p></div></div>
     <div class="viewer-dock">
@@ -20,6 +20,7 @@ async function renderPdfViewer(){
     </div>
   </div>`;
   byId('pdfBack').onclick=()=>{revokeViewerUrl();navigate(currentPdfReturnView||'files')};
+  byId('pdfDelete').onclick=()=>confirmDeletePdf(meta.id,currentPdfReturnView);
   byId('pdfShare').onclick=()=>sharePdf(meta,row);
   byId('pdfPublish').onclick=()=>publishPdfToLibrary(meta,row);
   byId('pdfDrive').onclick=()=>syncPdfNow(meta,row);

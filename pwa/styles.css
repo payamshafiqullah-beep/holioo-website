@@ -790,7 +790,6 @@ body.pe-lock{overflow:hidden}
 .dock-btn.edit{color:#FFD66B}
 /* Messages never cover the editor's tools: shown at the top while editing. */
 body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
-=======
 /* Course management uses the same long-press interaction as photo grids. */
 .course-managed{cursor:pointer}
 .course-managed[hidden]{display:none}

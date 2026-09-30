@@ -9,9 +9,10 @@ const pageFiles=[
   './pages/PhotoViewerPage.js','./pages/PdfBuilderPage.js','./pages/PdfViewerPage.js','./pages/FilesPage.js',
   './pages/AcademicLibraryPage.js','./pages/ProfilePage.js','./pages/SyncPage.js'
 ];
-const uiFiles=['./ui/icons.js','./ui/components.js','./ui/reorder.js','./ui/shell.js'];
+const uiFiles=['./ui/icons.js','./ui/components.js','./ui/reorder.js','./ui/shell.js','./ui/camera-picker.js'];
 const featureFiles=[
-  './features/media-viewer.js','./features/course-actions.js','./features/capture-actions.js',
+  './features/media-viewer.js','./features/course-actions.js','./features/camera-i18n.js','./features/camera-destination.js',
+  './features/camera-queue.js','./features/capture-actions.js',
   './features/pdf-actions.js','./features/community-actions.js'
 ];
 
@@ -27,13 +28,13 @@ const drive=read('./drive.js');
 const html=read('./index.html');
 const sw=read('./sw.js');
 const manifest=JSON.parse(read('./manifest.webmanifest'));
-if(!html.includes('20260929-reorder-v1'))throw new Error('Asset cache-bust version missing');
+if(!html.includes('20260930-camera-v1'))throw new Error('Asset cache-bust version missing');
 
 const required=[
   'Diviser le lot','Organiser les photos','Captures à trier','Section personnalisée','Nouvelle séance',
   'Créer un PDF','Bibliothèque','Rechercher un Holioo ID','Google Drive','Synchroniser automatiquement',
   'movePhotoToSession','renderPdfBuilder','renderSplit','publishSession','openPhotoViewer','renderPhotoViewer',
-  'openPdfViewer','renderPdfViewer','Partager','Synchroniser vers Drive','Recadrer','setupPinchZoom','openCropEditor','captureGalleryRail','cameraStatus','finishCapture','zoomRange','importLocalFiles','toggleFavorite','startGoogleLogin','google-login-exchange','Continuer avec Google','Essayer sans compte','enterGuestMode','makeReorderable','Maintenez une photo','renderAdmin','admin-users','Bloquer l’accès','Supprimer le compte'
+  'openPdfViewer','renderPdfViewer','Partager','Synchroniser vers Drive','setupPinchZoom','openCameraPicker','resolveCameraDestination','cameraQueue','camDest','cameraStatus','finishCapture','zoomRange','importLocalFiles','toggleFavorite','startGoogleLogin','google-login-exchange','Continuer avec Google','Essayer sans compte','enterGuestMode','makeReorderable','Maintenez une photo','renderAdmin','admin-users','Bloquer l’accès','Supprimer le compte'
 ];
 for(const s of required)if(!app.includes(s))throw new Error(`Flow missing: ${s}`);
 // Home, tabs and shared components required by the UI v2 spec.
@@ -43,6 +44,9 @@ for(const l of ['Accueil','Cours','Capture','Bibliothèque','Fichiers'])if(!app.
 if(/data-left=|data-right=/.test(app))throw new Error('Old left/right photo arrows still present');
 if(app.includes('Pincez pour zoomer'))throw new Error('Old pinch zoom hint still present');
 if(!app.includes('gallery-shortcut'))throw new Error('Modern gallery control missing');
+// Camera v2: photos go straight to their destination, never into an unfiled draft.
+if(/openCropEditor|captureDraft\.photoIds=/.test([read('./features/capture-actions.js'),read('./pages/CapturePage.js')].join(' ')))throw new Error('Old camera draft/crop flow still present');
+for(const s of ['Choisir la destination','Nouvelle séance','Emploi du temps','permBlocked','visibilitychange'])if(!app.includes(s))throw new Error(`Camera v2 missing: ${s}`);
 
 for(const p of [...pageFiles,...uiFiles,...featureFiles,'./db.js','./drive.js','./core.js','./app.js','./manifest.webmanifest']){
   const htmlPath=p.replace('./','./');
@@ -58,4 +62,4 @@ if(/GOOGLE_CLIENT_SECRET|SUPABASE_SERVICE_ROLE_KEY/.test(app+drive))throw new Er
 
 console.log(`Holioo modular smoke test: PASS (${pageFiles.length} page files)`);
 
-for(const s of ['HOLIOO UI v2','--bg:#F7F7FB','--accent:#5B67F1','.bottom-nav','.capture-orb','.shutter','.crop-bar'])if(!read('./styles.css').includes(s))throw new Error(`UI v2 style missing: ${s}`);
+for(const s of ['HOLIOO UI v2','--bg:#F7F7FB','--accent:#5B67F1','.bottom-nav','.capture-orb','.shutter','.cam-dest','.cam-sheet'])if(!read('./styles.css').includes(s))throw new Error(`UI v2 style missing: ${s}`);

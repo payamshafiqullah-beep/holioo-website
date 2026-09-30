@@ -1,9 +1,8 @@
 // Capture — interface caméra plein écran.
-// Camera, zoom, crop and batch logic live in features/capture-actions.js.
+// Camera, zoom, destination and background saving live in features/capture-actions.js,
+// the destination sheet in ui/camera-picker.js, texts in features/camera-i18n.js.
 function renderCapture(){
-  if(!state.captureDraft){state.captureDraft={id:uid(),photoIds:[],createdAt:now()};saveState()}
-  captureIds=[...state.captureDraft.photoIds];
-  const glass=(id,name,label,extra='')=>`<button class="glass-btn" id="${id}" aria-label="${label}" ${extra}>${icon(name,{size:21})}</button>`;
+  const glass=(id,name,label,extra='')=>`<button class="glass-btn" id="${id}" aria-label="${esc(label)}" ${extra}>${icon(name,{size:21})}</button>`;
   app.innerHTML=`<div class="camera">
     <div class="camera-stage" id="cameraStage">
       <video id="cameraVideo" autoplay playsinline muted></video>
@@ -11,55 +10,56 @@ function renderCapture(){
     </div>
 
     <div class="camera-top">
-      ${glass('closeCam','x','Fermer')}
-      <span class="camera-status"><i></i><span id="cameraStatus">Ouverture…</span></span>
-      <div class="camera-top-actions">
-        ${glass('torchBtn','zap','Flash')}
-        ${glass('cropLastBtn','crop','Recadrer la dernière photo')}
-      </div>
+      ${glass('closeCam','x',camT('close'))}
+      <button class="cam-dest" id="camDest" aria-haspopup="dialog"><span class="cam-dest-dot" aria-hidden="true"></span><span class="cam-dest-text" id="camDestText">${esc(camT('chooseDest'))}</span>${icon('chevronRight',{size:16,stroke:2.4})}</button>
+      ${glass('torchBtn','zap',camT('flashOff'),'aria-pressed="false"')}
+    </div>
+    <div class="cam-notices">
+      <span class="visually-hidden" role="status" id="cameraStatus">${esc(camT('opening'))}</span>
+      <button class="cam-notice hidden" id="camSaveState" aria-live="polite"></button>
+      <div class="cam-notice warn hidden" id="camStorage" role="status"></div>
     </div>
 
     <div class="zoom-feedback" id="pinchZoomLabel" aria-live="polite">1.0×</div>
+    <div class="cam-panel hidden" id="camPanel" role="alertdialog" aria-live="assertive"></div>
 
     <div class="camera-bottom">
-      <div class="camera-rail" aria-label="Photos de cette capture">
-        <button id="galleryRailImport" class="rail-add" aria-label="Ajouter depuis la galerie">${icon('plus',{size:20})}</button>
-        <div class="rail-thumbs" id="captureGalleryRail"></div>
-      </div>
-
-      <div class="zoom-chips" aria-label="Zoom">
+      <div class="zoom-chips" aria-label="${esc(camT('zoom'))}">
         <button class="zoom-chip" data-zoom="1">1×</button><button class="zoom-chip" data-zoom="2">2×</button><button class="zoom-chip" data-zoom="3">3×</button>
-        <input id="zoomRange" class="visually-hidden" type="range" min="1" max="4" step="0.1" value="1" aria-label="Zoom">
+        <input id="zoomRange" class="visually-hidden" type="range" min="1" max="4" step="0.1" value="1" aria-label="${esc(camT('zoom'))}">
       </div>
 
       <div class="camera-controls">
-        <button class="gallery-shortcut" id="lastPhotoBtn" aria-label="Galerie">${icon('image',{size:24})}</button>
-        <button class="shutter" id="shutter" aria-label="Prendre une photo"><span></span></button>
-        <button class="glass-btn round-lg" id="flipCam" aria-label="Changer de caméra">${icon('switchCamera',{size:24})}</button>
+        <button class="gallery-shortcut cam-last" id="lastPhotoBtn" aria-label="${esc(camT('lastPhoto',{n:0}))}" disabled><span class="cam-last-img" id="camLastImg"></span><b class="cam-count hidden" id="captureCount">0</b></button>
+        <button class="shutter" id="shutter" aria-label="${esc(camT('shutter'))}"><span></span></button>
+        <button class="glass-btn round-lg" id="flipCam" aria-label="${esc(camT('switchCam'))}">${icon('switchCamera',{size:24})}</button>
       </div>
 
       <div class="camera-footer">
-        <button class="camera-text-btn" id="galleryBtn">${icon('upload',{size:16})}Importer</button>
+        <button class="camera-text-btn" id="galleryBtn">${icon('upload',{size:16})}${esc(camT('importBtn'))}</button>
         <span class="camera-mode">PHOTO</span>
-        <button class="camera-done" id="finishCapture">Terminer <b id="captureCount">0</b></button>
+        <button class="camera-done" id="finishCapture">${esc(camT('done'))}</button>
         <input type="file" id="galleryInput" accept="image/*" multiple hidden>
       </div>
     </div>
-    <div id="cropEditorHost"></div>
+    <div id="camSheetHost"></div>
   </div>`;
 
-  setTimeout(async()=>{await startCamera();await renderCaptureGalleryRail();setupPinchZoom()},0);
+  initCameraDestination();
+  setupCameraLifecycle();
+  setTimeout(async()=>{await startCamera();setupPinchZoom();checkCameraStorage()},0);
   byId('closeCam').onclick=()=>closeCaptureScreen();
+  byId('camDest').onclick=()=>openDestinationPicker();
   byId('shutter').onclick=capturePhoto;
   byId('flipCam').onclick=async()=>{cameraFacing=cameraFacing==='environment'?'user':'environment';await startCamera();setupPinchZoom()};
   byId('torchBtn').onclick=toggleTorch;
-  byId('galleryBtn').onclick=()=>byId('galleryInput').click();
-  byId('galleryRailImport').onclick=()=>byId('galleryInput').click();
+  byId('galleryBtn').onclick=()=>camDest?byId('galleryInput').click():openDestinationPicker(camT('chooseFirst'));
   byId('galleryInput').onchange=importGallery;
   byId('finishCapture').onclick=finishCapture;
+  byId('lastPhotoBtn').onclick=openCaptureReview;
+  byId('camSaveState').onclick=()=>cameraQueue.retryNow();
   byId('zoomRange').oninput=e=>setCameraZoom(Number(e.target.value));
-  byId('cropLastBtn').onclick=()=>captureIds.length?openCropEditor(captureIds[captureIds.length-1]):showToast('Aucune photo à recadrer');
-  byId('lastPhotoBtn').onclick=()=>captureIds.length?openCropEditor(captureIds[captureIds.length-1]):byId('galleryInput').click();
   document.querySelectorAll('[data-zoom]').forEach(b=>b.onclick=()=>setCameraZoom(Number(b.dataset.zoom)));
   updateCaptureCount();
+  renderCameraSaveState(cameraQueue.state());
 }

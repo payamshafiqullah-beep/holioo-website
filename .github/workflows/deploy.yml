@@ -49,6 +49,7 @@ jobs:
           node --check pwa/app.js
           find pwa/ui pwa/features pwa/pages -name '*.js' -print0 | xargs -0 -n1 node --check
           node pwa/smoke-test.mjs
+          node --test pwa/tests/*.test.mjs
 
       - name: Install website dependencies
         run: npm ci

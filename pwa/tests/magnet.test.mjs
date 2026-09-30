@@ -33,25 +33,31 @@ test('the button under the finger wins; slightly outside still counts; the neare
   assert.equal(M.magnetNearest({x:shutter.cx,y:shutter.cy},[null,null,flip]),-1,'hidden / disabled buttons never take a touch');
 });
 
-test('pull: toward the pointer, stronger when closer, never more than 30% of the size nor past the finger',()=>{
-  const far=M.magnetPull({x:shutter.cx,y:shutter.cy-43-20},shutter);
-  const edge=M.magnetPull({x:shutter.cx,y:shutter.cy-43},shutter);
-  const near=M.magnetPull({x:shutter.cx,y:shutter.cy-25},shutter);
-  assert.ok(far.y<0&&edge.y<far.y&&near.y<=edge.y,`${far.y.toFixed(1)} → ${edge.y.toFixed(1)} → ${near.y.toFixed(1)}`);
-  for(const m of [far,edge,near])assert.ok(Math.hypot(m.x,m.y)<=.3*86+1e-9);
-  assert.ok(Math.abs(near.y)<=25*.9+1e-9,'not past the finger');
-  assert.ok(Math.abs(near.angle+90)<1e-9,'pull angle points up (−90° on screen)');
-  const center=M.magnetPull({x:shutter.cx,y:shutter.cy},shutter);
-  assert.deepEqual([center.x,center.y,center.along,center.across],[0,0,1,1],'finger on the center: no pull');
-  const out=M.magnetPull({x:shutter.cx,y:shutter.cy-200},shutter);
-  assert.deepEqual([out.x,out.y,out.along,out.across],[0,0,1,1],'out of reach: at rest');
+test('drop: reacts within 120 px of the center, stronger as the finger gets closer, strongest at the edge',()=>{
+  const at=d=>M.magnetDrop({x:shutter.cx,y:shutter.cy-d},shutter);
+  assert.deepEqual([...[at(120),at(200)].map(m=>m.tail)],[0,0],'120 px and beyond: at rest');
+  const seq=[110,90,70,55,43].map(at);
+  for(let i=1;i<seq.length;i++)assert.ok(seq[i].tail>seq[i-1].tail&&seq[i].y<=seq[i-1].y,`closer = stronger (${seq.map(m=>m.tail.toFixed(2)).join(' → ')})`);
+  assert.ok(Math.abs(seq.at(-1).tail-1)<1e-9,'full strength at the edge');
+  assert.ok(Math.abs(at(43).angle+90)<1e-9,'direction points up (−90° on screen)');
+  const c=M.magnetDrop({x:shutter.cx,y:shutter.cy},shutter);
+  assert.deepEqual([c.x,c.y,c.along,c.across,c.tail],[0,0,1,1,0],'finger on the very center: no direction, no drop');
+  // A finger 100 px away already moves the neighbour a little: the effect reaches 120 px.
+  assert.ok(M.magnetDrop({x:flip.cx-100,y:flip.cy},flip).tail>0);
 });
 
-test('water-drop stretch: up to ×1.25 along the pull and ×0.88 across',()=>{
-  let maxAlong=1,minAcross=1;
-  for(let d=0;d<=80;d+=1){const m=M.magnetPull({x:shutter.cx+d,y:shutter.cy},shutter);maxAlong=Math.max(maxAlong,m.along);minAcross=Math.min(minAcross,m.across)}
-  assert.ok(maxAlong>1.15&&maxAlong<=1.25+1e-9,String(maxAlong));
-  assert.ok(minAcross<.93&&minAcross>=.88-1e-9,String(minAcross));
+test('drop: moves up to 35% of the size (never past the finger), stretches ×1.4 along and ×0.8 across',()=>{
+  let maxOff=0,maxAlong=1,minAcross=1,maxTail=0;
+  for(let d=0;d<=130;d+=.5){
+    const m=M.magnetDrop({x:shutter.cx+d,y:shutter.cy},shutter),off=Math.hypot(m.x,m.y);
+    assert.ok(off<=d+1e-9,'never past the finger');
+    maxOff=Math.max(maxOff,off);maxAlong=Math.max(maxAlong,m.along);minAcross=Math.min(minAcross,m.across);maxTail=Math.max(maxTail,m.tail);
+  }
+  assert.ok(maxOff>.3*86&&maxOff<=.35*86+1e-9,`offset up to ${maxOff.toFixed(1)} px`);
+  assert.ok(Math.abs(maxAlong-1.4)<1e-9&&Math.abs(minAcross-.8)<1e-9&&Math.abs(maxTail-1)<1e-9,`${maxAlong} / ${minAcross} / ${maxTail}`);
+  // Text pills too (Terminé, Importer): strongest at their edge, in any direction.
+  const pill=M.magnetShape(rect(0,0,110,44));
+  assert.ok(Math.abs(M.magnetDrop({x:55,y:-0.001},pill).tail-1)<1e-3&&Math.abs(M.magnetDrop({x:110.001,y:22},pill).tail-1)<1e-3);
 });
 
 test('spring: settles back in ~300–400 ms with a slight overshoot, stable on slow frames',()=>{

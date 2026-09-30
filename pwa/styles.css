@@ -512,7 +512,10 @@ html.radial-lock,html.radial-lock body{overscroll-behavior:none;-webkit-user-sel
 .camera-done .mag-blob{background:#fff}
 .magnet:focus-visible{outline:none}
 .magnet:focus-visible .mag-blob{box-shadow:0 0 0 3px #0B0C12,0 0 0 6px #fff}
-.camera-top,.camera-controls,.camera-footer{touch-action:none}
+/* The whole camera screen keeps the finger (the drops follow it anywhere); its scrolling parts still scroll. */
+.camera{touch-action:none}
+.camera .cam-modes{touch-action:pan-x}
+.camera .cam-sheet-card,.camera .cam-panel{touch-action:pan-y}
 
 
 /* Destination chip, save notices, last photo + counter */

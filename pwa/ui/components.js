@@ -106,8 +106,9 @@ function Field({label,id,value='',placeholder='',type='text'}){
 
 /* ---------- Cards ---------- */
 
-function HeroCard({label,title,subtitle='',cta,ctaAttrs='',art=''}){
-  return`<article class="hero-card"><div class="hero-card-copy"><span class="hero-label">${esc(label)}</span><h2>${esc(title)}</h2>${subtitle?`<p>${esc(subtitle)}</p>`:''}<button class="hero-cta" ${ctaAttrs}>${esc(cta)}${icon('arrowRight',{size:18})}</button></div><div class="hero-art" aria-hidden="true">${art||HeroIllustration()}</div></article>`;
+// `aside` replaces the illustration on the right (Accueil: the Quick Capture trigger).
+function HeroCard({label,title,subtitle='',cta,ctaAttrs='',art='',aside=''}){
+  return`<article class="hero-card"><div class="hero-card-copy"><span class="hero-label">${esc(label)}</span><h2>${esc(title)}</h2>${subtitle?`<p>${esc(subtitle)}</p>`:''}<button class="hero-cta" ${ctaAttrs}>${esc(cta)}${icon('arrowRight',{size:18})}</button></div>${aside||`<div class="hero-art" aria-hidden="true">${art||HeroIllustration()}</div>`}</article>`;
 }
 
 function HeroIllustration(){

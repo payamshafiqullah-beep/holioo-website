@@ -6,9 +6,11 @@ async function renderHome(){
   const courses=state.courses.slice(0,3);
   const pdfCount=state.files.length;
 
+  // Right of the card: Quick Capture (press, drag to a course then a section, release → camera).
+  const quick=QuickCaptureTrigger({id:'heroQuick'});
   const hero=latest
-    ?HeroCard({label:'CONTINUER',title:latest.session.title,subtitle:`${latest.section.name} · ${latest.course.name}`,cta:'Reprendre',ctaAttrs:'id="heroResume"'})
-    :HeroCard({label:'COMMENCER',title:'Votre première capture',subtitle:'Photographiez un cours, Holioo l’organise pour vous.',cta:'Capturer',ctaAttrs:'data-nav="capture"'});
+    ?HeroCard({label:'CONTINUER',title:latest.session.title,subtitle:`${latest.section.name} · ${latest.course.name}`,cta:'Reprendre',ctaAttrs:'id="heroResume"',aside:quick})
+    :HeroCard({label:'COMMENCER',title:'Votre première capture',subtitle:'Photographiez un cours, Holioo l’organise pour vous.',cta:'Capturer',ctaAttrs:'data-nav="capture"',aside:quick});
 
   app.innerHTML=`<section class="screen">
     ${PageHeader({logo:true})}
@@ -26,6 +28,7 @@ async function renderHome(){
   </section>`;
 
   bindCourseCards();
+  attachQuickCapture(byId('heroQuick'));
   byId('heroResume')?.addEventListener('click',()=>{currentCourseId=latest.course.id;currentSectionId=latest.section.id;currentSessionId=latest.session.id;navigate('session')});
   byId('homeInbox').onclick=()=>navigate(inboxCount?'inbox':'capture');
 }

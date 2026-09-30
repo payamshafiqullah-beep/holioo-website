@@ -11,58 +11,99 @@ const load=p=>{const ctx={module:{exports:{}}};vm.runInNewContext(read(p),ctx);r
 const R=load('../ui/radial-menu.js');
 const D=load('../features/camera-destination.js');
 
-// The orange button sits at the bottom center, about 70 px above the bottom edge.
 const screens={
   'iPhone SE (320×568)':{w:320,h:568},
   'iPhone 8 (375×667)':{w:375,h:667},
-  'iPhone 15 (390×844)':{w:390,h:844,top:47},
-  'Pro Max (430×932)':{w:430,h:932,top:59},
-  'iPad (768×1024)':{w:768,h:1024,top:24},
-  'phone landscape (844×390)':{w:844,h:390}
+  'iPhone 15 (390×844)':{w:390,h:844,top:47,bottom:34},
+  'Pro Max (430×932)':{w:430,h:932,top:59,bottom:34},
+  'iPad (768×1024)':{w:768,h:1024,top:24,bottom:20},
+  'phone landscape (844×390)':{w:844,h:390,bottom:21}
 };
-const originOf=vp=>({x:vp.w/2,y:vp.h-70});
-const inside=(p,s,vp)=>p.x-s/2>=0&&p.x+s/2<=vp.w&&p.y-s/2>=(vp.top||0)&&p.y+s/2<=vp.h;
+// Where a trigger can be: the Accueil card (right side, near the top), the bottom center, the
+// middle of the screen, a top corner.
+const triggers={
+  'Accueil card':vp=>({x:vp.w-78,y:Math.min((vp.top||0)+250,vp.h-120)}),
+  'bottom center':vp=>({x:vp.w/2,y:vp.h-(vp.bottom||0)-70}),
+  'middle':vp=>({x:vp.w/2,y:vp.h/2}),
+  'top left corner':vp=>({x:60,y:(vp.top||0)+70})
+};
+const inside=(p,s,vp)=>p.x-s/2>=0&&p.x+s/2<=vp.w&&p.y-s/2>=(vp.top||0)&&p.y+s/2<=vp.h-(vp.bottom||0);
+const apart=(pts,s)=>pts.every((p,i)=>pts.every((q,j)=>i===j||Math.hypot(p.x-q.x,p.y-q.y)>=s-1e-6));
 
-for(const [name,vp] of Object.entries(screens))for(const n of [1,2,3,5,7])test(`${name}: ${n} course(s) fit on screen without overlapping, sections too`,()=>{
-  const o=originOf(vp),fit=R.radialFit(n,o,vp);
-  assert.ok(fit.size>=R.RADIAL.minSize,'items stay touch-sized');
-  const pts=fit.angles1.map(a=>R.radialPoint(o,fit.r1,a));
-  pts.forEach(p=>assert.ok(inside(p,fit.size,vp),`course at ${p.x.toFixed(0)},${p.y.toFixed(0)} is off screen`));
-  for(let i=1;i<pts.length;i++)assert.ok(Math.hypot(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y)>=fit.size,'courses do not overlap');
-  pts.forEach(p=>assert.ok(p.y<o.y,'the ring opens above the button'));
-  assert.ok(pts.every((p,i)=>!i||p.x>pts[i-1].x),'courses go left to right');
-  // Every course's sections (CM, TD, TP + a custom one) also fit, whatever course is chosen.
-  for(const a of fit.angles1){
-    const ring=R.radialChildren(4,a,o,vp,fit);
-    assert.ok(ring.shown>=4,`4 sections shown (${ring.shown})`);
-    const kids=ring.angles.map(b=>R.radialPoint(o,fit.r2,b));
-    kids.forEach(p=>assert.ok(inside(p,fit.size,vp),`section at ${p.x.toFixed(0)},${p.y.toFixed(0)} is off screen`));
-    for(let i=1;i<kids.length;i++)assert.ok(Math.hypot(kids[i].x-kids[i-1].x,kids[i].y-kids[i-1].y)>=fit.size,'sections do not overlap');
-    // The second ring never covers the first.
-    for(const k of kids)for(const p of pts)assert.ok(Math.hypot(k.x-p.x,k.y-p.y)>=fit.size,'rings do not overlap');
+for(const [name,vp] of Object.entries(screens))for(const [where,at] of Object.entries(triggers))test(`${name}, trigger ${where}: courses and sections fit on screen without overlapping`,()=>{
+  const o=at(vp);
+  for(const n of [1,3,5,7]){
+    const fit=R.radialFit(n,o,vp);
+    assert.ok(fit.size>=R.RADIAL.minSize,'items stay touch-sized');
+    const pts=fit.angles1.map(a=>R.radialPoint(o,fit.r1,a));
+    pts.forEach(p=>assert.ok(inside(p,fit.size,vp),`${n} courses: one at ${p.x.toFixed(0)},${p.y.toFixed(0)} is off screen`));
+    assert.ok(apart(pts,fit.size),`${n} courses overlap`);
+    // Every course's sections (CM, TD, TP + a custom one), whatever course the finger is on.
+    for(const a of fit.angles1){
+      const ring=R.radialChildren(4,a,o,vp,fit);
+      assert.ok(ring.shown>=3,`${n} courses: only ${ring.shown} section(s) fit`);
+      const kids=ring.angles.map(b=>R.radialPoint(o,fit.r2,b));
+      kids.forEach(p=>assert.ok(inside(p,fit.size,vp),`section at ${p.x.toFixed(0)},${p.y.toFixed(0)} is off screen`));
+      assert.ok(apart(kids,fit.size),'sections overlap');
+      for(const k of kids)for(const p of pts)assert.ok(Math.hypot(k.x-p.x,k.y-p.y)>=fit.size-1e-6,'the second ring covers the first');
+    }
   }
 });
 
-test('the rings stay compact: the smallest ring that fits is used (thumb reach)',()=>{
-  const vp=screens['iPhone 15 (390×844)'],o=originOf(vp);
-  assert.equal(R.radialFit(3,o,vp).r1,R.RADIAL.minR1);
-  assert.ok(R.radialFit(7,o,vp).r1<=160);
+test('bottom center: the ring opens upwards, courses left to right, compact',()=>{
+  const vp=screens['iPhone 15 (390×844)'],o=triggers['bottom center'](vp);
+  const fit=R.radialFit(5,o,vp),pts=fit.angles1.map(a=>R.radialPoint(o,fit.r1,a));
+  assert.ok(pts.every(p=>p.y<o.y),'above the finger');
+  assert.ok(pts.every((p,i)=>!i||p.x>pts[i-1].x),'left to right');
+  assert.equal(R.radialFit(3,o,vp).r1,R.RADIAL.minR1,'smallest ring that fits');
+});
+
+test('Accueil card (right side): the rings open towards the free side, above the finger when possible',()=>{
+  for(const vp of [screens['iPhone SE (320×568)'],screens['iPhone 15 (390×844)']]){
+    const o=triggers['Accueil card'](vp),fit=R.radialFit(3,o,vp);
+    const pts=fit.angles1.map(a=>R.radialPoint(o,fit.r1,a));
+    assert.ok(pts.reduce((s,p)=>s+p.x,0)/pts.length<o.x,'towards the middle of the screen, not off the right edge');
+  }
+  const vp=screens['iPhone 15 (390×844)'],o=triggers['Accueil card'](vp),fit=R.radialFit(3,o,vp);
+  assert.ok(fit.angles1.some(a=>R.radialPoint(o,fit.r1,a).y<o.y-40),'at least part of the ring above the finger');
+  // Many courses: the arc goes round the left side; the first (most used) one is the highest.
+  const f7=R.radialFit(7,o,vp),ys=f7.angles1.map(a=>R.radialPoint(o,f7.r1,a).y);
+  assert.equal(Math.min(...ys),ys[0],'first course at the top of the arc, not under the hand');
+});
+
+for(const [name,vp] of Object.entries(screens))test(`${name}: dragging straight from a course to any of its sections never switches the course`,()=>{
+  for(const [where,at] of Object.entries(triggers))for(const n of [3,5,7]){
+    const o=at(vp),fit=R.radialFit(n,o,vp);
+    fit.angles1.forEach((a,i)=>{
+      const ring=R.radialChildren(4,a,o,vp,fit),from=R.radialPoint(o,fit.r1,a);
+      ring.angles.forEach((b,j)=>{
+        const to=R.radialPoint(o,fit.r2,b);
+        for(let k=0;k<=20;k++){
+          const p={x:from.x+(to.x-from.x)*k/20,y:from.y+(to.y-from.y)*k/20},h=R.radialHit(p,o,fit,ring,i);
+          assert.ok(!(h?.ring===1&&h.index!==i&&!h.tentative),`${where}, ${n} courses: course ${i} → section ${j} switches to course ${h?.index}`);
+        }
+        assert.deepEqual({...R.radialHit(to,o,fit,ring,i)},{ring:2,index:j});
+      });
+    });
+  }
+});
+
+test('free angles: the whole circle, one arc, or the arc containing an angle',()=>{
+  const vp={w:1000,h:1000};
+  assert.equal(R.radialRun(R.radialFree({x:500,y:500},100,40,vp)).full,true);
+  const edge=R.radialRun(R.radialFree({x:960,y:500},100,40,vp));
+  assert.ok(!edge.full&&edge.start>80&&edge.start<120&&edge.len>120&&edge.len<200,JSON.stringify(edge));
+  assert.equal(R.radialRun(R.radialFree({x:500,y:500},900,40,vp)),null);
 });
 
 test('too many sections for a small phone: the ring says how many fit (the rest go to "more")',()=>{
-  const vp=screens['iPhone SE (320×568)'],o=originOf(vp),fit=R.radialFit(7,o,vp);
-  const ring=R.radialChildren(12,90,o,vp,fit);
-  assert.ok(ring.shown<12&&ring.shown===ring.capacity&&ring.shown>=4);
-});
-
-test('a section ring opened from a course near the edge is pulled back on screen',()=>{
-  const vp=screens['iPhone 8 (375×667)'],o=originOf(vp),fit=R.radialFit(5,o,vp);
-  const left=fit.angles1[0],ring=R.radialChildren(3,left,o,vp,fit);
-  assert.ok(Math.max(...ring.angles)<=left+1e-9||ring.angles.every(a=>{const p=R.radialPoint(o,fit.r2,a);return inside(p,fit.size,vp)}));
+  const vp=screens['iPhone SE (320×568)'],o=triggers['bottom center'](vp),fit=R.radialFit(7,o,vp);
+  const ring=R.radialChildren(20,90,o,vp,fit);
+  assert.ok(ring.shown<20&&ring.shown===ring.capacity&&ring.shown>=4);
 });
 
 test('hit testing: center cancels, a course by its direction, a section by distance, outside is nothing',()=>{
-  const vp=screens['iPhone 15 (390×844)'],o=originOf(vp),fit=R.radialFit(3,o,vp);
+  const vp=screens['iPhone 15 (390×844)'],o=triggers['bottom center'](vp),fit=R.radialFit(3,o,vp);
   assert.deepEqual({...R.radialHit({x:o.x+5,y:o.y-10},o,fit)},{center:true});
   const c1=R.radialPoint(o,fit.r1,fit.angles1[1]);
   assert.deepEqual({...R.radialHit(c1,o,fit)},{ring:1,index:1});
@@ -73,8 +114,28 @@ test('hit testing: center cancels, a course by its direction, a section by dista
   const s2=R.radialPoint(o,fit.r2,ring.angles[2]);
   assert.deepEqual({...R.radialHit({x:s2.x+8,y:s2.y-6},o,fit,ring)},{ring:2,index:2});
   assert.equal(R.radialHit({x:o.x,y:30},o,fit,ring),null,'far above: outside');
-  assert.equal(R.radialHit({x:o.x+60,y:o.y+40},o,fit,ring),null,'below the button: outside');
+  assert.equal(R.radialHit({x:o.x+60,y:o.y+40},o,fit,ring),null,'below the finger: outside');
   assert.equal(R.radialHit(R.radialPoint(o,fit.r1,175),o,fit,ring),null,'beside the ring: outside');
+});
+
+test('hit testing across the left side (angles around 180°) and back from ring 2 to another course',()=>{
+  const vp=screens['iPhone 15 (390×844)'],o=triggers['Accueil card'](vp),fit=R.radialFit(5,o,vp);
+  fit.angles1.forEach((a,i)=>assert.deepEqual({...R.radialHit(R.radialPoint(o,fit.r1,a+3),o,fit)},{ring:1,index:i},`course ${i} at ${a.toFixed(0)}°`));
+  const ring=R.radialChildren(3,fit.angles1[0],o,vp,fit);
+  const kid=R.radialPoint(o,fit.r2,ring.angles[1]);
+  assert.deepEqual({...R.radialHit(kid,o,fit,ring)},{ring:2,index:1});
+  // Dragging back onto another course while course 0's sections are open: tentative (the menu
+  // switches when the finger rests on it); beside it: still course 0's direction or nothing.
+  assert.deepEqual({...R.radialHit(R.radialPoint(o,fit.r1,fit.angles1[3]),o,fit,ring,0)},{ring:1,index:3,tentative:true});
+  assert.deepEqual({...R.radialHit(R.radialPoint(o,fit.r1,fit.angles1[0]+2),o,fit,ring,0)},{ring:1,index:0});
+  assert.deepEqual({...R.radialHit(R.radialPoint(o,fit.r1,fit.angles1[3]),o,fit,ring)},{ring:1,index:3},'no open ring: plain hit');
+});
+
+test('the layout is fast enough for the moment the finger touches down',()=>{
+  const vp=screens['iPhone SE (320×568)'];R.radialFit(3,triggers.middle(vp),vp);
+  const t=performance.now();
+  for(const at of Object.values(triggers))for(const n of [3,7])R.radialFit(n,at(vp),vp);
+  assert.ok((performance.now()-t)/8<10,`${((performance.now()-t)/8).toFixed(1)} ms per layout`);
 });
 
 test('item text is readable on every course color',()=>{

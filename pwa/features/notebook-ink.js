@@ -21,6 +21,21 @@ const visibleInkStrokes=doc=>(doc.strokes||[]).filter(s=>!s.deleted);
 const NOTEBOOK_BREAKPOINT=720;
 const notebookHistory=new Map();
 const notebookHistoryFor=id=>{let h=notebookHistory.get(id);if(!h)notebookHistory.set(id,h={undo:[],redo:[]});return h};
+// A page is an A4 sheet whatever the screen, so strokes (stored 0..1) land in the same place on every device.
+const NOTEBOOK_PAGE_RATIO=297/210;   // page height / width
+const INK_REF_WIDTH=900;             // page width (px) at which a stroke size is expressed
+const FRAME_MIN_W=.12;
+const PEN_HOLD_MS=800;               // after the last pen event, touches are still treated as a resting palm
+const defaultFrame=()=>({x:.04,y:.03,w:.5});
+const frameOf=b=>({...(b.frame||defaultFrame()),r:b.ratio||null});   // photo frame on its page, fractions of the page; r = photo width / height
+const frameRatio=f=>f.r||.75;
+function clampFrame(f){
+  const r=frameRatio(f),w=Math.max(FRAME_MIN_W,Math.min(f.w,1,r*NOTEBOOK_PAGE_RATIO)),h=w/(r*NOTEBOOK_PAGE_RATIO);
+  return{x:Math.max(0,Math.min(f.x,1-w)),y:Math.max(0,Math.min(f.y,1-h)),w,r:f.r};
+}
+function applyFrameVars(el,f){
+  el.style.setProperty('--fx',f.x);el.style.setProperty('--fy',f.y);el.style.setProperty('--fw',f.w);el.style.setProperty('--fr',frameRatio(f));
+}
 const phoneQuery=()=>matchMedia(`(max-width: ${NOTEBOOK_BREAKPOINT-1}px)`);
 function isPhoneNotebook(){return phoneQuery().matches}
 function notebookCanEdit(){return !isPhoneNotebook()}
@@ -111,9 +126,10 @@ async function renderSessionNotebook({course,section,session}){
     }else{
       media=`<div class="notebook-blank-label">${icon('pencil',{size:22})}<span>Page blanche</span></div>`;
     }
-    html.push(`<article class="notebook-block${block.id===notebookSelectedBlockId?' selected':''} ${block.type==='blank'?'blank':''}" data-block-id="${esc(block.id)}">
-      <div class="notebook-photo">${media}</div>
+    const f=clampFrame(frameOf(block));
+    html.push(`<article class="notebook-block${block.id===notebookSelectedBlockId?' selected':''} ${block.type==='blank'?'blank':''}" data-block-id="${esc(block.id)}" style="--fx:${f.x};--fy:${f.y};--fw:${f.w};--fr:${frameRatio(f)}">
       <div class="notebook-margin" aria-hidden="true"></div>
+      <div class="notebook-photo">${media}<span class="notebook-handle" aria-hidden="true"></span></div>
       <canvas class="notebook-canvas committed" aria-hidden="true"></canvas>
       <canvas class="notebook-canvas live" aria-label="Couche d’écriture manuscrite"></canvas>
     </article>`);
@@ -128,24 +144,31 @@ function cleanupNotebookRuntime(){
   if(!notebookRuntime)return;
   window.removeEventListener('resize',notebookRuntime.resize);
   notebookRuntime.mql?.removeEventListener?.('change',notebookRuntime.onMedia);
+  notebookRuntime.guards.forEach(([type,fn,opts])=>document.removeEventListener(type,fn,opts));
+  clearTimeout(notebookRuntime.penTimer);
   notebookRuntime=null;
 }
 
 function setupNotebookRuntime(doc,{course,section,session,editable}){
   const root=byId('sessionNotebook');
   if(!root)return;
-  const rt=notebookRuntime={doc,course,section,session,editable,tool:'pen-black',ruler:false,hist:notebookHistoryFor(session.id),drawing:null,resize:null,root,mql:phoneQuery()};
+  const rt=notebookRuntime={doc,course,section,session,editable,tool:'pen-black',ruler:false,hist:notebookHistoryFor(session.id),drawing:null,drag:null,resize:null,root,mql:phoneQuery(),penUntil:0,penTimer:0,guards:[]};
   rt.resize=()=>requestAnimationFrame(()=>redrawNotebook(rt));
   rt.onMedia=()=>{if(rt.root.isConnected&&notebookCanEdit()!==rt.editable)renderSessionNotebook({course,section,session})};
   window.addEventListener('resize',rt.resize);
   rt.mql?.addEventListener?.('change',rt.onMedia);
   root.classList.toggle('finger-draw',!!(editable&&state.settings.drawWithFinger));
+  if(editable)setupPalmRejection(rt);
   root.querySelectorAll('.notebook-block').forEach(block=>{
     block.onclick=()=>selectNotebookBlock(block.dataset.blockId);
-    block.querySelector('img')?.addEventListener('load',rt.resize,{once:true});
+    const img=block.querySelector('img'),obj=doc.blocks.find(b=>b.id===block.dataset.blockId);
+    const learnRatio=()=>{
+      if(obj&&img.naturalHeight&&!obj.ratio){obj.ratio=img.naturalWidth/img.naturalHeight;applyFrameVars(block,clampFrame(frameOf(obj)));scheduleNotebookSave(doc)}
+      rt.resize();
+    };
+    if(img)img.complete&&img.naturalWidth?learnRatio():img.addEventListener('load',learnRatio,{once:true});
     const live=block.querySelector('.notebook-canvas.live');
     if(editable){
-      live.addEventListener('touchstart',e=>{if([...e.touches].some(t=>t.touchType==='stylus'))e.preventDefault()},{passive:false});
       live.addEventListener('pointerdown',e=>notebookPointerDown(e,rt,block));
       live.addEventListener('pointermove',e=>notebookPointerMove(e,rt,block));
       live.addEventListener('pointerup',e=>notebookPointerUp(e,rt,block));
@@ -156,6 +179,26 @@ function setupNotebookRuntime(doc,{course,section,session,editable}){
   rt.resize();
 }
 
+// Palm rejection: while a pen is at work (hovering or writing) and shortly after, touches must not scroll the page
+// or draw. The pen itself never scrolls either. Fingers scroll again once the pen has been away for a moment.
+function setupPalmRejection(rt){
+  const penBusy=()=>!!rt.drawing||!!rt.drag||performance.now()<rt.penUntil;
+  const onPen=e=>{
+    if(e.pointerType!=='pen'||!rt.root.isConnected)return;
+    rt.penUntil=performance.now()+PEN_HOLD_MS;
+    rt.root.classList.add('pen-active');
+    clearTimeout(rt.penTimer);
+    rt.penTimer=setTimeout(()=>rt.root.classList.remove('pen-active'),PEN_HOLD_MS);
+  };
+  const onTouch=e=>{
+    if(!rt.root.isConnected||!e.cancelable)return;
+    if(penBusy()||[...e.changedTouches].some(t=>t.touchType==='stylus'))e.preventDefault();
+  };
+  const add=(type,fn,opts)=>{document.addEventListener(type,fn,opts);rt.guards.push([type,fn,opts])};
+  for(const type of['pointerdown','pointermove','pointerup'])add(type,onPen,true);
+  for(const type of['touchstart','touchmove'])add(type,onTouch,{capture:true,passive:false});
+}
+
 function selectNotebookBlock(id){
   notebookSelectedBlockId=id;
   document.querySelectorAll('.notebook-block').forEach(b=>b.classList.toggle('selected',b.dataset.blockId===id));
@@ -163,16 +206,15 @@ function selectNotebookBlock(id){
 
 function bindNotebookToolbar(rt){
   const bar=byId('notebookToolbar');if(!bar)return;
-  bar.querySelectorAll('[data-ink-tool]').forEach(btn=>btn.onclick=()=>{
-    rt.tool=btn.dataset.inkTool;
-    bar.querySelectorAll('[data-ink-tool]').forEach(b=>b.classList.toggle('active',b===btn));
-    bar.querySelector('[data-ink-eraser]')?.classList.remove('active');
-  });
-  bar.querySelector('[data-ink-eraser]')?.addEventListener('click',e=>{
-    rt.tool='eraser';
-    bar.querySelectorAll('[data-ink-tool]').forEach(b=>b.classList.remove('active'));
-    e.currentTarget.classList.add('active');
-  });
+  const toolButtons=[...bar.querySelectorAll('[data-ink-tool],[data-ink-eraser],[data-ink-move]')];
+  const pick=(tool,btn)=>{
+    rt.tool=tool;
+    toolButtons.forEach(b=>b.classList.toggle('active',b===btn));
+    rt.root.classList.toggle('move-mode',tool==='move');
+  };
+  bar.querySelectorAll('[data-ink-tool]').forEach(btn=>btn.onclick=()=>pick(btn.dataset.inkTool,btn));
+  bar.querySelector('[data-ink-eraser]')?.addEventListener('click',e=>pick('eraser',e.currentTarget));
+  bar.querySelector('[data-ink-move]')?.addEventListener('click',e=>pick('move',e.currentTarget));
   bar.querySelector('[data-ink-ruler]')?.addEventListener('click',e=>{
     rt.ruler=!rt.ruler;
     e.currentTarget.classList.toggle('active',rt.ruler);
@@ -182,14 +224,16 @@ function bindNotebookToolbar(rt){
   updateUndoRedoButtons(rt);
 }
 
-function isDrawablePointer(e){
+function isDrawablePointer(e,rt){
   if(e.pointerType==='pen')return true;
-  if(state.settings.drawWithFinger&&e.pointerType==='touch')return true;
+  if(state.settings.drawWithFinger&&e.pointerType==='touch')return performance.now()>=rt.penUntil;   // a palm next to the pen is not a finger
   return false;
 }
 
 function notebookPointerDown(e,rt,block){
-  if(!rt.editable||!isDrawablePointer(e))return;
+  if(!rt.editable)return;
+  if(rt.tool==='move'){startFrameDrag(e,rt,block);return}
+  if(!isDrawablePointer(e,rt))return;
   const rect=block.getBoundingClientRect();
   const pt=normalizePoint(e.clientX-rect.left,e.clientY-rect.top,rect);
   rt.drawing={block,blockId:block.dataset.blockId,points:[[pt[0],pt[1],e.pressure||.5]],pointerId:e.pointerId,tool:rt.tool};
@@ -198,7 +242,33 @@ function notebookPointerDown(e,rt,block){
   e.preventDefault();
 }
 
+// Move tool: drag the photo, or its bottom-right corner to resize it (the ratio is kept).
+function startFrameDrag(e,rt,block){
+  const obj=rt.doc.blocks.find(b=>b.id===block.dataset.blockId),photo=block.querySelector('.notebook-photo');
+  if(!obj||obj.type!=='photo'||!photo)return;
+  const pr=photo.getBoundingClientRect();
+  const corner=Math.hypot(e.clientX-pr.right,e.clientY-pr.bottom)<=40;
+  const inside=e.clientX>=pr.left&&e.clientX<=pr.right&&e.clientY>=pr.top&&e.clientY<=pr.bottom;
+  if(!corner&&!inside)return;
+  selectNotebookBlock(obj.id);
+  rt.drag={block,obj,mode:corner?'resize':'move',sx:e.clientX,sy:e.clientY,rect:block.getBoundingClientRect(),before:frameOf(obj),had:obj.frame,pointerId:e.pointerId,moved:false};
+  e.currentTarget.setPointerCapture(e.pointerId);
+  e.preventDefault();
+}
+
+function moveFrameDrag(e,g){
+  const dx=(e.clientX-g.sx)/g.rect.width,dy=(e.clientY-g.sy)/g.rect.height,b=g.before;
+  const {x,y,w}=clampFrame(g.mode==='move'?{...b,x:b.x+dx,y:b.y+dy}:{...b,w:b.w+dx});
+  g.obj.frame={x,y,w};g.moved=true;
+  applyFrameVars(g.block,clampFrame(frameOf(g.obj)));
+}
+
 function notebookPointerMove(e,rt,block){
+  const g=rt.drag;
+  if(g){
+    if(g.pointerId===e.pointerId&&g.block===block){moveFrameDrag(e,g);e.preventDefault()}
+    return;
+  }
   const d=rt.drawing;
   if(!d||d.pointerId!==e.pointerId||d.block!==block)return;
   const events=e.getCoalescedEvents?.()||[e];
@@ -213,6 +283,18 @@ function notebookPointerMove(e,rt,block){
 }
 
 function notebookPointerUp(e,rt,block){
+  const g=rt.drag;
+  if(g){
+    if(g.pointerId!==e.pointerId)return;
+    e.currentTarget.releasePointerCapture?.(e.pointerId);
+    rt.drag=null;
+    if(g.moved){
+      rt.hist.undo.push({type:'frame',blockId:g.obj.id,before:g.had?{...g.had}:null,after:{...g.obj.frame}});rt.hist.redo=[];
+      updateUndoRedoButtons(rt);scheduleNotebookSave(rt.doc);
+    }
+    e.preventDefault();
+    return;
+  }
   const d=rt.drawing;
   if(!d||d.pointerId!==e.pointerId||d.block!==block)return;
   finishNotebookStroke(rt,d);
@@ -223,6 +305,12 @@ function notebookPointerUp(e,rt,block){
 }
 
 function notebookPointerCancel(e,rt,block){
+  const g=rt.drag;
+  if(g){
+    if(g.pointerId!==e.pointerId)return;
+    g.obj.frame=g.had;applyFrameVars(g.block,clampFrame(frameOf(g.obj)));rt.drag=null;
+    return;
+  }
   const d=rt.drawing;
   if(!d||d.pointerId!==e.pointerId)return;
   clearLiveCanvas(block);
@@ -316,6 +404,11 @@ function redoNotebook(rt){
 }
 
 function applyNotebookOp(doc,op,undo){
+  if(op.type==='frame'){
+    const b=doc.blocks.find(x=>x.id===op.blockId),f=undo?op.before:op.after;
+    if(b)b.frame=f?{...f}:undefined;
+    return;
+  }
   const ids=new Set(op.ids);
   for(const stroke of doc.strokes){
     if(!ids.has(stroke.id))continue;
@@ -342,6 +435,8 @@ function setupCanvas(canvas,block){
 
 function redrawNotebook(rt){
   document.querySelectorAll('.notebook-block').forEach(block=>{
+    const obj=rt.doc.blocks.find(b=>b.id===block.dataset.blockId);
+    if(obj)applyFrameVars(block,clampFrame(frameOf(obj)));
     const committed=block.querySelector('.notebook-canvas.committed');
     const live=block.querySelector('.notebook-canvas.live');
     setupCanvas(committed,block);setupCanvas(live,block);
@@ -386,7 +481,7 @@ function clearLiveCanvas(block){
 function drawStroke(ctx,stroke,w,h){
   if(!stroke.points?.length)return;
   const pts=stroke.points.map(p=>[p[0]*w,p[1]*h,p[2]??.5]);
-  const outline=HoliooPerfectFreehand.getStroke(pts,{size:strokeSize(stroke.tool),thinning:.45,smoothing:.5,streamline:.45,simulatePressure:false,last:true});
+  const outline=HoliooPerfectFreehand.getStroke(pts,{size:strokeSize(stroke.tool)*w/INK_REF_WIDTH,thinning:.45,smoothing:.5,streamline:.45,simulatePressure:false,last:true});
   ctx.save();
   ctx.globalAlpha=strokeOpacity(stroke.tool);
   ctx.fillStyle=strokeColor(stroke.tool);
@@ -395,4 +490,52 @@ function drawStroke(ctx,stroke,w,h){
   ctx.closePath();
   ctx.fill();
   ctx.restore();
+}
+
+// ---------- PDF export ----------
+
+// One page of the notebook as a JPEG: ruled A4 sheet, photo at its frame, then the ink.
+async function renderNotebookPageBlob(doc,block,photo){
+  const W=1240,H=Math.round(W*NOTEBOOK_PAGE_RATIO);
+  const canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='#E3E6F1';ctx.lineWidth=1;
+  const step=W*.0355;   // the ruling of the on-screen page
+  for(let y=step;y<H;y+=step){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+  if(block.type==='photo'&&photo){
+    const bmp=await createImageBitmap(photo),f=clampFrame({...frameOf(block),r:block.ratio||bmp.width/bmp.height});
+    ctx.drawImage(bmp,f.x*W,f.y*H,f.w*W,f.w*W/frameRatio(f));
+    bmp.close?.();
+  }
+  const strokes=visibleInkStrokes(doc).filter(s=>s.blockId===block.id);
+  for(const stroke of strokes.filter(s=>s.tool==='highlighter'))drawStroke(ctx,stroke,W,H);
+  for(const stroke of strokes.filter(s=>s.tool!=='highlighter'))drawStroke(ctx,stroke,W,H);
+  return new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.92));
+}
+
+// Pages of a session that differ from the plain photo (handwriting, a moved photo, written blank pages), in notebook
+// order: [{blockId, photoId|null, blob}]. Empty when the session has no notebook content.
+async function notebookExportPages(session){
+  let doc=notebookRuntime?.doc.sessionId===session.id?notebookRuntime.doc:null;
+  if(!doc){
+    let row=null;try{row=await DB.get('kv',inkKey(session.id))}catch{}
+    if(!row?.doc)return[];
+    doc={...DEFAULT_INK_DOC(),...row.doc,sessionId:session.id};
+    doc.blocks=Array.isArray(doc.blocks)?doc.blocks:[];doc.strokes=Array.isArray(doc.strokes)?doc.strokes:[];
+    syncNotebookBlocks(doc,session);
+  }
+  const out=[];
+  for(const block of visibleInkBlocks(doc)){
+    const written=visibleInkStrokes(doc).some(s=>s.blockId===block.id);
+    if(block.type==='blank'?!written:!written&&!block.frame)continue;
+    let photo=null;
+    if(block.type==='photo'){
+      const row=await DB.get('photos',block.photoId||block.id);
+      photo=row?photoBlob(row):null;
+      if(!photo)continue;
+    }
+    out.push({blockId:block.id,photoId:block.type==='photo'?(block.photoId||block.id):null,blob:await renderNotebookPageBlob(doc,block,photo)});
+  }
+  return out;
 }

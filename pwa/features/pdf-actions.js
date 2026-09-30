@@ -95,11 +95,20 @@ async function generatePdfFile(course,sessionIds,opts){
     const requested=Array.isArray(opts.photoOrder)?opts.photoOrder.filter(id=>photoContext.has(id)):[];
     const orderedIds=[...requested,...defaultOrder.filter(id=>!requested.includes(id))];
 
+    // Handwritten notebook pages replace the plain photo (they have no text layer: the ink is drawn over the photo).
+    const inkPages=new Map();
+    for(const e of entries)inkPages.set(e.session.id,await notebookExportPages(e.session));
+    const pageLabel=e=>`${course.name} · ${e.section.name} · ${e.session.title}`;
     const pages=[];
     for(const id of orderedIds){
       const e=photoContext.get(id),row=await DB.get('photos',id);if(!e||!row?.blob)continue;
-      const o=opts.searchable!==false?await Ocr.get(id):null;
-      pages.push({id,blob:photoBlob(row),words:o?.words||null,label:`${course.name} · ${e.section.name} · ${e.session.title}`,e});
+      const written=inkPages.get(e.session.id).find(c=>c.photoId===id);
+      const o=!written&&opts.searchable!==false?await Ocr.get(id):null;
+      pages.push({id,blob:written?written.blob:photoBlob(row),words:o?.words||null,label:pageLabel(e),e});
+    }
+    for(const e of entries)for(const c of inkPages.get(e.session.id))if(!c.photoId){
+      const page={id:`ink:${c.blockId}`,blob:c.blob,words:null,label:pageLabel(e),e},at=pages.map(p=>p.e.session.id).lastIndexOf(e.session.id);
+      at<0?pages.push(page):pages.splice(at+1,0,page);
     }
     if(!pages.length){showToast('Aucune photo à mettre dans le PDF');return}
 

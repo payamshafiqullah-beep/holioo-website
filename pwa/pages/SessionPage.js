@@ -15,6 +15,7 @@ function notebookToolbar(){
     ${tool('pen-red','Stylo rouge','#E5484D')}
     ${tool('highlighter','Surligneur jaune','#FACC15')}
     <button class="ink-tool" type="button" data-ink-eraser title="Gomme" aria-label="Gomme">${icon('eraser',{size:18})}</button>
+    <button class="ink-tool" type="button" data-ink-move title="Déplacer ou redimensionner la photo" aria-label="Déplacer ou redimensionner la photo">${icon('maximize',{size:18})}</button>
     <button class="ink-tool" type="button" data-ink-ruler title="Règle" aria-label="Règle">${icon('ruler',{size:18})}</button>
     <button class="ink-tool" type="button" id="inkUndo" data-ink-undo title="Annuler" aria-label="Annuler">${icon('undo',{size:18})}</button>
     <button class="ink-tool" type="button" id="inkRedo" data-ink-redo title="Rétablir" aria-label="Rétablir">${icon('redo',{size:18})}</button>

@@ -1,9 +1,7 @@
 // Fichiers — gestionnaire de fichiers local-first.
-let filesUrls=[];
 
 async function renderFiles(){
   setChrome(false);
-  for(const u of filesUrls)URL.revokeObjectURL(u);filesUrls=[];
 
   const rows=await Promise.all(state.files.map(async meta=>({meta,row:await DB.get('files',meta.id)})));
   const photoRefs=state.courses.flatMap(c=>c.sections.flatMap(s=>s.sessions.flatMap(q=>q.photoIds.map((id,index)=>({id,index,course:c,section:s,session:q})))))
@@ -65,10 +63,9 @@ async function renderFiles(){
   // Images are loaded after the layout so the screen appears instantly.
   const grid=byId('filesImages'),recentPhotos=photoRefs.slice(0,8);
   for(const ref of recentPhotos){
-    const row=await DB.get('photos',ref.id);if(!row?.blob||!grid.isConnected)continue;
-    const url=URL.createObjectURL(row.blob);filesUrls.push(url);
+    const url=await photoThumbUrl(ref.id);if(!url||!grid.isConnected)continue;
     const b=document.createElement('button');b.className='image-tile';b.dataset.search=`${ref.session.title} ${ref.course.name}`.toLowerCase();
-    b.innerHTML=`<img src="${url}" alt="${esc(ref.session.title)}" loading="lazy">`;
+    b.innerHTML=`<img src="${url}" alt="${esc(ref.session.title)}" loading="lazy" decoding="async">`;
     b.onclick=()=>openPhotoViewer(ref.session.photoIds,ref.index,{title:ref.session.title,source:'session',sourceId:ref.session.id,editable:true,returnView:'files',courseId:ref.course.id,sectionId:ref.section.id,sessionId:ref.session.id});
     grid.appendChild(b);
   }

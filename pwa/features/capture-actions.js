@@ -408,10 +408,12 @@ function capturePhoto(){
   if(!dest)return;
   const id=uid();
   const blob=new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',0.92));
-  cameraQueue.add({id,blob,dest,createdAt:now()});
+  // The grid preview is made now from the same frame (a few ms), so grids never decode the full photo.
+  const thumb=canvasToJpeg(scaleCanvas(canvas,canvas.width,canvas.height));
+  cameraQueue.add({id,blob,thumb,dest,createdAt:now()});
   camShots.push(id);
   const shotDest=camDest;
-  blob.then(b=>{if(b&&camShots.at(-1)===id&&camDest===shotDest)setCameraThumb(b)});
+  thumb.then(b=>{if(b&&camShots.at(-1)===id&&camDest===shotDest)setCameraThumb(b)});
 
   const stage=byId('cameraStage');
   stage?.classList.remove('capture-flash');void stage?.offsetWidth;
@@ -465,9 +467,10 @@ async function fillThumbs(containerId,ids,{selectable=false,split=false,viewerTi
   const box=document.getElementById(containerId);if(!box)return;box.innerHTML='';
   for(let i=0;i<ids.length;i++){
     const id=ids[i],row=await DB.get('photos',id);if(!row?.blob)continue;
-    const url=URL.createObjectURL(row.blob),selected=currentBatch?.selected?.has(id),status=photoStatusLabel(row),b=document.createElement('button');
+    const url=await photoThumbUrl(id);if(!url||!box.isConnected)continue;
+    const selected=currentBatch?.selected?.has(id),status=photoStatusLabel(row),b=document.createElement('button');
     b.className=`thumb ${selectable&&selected?'selected':''} ${split?(selected?'group-a':'group-b'):''}`;b.dataset.photoId=id;
-    b.innerHTML=`<img src="${url}" alt="Photo ${i+1}" draggable="false"><span class="num">${i+1}</span>${!selectable?`<span class="thumb-status badge ${status.cls}">${status.label}</span>`:''}${selectable&&!split?`<span class="check">${selected?'✓':''}</span>`:''}${split?`<span class="group-tag">${selected?'LOT 1':'LOT 2'}</span>`:''}`;
+    b.innerHTML=`<img src="${url}" alt="Photo ${i+1}" draggable="false" decoding="async"><span class="num">${i+1}</span>${!selectable?`<span class="thumb-status badge ${status.cls}">${status.label}</span>`:''}${selectable&&!split?`<span class="check">${selected?'✓':''}</span>`:''}${split?`<span class="group-tag">${selected?'LOT 1':'LOT 2'}</span>`:''}`;
     if(selectable)b.onclick=()=>{selected?currentBatch.selected.delete(id):currentBatch.selected.add(id);render()};
     else b.onclick=()=>openPhotoViewer(ids,Math.max(0,ids.indexOf(id)),{title:viewerTitle,source:'batch',sourceId:currentBatch?.id||null,editable:false,returnView:currentView,courseId:currentCourseId,sectionId:currentSectionId,sessionId:currentSessionId});
     box.appendChild(b);
@@ -476,8 +479,17 @@ async function fillThumbs(containerId,ids,{selectable=false,split=false,viewerTi
   if(reorder)makeReorderable(box,{onChange:order=>{const rest=ids.filter(x=>!order.includes(x));ids.splice(0,ids.length,...order,...rest);showToast('Ordre enregistré')}});
 }
 
+// Photos leave Captures only once they are filed in a session: a batch opened from Captures
+// stays there until then, so leaving the screen or closing the app never loses it.
+function removeFromInbox(ids){
+  const gone=new Set(ids);
+  for(const b of state.inbox)b.photoIds=(b.photoIds||[]).filter(id=>!gone.has(id));
+  state.inbox=state.inbox.filter(b=>b.photoIds.length);
+}
+
 function saveBatchToInbox(batch){
-  state.inbox.unshift({id:batch.id,title:`Capture ${fmtShort(batch.createdAt)}`,photoIds:[...batch.photoIds],createdAt:batch.createdAt});
+  removeFromInbox(batch.photoIds);
+  state.inbox.unshift({id:batch.id,title:batch.title||`Capture ${fmtShort(batch.createdAt)}`,photoIds:[...batch.photoIds],createdAt:batch.createdAt});
   saveState();currentBatch=null;showToast('Lot gardé dans Captures');queueSync();navigate('home');
 }
 
@@ -485,7 +497,7 @@ function assignCurrentBatch(customTitle){
   const c=getCourse(),s=getSection(c);if(!c||!s)return;
   const num=(s.sessions.at(-1)?.number||0)+1;
   const q={id:uid(),number:num,title:customTitle.trim()||`${s.name} ${num}`,photoIds:[...currentBatch.photoIds],createdAt:now(),visibility:'private'};
-  s.sessions.push(q);currentSessionId=q.id;
+  s.sessions.push(q);currentSessionId=q.id;removeFromInbox(q.photoIds);
   const nextBatch=currentBatch.splitQueue?.shift()||null;
   saveState();queueSync();
   if(nextBatch){

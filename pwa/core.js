@@ -15,7 +15,7 @@ const Drive=window.HoliooDrive;
 let sb=null,currentUser=null,cloudReady=false,currentRole='user',accountBlocked=false,driveStatus={connected:false,email:null};
 let currentView='home',currentCourseId=null,currentSectionId=null,currentSessionId=null,currentBatch=null,currentLibrary={step:'years',year:null,course:null,section:null,item:null};
 let cameraStream=null,cameraTrack=null,captureIds=[],cameraFacing='environment',torchOn=false,zoomValue=1,syncBusy=false;
-let deferredInstallPrompt=null,drivePollTimer=null;
+let deferredInstallPrompt=null,drivePollTimer=null,libraryChannel=null,appUpdateReady=false;
 const uid=()=>crypto.randomUUID();
 const now=()=>new Date().toISOString();
 const esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[c]));
@@ -36,14 +36,22 @@ const stateKey=()=>stateOwner?`${STORE_KEY}:${stateOwner}`:STORE_KEY;
 function loadState(){
   try{
     let raw=localStorage.getItem(stateKey());if(!raw&&stateOwner)raw=localStorage.getItem(STORE_KEY)||localStorage.getItem(LEGACY_KEY);
-    const parsed=raw?JSON.parse(raw):null;if(!parsed)return defaultState();
+    let parsed=null;
+    try{parsed=raw?JSON.parse(raw):null}catch(e){
+      // Never overwrite unreadable data with an empty state: keep a copy that can be recovered.
+      console.warn('Holioo state unreadable, backed up',e);try{localStorage.setItem(`${stateKey()}:backup-${Date.now()}`,raw)}catch{}
+    }
+    if(!parsed)return defaultState();
     const base=defaultState();const merged={...base,...parsed,version:3,profile:{...base.profile,...parsed.profile},settings:{...base.settings,...parsed.settings}};
     merged.courses=Array.isArray(parsed.courses)&&parsed.courses.length?parsed.courses:base.courses;merged.inbox=Array.isArray(parsed.inbox)?parsed.inbox:[];merged.files=Array.isArray(parsed.files)?parsed.files:[];merged.favorites=Array.isArray(parsed.favorites)?parsed.favorites:[];
     merged.courses.forEach(ensureDefaultSections);return merged;
   }catch(e){console.warn(e);return defaultState()}
 }
 let state=loadState();
-function saveState(){localStorage.setItem(stateKey(),JSON.stringify(state))}
+function saveState(){
+  try{localStorage.setItem(stateKey(),JSON.stringify(state))}
+  catch(e){console.warn(e);if(!saveState.warned){saveState.warned=true;showToast('Stockage plein : libérez de l’espace sur l’appareil');setTimeout(()=>saveState.warned=false,10000)}}
+}
 function switchStateOwner(uid){
   if(uid===stateOwner)return;
   // Signing in with Google after test mode keeps what was done in test mode.
@@ -63,6 +71,7 @@ function showToast(message){toastEl.textContent=message;toastEl.classList.remove
 function setChrome(hidden){appShell.classList.toggle('hidden-chrome',hidden)}
 function setNav(view){document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.nav===view))}
 function navigate(view,payload={}){
+  if(view==='home'&&appUpdateReady&&reloadIfSafe())return;
   appShell.classList.toggle('capture-active',view==='capture');
   if(view!=='capture')stopCamera();currentView=view;
   if(payload.courseId)currentCourseId=payload.courseId;if(payload.sectionId)currentSectionId=payload.sectionId;if(payload.sessionId)currentSessionId=payload.sessionId;
@@ -118,7 +127,7 @@ async function bootstrapCloud(){
     else{const hid=`h${currentUser.id.replace(/-/g,'').slice(0,10)}`;state.profile.holiooId=hid;saveState();await sb.from('profiles').insert({...profilePayload(),holioo_id:hid})}
     if(accountBlocked)return;
     try{driveStatus=await Drive.status(sb,currentUser.id)}catch{driveStatus={connected:false,email:null}}
-    sb.channel('public-materials-live').on('postgres_changes',{event:'*',schema:'public',table:'public_materials'},()=>{if(currentView==='library')render()}).subscribe();
+    libraryChannel??=sb.channel('public-materials-live').on('postgres_changes',{event:'*',schema:'public',table:'public_materials'},()=>{if(currentView==='library')render()}).subscribe();
     await refreshSyncIndicator();if(driveStatus.connected&&state.settings.autoDriveSync)queueSync('bootstrap');
   }catch(e){console.error(e);cloudReady=false;showToast('Mode local actif — synchronisation plus tard');await refreshSyncIndicator()}
 }
@@ -133,11 +142,16 @@ async function refreshSyncIndicator(){
 }
 function queueSync(reason='auto'){clearTimeout(queueSync.t);queueSync.t=setTimeout(()=>runDriveSync(reason),600)}
 async function runDriveSync(reason='manual'){
-  if(syncBusy||!navigator.onLine||!sb||!currentUser)return;syncBusy=true;await refreshSyncIndicator();
+  if(syncBusy||!navigator.onLine||!sb||!currentUser)return;
+  // "Synchroniser automatiquement" off: only an explicit tap syncs.
+  if(reason!=='manual'&&!state.settings.autoDriveSync)return;
+  syncBusy=true;await refreshSyncIndicator();
   try{
     driveStatus=await Drive.status(sb,currentUser.id);if(!driveStatus.connected){if(reason==='manual')showToast('Connectez Google Drive d’abord');return}
-    const result=await Drive.syncAll({sb,user:currentUser,state,db:DB,onProgress:()=>refreshSyncIndicator()});if(reason==='manual'||result.synced)showToast(result.synced?`${result.synced} élément(s) synchronisé(s)`:'Tout est déjà synchronisé');
-  }catch(e){console.error(e);syncIndicator={cls:'error',text:'Erreur de synchronisation'};applyChromeStatus();if(reason==='manual')showToast(`Sync impossible : ${e.message||e}`)}finally{syncBusy=false;await refreshSyncIndicator();if(currentView==='sync')render()}
+    const result=await Drive.syncAll({sb,user:currentUser,state,db:DB,onProgress:({checked,total})=>{syncIndicator={cls:'pending',text:`Synchronisation… ${checked}/${total}`};applyChromeStatus()}});
+    if(result.failed){console.warn('Drive sync:',result.lastError);showToast(`${result.failed} élément(s) non synchronisé(s) — nouvel essai plus tard`)}
+    else if(reason==='manual'||result.synced)showToast(result.synced?`${result.synced} élément(s) synchronisé(s)`:'Tout est déjà synchronisé');
+  }catch(e){console.error(e);syncIndicator={cls:'error',text:'Erreur de synchronisation'};applyChromeStatus();if(e?.code==='DRIVE_FULL')showToast('Google Drive est plein : libérez de l’espace pour continuer la sauvegarde');else if(reason==='manual')showToast(`Sync impossible : ${e.message||e}`)}finally{syncBusy=false;await refreshSyncIndicator();if(currentView==='sync')render()}
 }
 
 function bindCourseCards(){document.querySelectorAll('[data-course]').forEach(b=>b.onclick=()=>{currentCourseId=b.dataset.course;navigate('course')})}

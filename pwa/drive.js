@@ -5,9 +5,18 @@
   const folderMime='application/vnd.google-apps.folder';
   const escQ=s=>String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
   const safeName=s=>String(s||'Sans titre').replace(/[\\/:*?"<>|]/g,'-').trim()||'Sans titre';
-  let folderCache={};
-  try{folderCache=JSON.parse(localStorage.getItem('holioo_drive_folder_cache')||'{}')}catch{}
-  const saveCache=()=>localStorage.setItem('holioo_drive_folder_cache',JSON.stringify(folderCache));
+
+  // Drive folder ids, remembered per Google account (two accounts on one device never share them).
+  let folderCache={},folderCacheOwner=null;
+  const cacheKey=()=>`holioo_drive_folder_cache:${folderCacheOwner}`;
+  try{localStorage.removeItem('holioo_drive_folder_cache')}catch{} // old cache shared by all accounts
+  function useFolderCache(userId){
+    if(folderCacheOwner===userId)return;
+    folderCacheOwner=userId;
+    try{folderCache=JSON.parse(localStorage.getItem(cacheKey())||'{}')}catch{folderCache={}}
+  }
+  const saveCache=()=>{try{localStorage.setItem(cacheKey(),JSON.stringify(folderCache))}catch{}};
+  const clearCache=()=>{folderCache={};saveCache()};
 
   async function invoke(sb,name,body={}){
     const {data,error}=await sb.functions.invoke(name,{body});
@@ -32,7 +41,8 @@
       const message=data.error?.message||data.error_description||data.error||`Google Drive ${r.status}`;
       const reasons=(data.error?.errors||[]).map(x=>x.reason).filter(Boolean);
       const err=new Error(message);err.status=r.status;err.driveReasons=reasons;
-      if(reasons.some(x=>['storageQuotaExceeded','quotaExceeded','userRateLimitExceeded'].includes(x))||/storage quota|quota exceeded|full/i.test(message))err.code='DRIVE_FULL';
+      if(reasons.includes('storageQuotaExceeded')||/storage quota|drive.*full/i.test(message))err.code='DRIVE_FULL';
+      else if(r.status===429||reasons.some(x=>['rateLimitExceeded','userRateLimitExceeded','quotaExceeded','dailyLimitExceeded'].includes(x)))err.code='RATE_LIMIT';
       throw err;
     }
     return data;
@@ -52,12 +62,16 @@
   }
   async function ensureFolder(token,name,parentId){return await findFolder(token,name,parentId)||await createFolder(token,name,parentId)}
   async function ensurePath(token,names){let parent='root';for(const n of names.filter(Boolean))parent=await ensureFolder(token,safeName(n),parent);return parent}
-  async function fileParents(token,fileId){const d=await driveFetch(token,`${API}/files/${encodeURIComponent(fileId)}?fields=id,parents,webViewLink,name`);return d}
-  async function moveFile(token,fileId,parentId,name){
-    const info=await fileParents(token,fileId);const remove=(info.parents||[]).filter(x=>x!==parentId).join(',');
+  async function fileInfo(token,fileId){return driveFetch(token,`${API}/files/${encodeURIComponent(fileId)}?fields=id,parents,webViewLink,name,trashed`)}
+  async function moveFile(token,fileId,parentId,name,info){
+    info??=await fileInfo(token,fileId);const remove=(info.parents||[]).filter(x=>x!==parentId).join(',');
     const qs=new URLSearchParams({addParents:parentId,fields:'id,name,parents,webViewLink'});if(remove)qs.set('removeParents',remove);
     const body=name?{name:safeName(name)}:{};
     return driveFetch(token,`${API}/files/${encodeURIComponent(fileId)}?${qs}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  }
+  // Replaces the content of an existing file (an edited photo): same file, never a duplicate.
+  async function updateContent(token,fileId,blob){
+    return driveFetch(token,`${UPLOAD}/${encodeURIComponent(fileId)}?uploadType=media&fields=id,name,parents,webViewLink`,{method:'PATCH',headers:{'Content-Type':blob.type||'application/octet-stream'},body:blob});
   }
   async function uploadBlob(token,blob,name,parentId){
     const boundary=`holioo_${Math.random().toString(36).slice(2)}`;
@@ -74,44 +88,100 @@
     for(const course of state.courses||[]) for(const section of course.sections||[]) for(const session of section.sessions||[]) for(const id of session.photoIds||[]) map.set(id,{kind:'session',course,section,session});
     return map;
   }
+
+  // Puts one local item in its Drive folder. Returns null when Drive is already up to date.
+  // A photo already in Drive is moved/renamed (or its content replaced after an edit), never uploaded twice.
+  async function pushItem(ctx,row,blob,names,filename){
+    for(let attempt=0;;attempt++){
+      try{
+        const parentId=await ensurePath(ctx.token,names);
+        const placed=row.driveFileId&&row.driveParentId===parentId&&row.driveName===filename;
+        if(placed&&!row.driveNeedsUpdate)return null;
+        let info=null;
+        if(row.driveFileId){
+          try{info=await fileInfo(ctx.token,row.driveFileId)}catch(e){if(e.status!==404)throw e}
+        }
+        let remote;
+        if(info&&!info.trashed){
+          remote=placed?info:await moveFile(ctx.token,row.driveFileId,parentId,filename,info);
+          if(row.driveNeedsUpdate)remote=await updateContent(ctx.token,row.driveFileId,blob);
+        }else{
+          // Never uploaded, or deleted from Drive since: Drive keeps a copy of everything in Holioo.
+          remote=await uploadBlob(ctx.token,blob,filename,parentId);
+        }
+        return{remote,parentId};
+      }catch(e){
+        if(attempt>0)throw e;
+        // A folder deleted in Drive leaves a stale id in the cache: forget the cache and retry once.
+        if(e.status===404){clearCache();continue}
+        // The access token expired during a long sync: get a new one and retry once.
+        if(e.status===401){ctx.token=await accessToken(ctx.sb);continue}
+        throw e;
+      }
+    }
+  }
+
+  // Result written back into the latest version of the row (the user may have edited it meanwhile).
+  async function markSynced(db,store,row,{remote,parentId},filename){
+    await db.patch(store,row.id,latest=>{
+      const changedMeanwhile=latest.editedAt!==row.editedAt;
+      return{driveFileId:remote.id,driveWebViewLink:remote.webViewLink||latest.driveWebViewLink||null,driveParentId:parentId,driveName:filename,
+        driveNeedsUpdate:changedMeanwhile?!!latest.driveNeedsUpdate:false,syncState:changedMeanwhile?'pending':'synced',syncError:null,syncedAt:new Date().toISOString()};
+    });
+  }
+  const markFailed=(db,store,id,e)=>db.patch(store,id,{syncState:e?.code==='DRIVE_FULL'?'drive_full':'error',syncError:String(e?.message||e)}).catch(()=>{});
+  // Errors that would fail the same way for every other item: stop and report.
+  const fatal=e=>e?.code==='DRIVE_FULL'||e?.code==='RATE_LIMIT'||e?.status===401||e?.status===403;
+
   async function syncAll({sb,user,state,db,onProgress}){
     if(!navigator.onLine||!sb||!user)return {synced:0,pending:0,skipped:true};
     const st=await status(sb,user.id);if(!st.connected)return {synced:0,pending:await pendingCount(state,db),connected:false};
-    const token=await accessToken(sb);let synced=0;const contexts=photoContexts(state);const photos=await db.all('photos');
+    useFolderCache(user.id);
+    const ctx={sb,token:await accessToken(sb)};
     const rootYear=state.profile?.academicYear||'Année universitaire';
-    for(const p of photos){
-      const ctx=contexts.get(p.id);if(!ctx)continue;
-      const names=ctx.kind==='session'?
-        ['Holioo',rootYear,ctx.course.name,ctx.section.name,ctx.session.title]:
-        ['Holioo',rootYear,'Inbox',new Date(ctx.batch.createdAt).toISOString().slice(0,10)];
-      const filename=`${String((ctx.kind==='session'?ctx.session.photoIds:ctx.batch.photoIds).indexOf(p.id)+1).padStart(3,'0')}-${p.id.slice(0,8)}.jpg`;
+    const contexts=photoContexts(state);
+    const files=(state.files||[]);
+    const total=contexts.size+files.length;
+    let synced=0,failed=0,checked=0,lastError=null;
+    const step=()=>{checked++;onProgress?.({checked,total,synced})};
+
+    for(const [id,pc] of contexts){
+      const p=await db.get('photos',id);
+      if(!p?.blob){step();continue}
+      const names=pc.kind==='session'?
+        ['Holioo',rootYear,pc.course.name,pc.section.name,pc.session.title]:
+        ['Holioo',rootYear,'Inbox',new Date(pc.batch.createdAt).toISOString().slice(0,10)];
+      const list=pc.kind==='session'?pc.session.photoIds:pc.batch.photoIds;
+      const filename=`${String(list.indexOf(p.id)+1).padStart(3,'0')}-${p.id.slice(0,8)}.jpg`;
       try{
-        const parentId=await ensurePath(token,names);let remote;
-        if(p.driveFileId){
-          if(p.driveParentId!==parentId||p.driveName!==filename) remote=await moveFile(token,p.driveFileId,parentId,filename);
-          else remote={id:p.driveFileId,parents:[parentId],webViewLink:p.driveWebViewLink,name:p.driveName};
-        }else remote=await uploadBlob(token,p.blob,filename,parentId);
-        await db.put('photos',{...p,driveFileId:remote.id,driveWebViewLink:remote.webViewLink||p.driveWebViewLink||null,driveParentId:parentId,driveName:filename,syncState:'synced',syncError:null,syncedAt:new Date().toISOString()});
-        synced++;onProgress?.({type:'photo',synced});
-      }catch(e){const full=e?.code==='DRIVE_FULL';await db.put('photos',{...p,syncState:full?'drive_full':'error',syncError:String(e.message||e)});throw e}
+        const res=await pushItem(ctx,p,p.rendered||p.blob,names,filename);
+        if(res){await markSynced(db,'photos',p,res,filename);synced++}
+      }catch(e){
+        failed++;lastError=e;await markFailed(db,'photos',p.id,e);
+        if(fatal(e))throw e;
+      }
+      step();
     }
-    for(const f of state.files||[]){
-      const row=await db.get('files',f.id);if(!row?.blob)continue;
+    for(const f of files){
+      const row=await db.get('files',f.id);
+      if(!row?.blob){step();continue}
       const course=state.courses.find(c=>c.id===f.courseId);const filename=safeName(f.fileName||`${f.title}.pdf`);
-      let remote;
       try{
-        const parentId=await ensurePath(token,['Holioo',rootYear,course?.name||'PDFs','PDFs']);
-        if(row.driveFileId){if(row.driveParentId!==parentId||row.driveName!==filename)remote=await moveFile(token,row.driveFileId,parentId,filename);else remote={id:row.driveFileId,webViewLink:row.driveWebViewLink,parents:[parentId],name:row.driveName}}
-        else remote=await uploadBlob(token,row.blob,filename,parentId);
-        await db.put('files',{...row,driveFileId:remote.id,driveWebViewLink:remote.webViewLink||row.driveWebViewLink||null,driveParentId:parentId,driveName:filename,syncState:'synced',syncError:null,syncedAt:new Date().toISOString()});synced++;onProgress?.({type:'file',synced});
-      }catch(e){const full=e?.code==='DRIVE_FULL';await db.put('files',{...row,syncState:full?'drive_full':'error',syncError:String(e.message||e)});throw e}
+        const res=await pushItem(ctx,row,row.blob,['Holioo',rootYear,course?.name||'PDFs','PDFs'],filename);
+        if(res){await markSynced(db,'files',row,res,filename);synced++}
+      }catch(e){
+        failed++;lastError=e;await markFailed(db,'files',row.id,e);
+        if(fatal(e))throw e;
+      }
+      step();
     }
-    return {synced,pending:await pendingCount(state,db),connected:true,email:st.email};
+    return {synced,failed,lastError,pending:await pendingCount(state,db),connected:true,email:st.email};
   }
   async function pendingCount(state,db){
-    const contexts=photoContexts(state);const photos=await db.all('photos');let n=photos.filter(p=>contexts.has(p.id)&&!p.driveFileId).length;
+    let n=0;
+    for(const id of photoContexts(state).keys()){const p=await db.get('photos',id);if(p?.blob&&(!p.driveFileId||p.driveNeedsUpdate))n++}
     for(const f of state.files||[]){const row=await db.get('files',f.id);if(row?.blob&&!row.driveFileId)n++}
     return n;
   }
-  window.HoliooDrive={status,connect,disconnect,accessToken,ensureFolder,ensurePath,uploadBlob,moveFile,syncAll,pendingCount,safeName};
+  window.HoliooDrive={status,connect,disconnect,accessToken,ensureFolder,ensurePath,uploadBlob,moveFile,updateContent,syncAll,pendingCount,safeName};
 })();

@@ -8,6 +8,7 @@ async function render(){
   if(currentView==='admin'&&currentRole!=='admin')currentView='profile';
   if(signedIn&&!state.onboardingComplete&&currentView==='home')currentView='academicSetup';
   setChrome(['login','blocked','academicSetup','photoViewer','pdfViewer','capture','admin'].includes(currentView));
+  releaseThumbUrls();
   await VIEWS[currentView]?.();
   applyChromeStatus();
 }
@@ -16,5 +17,55 @@ window.addEventListener('online',async()=>{offlineBanner.classList.add('hidden')
 window.addEventListener('offline',()=>{offlineBanner.classList.remove('hidden');refreshSyncIndicator()});
 window.addEventListener('focus',async()=>{if(sb&&currentUser&&navigator.onLine){try{driveStatus=await Drive.status(sb,currentUser.id);await refreshSyncIndicator();if(driveStatus.connected&&currentView==='sync')render()}catch{}}});
 if(!navigator.onLine)offlineBanner.classList.remove('hidden');
-if('serviceWorker'in navigator)window.addEventListener('load',async()=>{try{const reg=await navigator.serviceWorker.register('./sw.js');await reg.update()}catch(e){console.error(e)}});
-(async()=>{await DB.open();try{await navigator.storage?.persist?.()}catch{}await bootstrapCloud();await refreshSyncIndicator();await render()})();
+// App updates: the new version is installed in the background and loaded only when it can't
+// interrupt anything (app in the background, or back on Accueil) — never in the middle of a capture.
+function reloadIfSafe(){
+  if(!appUpdateReady)return false;
+  const busy=currentView==='capture'||(typeof cameraQueue!=='undefined'&&cameraQueue.pending()>0)||!!sheetRoot.innerHTML||syncBusy;
+  if(busy)return false;
+  location.reload();return true;
+}
+if('serviceWorker'in navigator){
+  const hadController=!!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!hadController)return;appUpdateReady=true;if(document.hidden)reloadIfSafe()});
+  let swReg=null,lastUpdateCheck=Date.now();
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden){reloadIfSafe();return}
+    // Installed apps can stay open for days: look for a new version at most once an hour.
+    if(swReg&&Date.now()-lastUpdateCheck>36e5){lastUpdateCheck=Date.now();swReg.update().catch(()=>{})}
+  });
+  window.addEventListener('load',async()=>{try{swReg=await navigator.serviceWorker.register('./sw.js');await swReg.update()}catch(e){console.error(e)}});
+}
+
+// Photos stored on this device but listed nowhere (e.g. a capture batch opened from Captures and
+// never filed, with an older version) come back in Captures instead of staying invisible.
+// Skipped when several Google accounts use this device, since a photo's owner can't be known.
+async function recoverOrphanPhotos(){
+  if(!stateOwner)return; // signed out: nobody to give them to
+  try{
+    const stored=await DB.keys('photos');if(!stored.length)return;
+    const used=new Set(),accounts=new Set();
+    const collect=s=>{
+      for(const b of s?.inbox||[])for(const id of b.photoIds||[])used.add(id);
+      for(const c of s?.courses||[])for(const x of c.sections||[])for(const q of x.sessions||[])for(const id of q.photoIds||[])used.add(id);
+      for(const id of s?.captureDraft?.photoIds||[])used.add(id);
+    };
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(!k||!(k===STORE_KEY||k===LEGACY_KEY||k.startsWith(`${STORE_KEY}:`))||k.includes(':backup-'))continue;
+      const owner=k.split(':')[1];if(owner&&owner!==GUEST)accounts.add(owner);
+      try{collect(JSON.parse(localStorage.getItem(k)))}catch{}
+    }
+    collect(state);
+    if(accounts.size>1)return;
+    if(typeof cameraQueue!=='undefined'&&cameraQueue.pending())return;
+    const lost=stored.filter(id=>!used.has(id));if(!lost.length)return;
+    const rows=(await Promise.all(lost.map(id=>DB.get('photos',id)))).filter(r=>r?.blob);
+    if(!rows.length)return;
+    rows.sort((a,b)=>String(a.createdAt).localeCompare(String(b.createdAt)));
+    state.inbox.unshift({id:uid(),title:'Photos récupérées',photoIds:rows.map(r=>r.id),createdAt:now()});
+    saveState();
+  }catch(e){console.warn('Orphan photo check failed',e)}
+}
+
+(async()=>{await DB.open();try{await navigator.storage?.persist?.()}catch{}await bootstrapCloud();await recoverOrphanPhotos();await refreshSyncIndicator();await render()})();

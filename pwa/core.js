@@ -72,7 +72,7 @@ function setChrome(hidden){appShell.classList.toggle('hidden-chrome',hidden)}
 function setNav(view){document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.nav===view))}
 function navigate(view,payload={}){
   if(view==='home'&&appUpdateReady&&reloadIfSafe())return;
-  if(view==='capture'&&currentView!=='capture')prepareCameraEntry(currentView);
+  if(view==='capture'&&currentView!=='capture')prepareCameraEntry(currentView,payload.cameraDest);
   appShell.classList.toggle('capture-active',view==='capture');
   if(view!=='capture')stopCamera();if(currentView==='scanReview'&&view!=='scanReview'&&typeof flushScanDelete==='function')flushScanDelete();currentView=view;
   if(payload.courseId)currentCourseId=payload.courseId;if(payload.sectionId)currentSectionId=payload.sectionId;if(payload.sessionId)currentSessionId=payload.sessionId;

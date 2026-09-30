@@ -36,6 +36,9 @@ function findCourseSection(courses,courseId,sectionId){
   return course&&section?{course,section}:null;
 }
 
+// The section's session started today (the latest one), or null.
+const todaySession=(section,date=new Date())=>[...(section?.sessions||[])].reverse().find(s=>sameLocalDay(s.createdAt,date))||null;
+
 // Next photo's destination, in this order: timetable → last used → none (the user must choose).
 // Returns {courseId, sectionId, sessionId, source:'timetable'|'last'} or null.
 function resolveCameraDestination({courses,timetable,last},date=new Date()){
@@ -43,8 +46,7 @@ function resolveCameraDestination({courses,timetable,last},date=new Date()){
   const cs=hit&&findCourseSection(courses,hit.courseId,hit.sectionId);
   if(cs){
     // Same class, same day: keep adding to the session started today instead of opening a new one.
-    const today=[...(cs.section.sessions||[])].reverse().find(s=>sameLocalDay(s.createdAt,date));
-    return{courseId:cs.course.id,sectionId:cs.section.id,sessionId:today?.id||null,source:'timetable'};
+    return{courseId:cs.course.id,sectionId:cs.section.id,sessionId:todaySession(cs.section,date)?.id||null,source:'timetable'};
   }
   const lc=last&&findCourseSection(courses,last.courseId,last.sectionId);
   if(lc){
@@ -72,4 +74,27 @@ function validRecentDestinations(recent,courses){
   });
 }
 
-if(typeof module!=='undefined')module.exports={matchTimetable,resolveCameraDestination,nextSessionNumber,pushRecentDestination,validRecentDestinations,camMinutes};
+// Quick Capture (Accueil): the courses of the first ring, the last used first, then the others in
+// their usual order. At most `max` items: when there are more courses, the last slot is left for "Plus…".
+function quickCaptureCourses(courses,recent,last,max=7){
+  const list=[],seen=new Set();
+  const add=id=>{const c=(courses||[]).find(x=>x.id===id);if(c&&!seen.has(c.id)){seen.add(c.id);list.push(c)}};
+  if(last)add(last.courseId);
+  for(const d of recent||[])add(d.courseId);
+  for(const c of courses||[])add(c.id);
+  return list.length<=max?{courses:list,more:false}:{courses:list.slice(0,Math.max(1,max-1)),more:true};
+}
+
+// The section of this course used last with the camera (marked in the second ring), or null.
+function quickCaptureLastSection(courseId,recent,last){
+  if(last?.courseId===courseId)return last.sectionId;
+  return(recent||[]).find(d=>d.courseId===courseId)?.sectionId||null;
+}
+
+// Where a Quick Capture photo goes: today's session of that section, or a new one (created with
+// today's date on the first photo, like everywhere else in the camera).
+function quickCaptureDestination(course,section,date=new Date()){
+  return{courseId:course.id,sectionId:section.id,sessionId:todaySession(section,date)?.id||null,source:'quick'};
+}
+
+if(typeof module!=='undefined')module.exports={matchTimetable,resolveCameraDestination,nextSessionNumber,pushRecentDestination,validRecentDestinations,camMinutes,todaySession,quickCaptureCourses,quickCaptureLastSection,quickCaptureDestination};

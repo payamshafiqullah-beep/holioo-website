@@ -21,8 +21,14 @@ function setCameraStatus(text){
 // Counter rule: it counts the photos of this camera visit for the current destination.
 // It resets when the camera screen is left or when the destination changes.
 
-function prepareCameraEntry(fromView){
+function prepareCameraEntry(fromView,dest=null){
   camEntryDestination=null;
+  // Quick Capture (Accueil) names the destination itself.
+  if(dest?.courseId&&dest.sectionId){
+    camKeepBatch=false;
+    camEntryDestination={courseId:dest.courseId,sectionId:dest.sectionId,sessionId:dest.sessionId||null,source:dest.source||'manual'};
+    return;
+  }
   if(fromView==='scanReview'||fromView==='photoViewer')return;
   camKeepBatch=false;
   if(fromView!=='session'&&fromView!=='section')return;
@@ -101,6 +107,17 @@ function destinationForShot(){
     renderCameraChip();
   }
   return{courseId:ctx.course.id,sectionId:ctx.section.id,sessionId:session.id};
+}
+
+// Photos from the phone's own camera app (Quick Capture when the live camera is unavailable):
+// filed like camera photos, in the same place and through the same save queue.
+function importToDestination(files,dest){
+  camDest={courseId:dest.courseId,sectionId:dest.sectionId,sessionId:dest.sessionId||null,source:dest.source||'manual'};
+  camShots=[];
+  const d=destinationForShot();if(!d||!files.length)return;
+  rememberCameraDestination();
+  for(const file of files)cameraQueue.add({id:uid(),blob:Promise.resolve(file),dest:d,createdAt:now(),onStored:()=>queueSync()});
+  showToast(camT('imported',{n:files.length,dest:cameraDestinationLabel(camDest)}));
 }
 
 // ─── Last photo + counter ─────────────────────────────────────
@@ -200,6 +217,26 @@ function showCameraPanel(kind){
   setCameraStatus(texts.body||'');
 }
 
+// Browsers let a page open the camera only during a user action. Quick Capture asks for the stream
+// right inside its pointerup (no await or timer before it); the camera screen then uses that stream.
+let camPrewarm=null;
+const cameraCanStream=()=>!!(window.isSecureContext&&navigator.mediaDevices?.getUserMedia);
+// Scan modes ask for the sharpest video the camera offers (text must stay readable).
+function cameraConstraints(){
+  const res=isScanMode(state.camMode)?{width:{ideal:3840},height:{ideal:2160}}:{width:{ideal:1920},height:{ideal:1080}};
+  return{video:{facingMode:{ideal:cameraFacing},...res},audio:false};
+}
+function prewarmCamera(){
+  if(!cameraCanStream())return false;
+  releasePrewarm();
+  try{camPrewarm=navigator.mediaDevices.getUserMedia(cameraConstraints());camPrewarm.catch(()=>{});return true}
+  catch{camPrewarm=null;return false}
+}
+function releasePrewarm(){
+  const p=camPrewarm;camPrewarm=null;
+  p?.then(s=>s.getTracks().forEach(t=>t.stop()),()=>{});
+}
+
 // Restart automatically when the user allows the camera in the browser settings.
 let camPermWatch=null;
 async function watchCameraPermission(){
@@ -211,28 +248,29 @@ async function watchCameraPermission(){
 }
 
 async function startCamera({userAction=false}={}){
+  const pre=camPrewarm;camPrewarm=null;   // asked for during the Quick Capture gesture
   stopCamera();
   const video=byId('cameraVideo');
-  if(!video)return;
+  if(!video){pre?.then(s=>s.getTracks().forEach(t=>t.stop()),()=>{});return}
   const token=++camStartToken;
   hideCameraPanel();
 
-  if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia){showCameraPanel('insecure');return}
+  if(!cameraCanStream()){showCameraPanel('insecure');return}
 
   setCameraStatus(camT('opening'));
-  const perm=await cameraPermissionState();
-  if(token!==camStartToken)return;
-  if(perm==='denied'){showCameraPanel('blocked');watchCameraPermission();return}
-  let asked=false;try{asked=localStorage.getItem('holioo_cam_asked')==='1'}catch{}
-  // First time ever: explain why before the browser asks.
-  if(perm==='prompt'&&!asked&&!userAction){showCameraPanel('ask');return}
+  if(!pre){
+    const perm=await cameraPermissionState();
+    if(token!==camStartToken)return;
+    if(perm==='denied'){showCameraPanel('blocked');watchCameraPermission();return}
+    let asked=false;try{asked=localStorage.getItem('holioo_cam_asked')==='1'}catch{}
+    // First time ever: explain why before the browser asks.
+    if(perm==='prompt'&&!asked&&!userAction){showCameraPanel('ask');return}
+  }
 
   let stream=null;
-  // Scan modes ask for the sharpest video the camera offers (text must stay readable).
-  const res=isScanMode(state.camMode)?{width:{ideal:3840},height:{ideal:2160}}:{width:{ideal:1920},height:{ideal:1080}};
   try{
     try{
-      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:cameraFacing},...res},audio:false});
+      stream=await(pre||navigator.mediaDevices.getUserMedia(cameraConstraints()));
     }catch(e){
       if(e?.name!=='OverconstrainedError'&&e?.name!=='NotFoundError')throw e;
       stream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});
@@ -300,6 +338,7 @@ async function startCamera({userAction=false}={}){
 }
 
 function stopCamera(){
+  releasePrewarm();
   if(typeof Scanner!=='undefined')Scanner.stop();
   cameraStream?.getTracks?.().forEach(t=>t.stop());
   cameraStream=null;

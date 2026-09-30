@@ -12,6 +12,7 @@ async function render(){
   releaseThumbUrls();
   await VIEWS[currentView]?.();
   applyChromeStatus();
+  if(typeof syncQuickCapture==='function')syncQuickCapture();
 }
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e});
 window.addEventListener('online',async()=>{offlineBanner.classList.add('hidden');if(!cloudReady){await bootstrapCloud();render()}else{try{driveStatus=await Drive.status(sb,currentUser.id)}catch{}await refreshSyncIndicator();if(state.settings.autoDriveSync)queueSync('online')}});

@@ -103,7 +103,8 @@ async function renderScanReviewPage(){
     else e.box=null;
     await applyScanEdit(id,e)};
   byId('srvRetake').onclick=()=>{flushScanDelete();camRetakeId=id;camKeepBatch=true;scanReview.index=null;navigate('capture')};
-  byId('srvApplyAll').onclick=()=>applyFilterToAll(ids,filter);
+  // The filter shown now (it may have changed since the page was drawn).
+  byId('srvApplyAll').onclick=()=>applyFilterToAll(ids,byId('srvFilters')?.querySelector('.active')?.dataset.filter||filter);
   byId('srvDelete').onclick=()=>deleteScanPage(id);
   // Swipe on the page: next / previous filter, with a live preview.
   let sx=null;const stage=byId('srvStage');

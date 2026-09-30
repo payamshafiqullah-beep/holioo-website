@@ -70,9 +70,10 @@
             const r=1/ScanCore.pageRatio(q.map(([x,y])=>[x,y*H/W]));const k=Math.max(r,1/r);
             score*=Math.max(0,1-Math.abs(k-cfg.aspect)/cfg.aspect*2.5);
           }
-          // A quad glued to the whole frame border is usually the frame itself, not the page.
-          const onBorder=q.filter(([x,y])=>x<.01||x>.99||y<.01||y>.99).length;
-          if(onBorder>=3&&!cfg.edge)continue;
+          // A quad with 3–4 corners on the frame border is the frame itself (or the wall around the
+          // board), not the page. Boards cut by the photo's edge (2 corners outside) remain allowed.
+          const onBorder=q.filter(([x,y])=>x<.015||x>.985||y<.015||y>.985).length;
+          if(onBorder>=(cfg.edge?3:2))continue;
           out.push({q,score,source});
         }finally{cnt.delete()}
       }

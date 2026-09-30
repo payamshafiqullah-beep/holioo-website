@@ -412,7 +412,7 @@ function applyCameraMode(mode,{initial=false}={}){
   camMode=mode;state.camMode=mode;saveState();
   if(changed)camIdFront=null;
   const root=document.querySelector('.camera');if(root)root.dataset.mode=mode;
-  document.querySelectorAll('#camModes [data-mode]').forEach(b=>{const on=b.dataset.mode===mode;b.classList.toggle('active',on);b.setAttribute('aria-selected',String(on));if(on&&!initial)b.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'})});
+  document.querySelectorAll('#camModes [data-mode]').forEach(b=>{const on=b.dataset.mode===mode;b.classList.toggle('active',on);b.setAttribute('aria-selected',String(on));if(on)b.scrollIntoView({inline:'center',block:'nearest',behavior:initial?'auto':'smooth'})});
   renderScanTools();
   if(!initial&&mode!=='photo')requestTiltPermission();
   Scanner.stop();
@@ -446,9 +446,10 @@ function renderScanHint(s){
   if(camRetakeId)text=camT('retakeHint');
   if(s.state==='loading')text=camT('scanLoading',{p:Math.round((Scanner.progress||0)*100)});
   else if(s.state==='manual')text=camT('scanFailed');
-  else if(s.warn){warn=true;text=camT({dark:'warnDark',blur:'warnBlur',tilt:camMode==='board'?'warnTiltBoard':'warnTilt'}[s.warn])}
-  else if(s.state==='stable')text=s.auto?camT('holdStill'):camT('ready');
-  else if(s.state==='tracking')text=s.auto?camT('holdStill'):camT('ready');
+  else if(s.warn){warn=true;text=camT({dark:'warnDark',blur:'warnBlur',tilt:camMode==='board'?'warnTiltBoard':'warnTilt'}[s.warn]);if(camMode==='id'&&camIdFront)text=`${camT('idBackShort')} — ${text}`}
+  // ID card: always say which side is expected.
+  else if(camMode==='id'&&(s.state==='stable'||s.state==='tracking'))text=camT(camIdFront?'idBackReady':'idFrontReady');
+  else if(s.state==='stable'||s.state==='tracking')text=s.auto?camT('holdStill'):camT('ready');
   else if(!text)text=camT(search);
   el.textContent=text;el.classList.toggle('warn',warn);el.classList.remove('hidden');
 }

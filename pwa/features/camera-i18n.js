@@ -52,7 +52,7 @@ const CAMERA_STRINGS={
     warnDark:'Trop sombre — approchez-vous de la lumière',warnBlur:'Image floue — tenez le téléphone immobile',
     warnTilt:'Tenez le téléphone parallèle à la page',warnTiltBoard:'Tenez le téléphone droit, face au tableau',
     qrAim:'Visez un code QR',qrTitle:'Code QR',qrLink:'Lien',qrText:'Texte',qrOpen:'Ouvrir le lien',qrCopy:'Copier',qrCopied:'Copié',qrUnsafe:'Ce lien n’est pas sécurisé (pas https). Ouvrez-le seulement si vous lui faites confiance.',
-    idFrontSaved:'Recto enregistré — retournez la carte',idDone:'Carte recto-verso ajoutée',
+    idFrontSaved:'Recto enregistré — retournez la carte',idFrontReady:'Recto de la carte : touchez le déclencheur',idBackShort:'Verso',idBackReady:'Verso de la carte : touchez le déclencheur',idDone:'Carte recto-verso ajoutée',
     bookSplit:'2 pages ajoutées',retakeHint:'Reprenez la page',retaken:'Page remplacée',
     fallbackCamera:'Prendre une photo avec l’appareil photo',fallbackHint:'Vous pouvez aussi utiliser l’appareil photo du téléphone : la photo sera recadrée et nettoyée de la même façon.',
     focus:'Mise au point',

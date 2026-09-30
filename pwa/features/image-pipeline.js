@@ -92,6 +92,27 @@
     return[x1-x0+g*x1,x3-x0+h*x3,x0,y1-y0+g*y1,y3-y0+h*y3,y0,g,h];
   }
 
+  // Real proportions (height/width) of a rectangle seen in perspective (Zhang & He, "Whiteboard
+  // scanning and image enhancement", 2004). The camera's focal length is estimated from the
+  // quad when plausible; otherwise a typical phone camera is assumed (0.85 × the long side).
+  // q: TL,TR,BR,BL in pixels of a W×H image (principal point at the centre).
+  function quadAspect(q,W,H){
+    const c=p=>[p[0]-W/2,p[1]-H/2,1],[m1,m2,m4,m3]=q.map(c);
+    const cr=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+    const d2=dot(cr(m2,m4),m3),d3=dot(cr(m3,m4),m2);
+    const edges=()=>{const d=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);return(d(q[0],q[3])+d(q[1],q[2]))/(d(q[0],q[1])+d(q[3],q[2]))};
+    if(Math.abs(d2)<1e-9||Math.abs(d3)<1e-9)return edges();
+    const k2=dot(cr(m1,m4),m3)/d2,k3=dot(cr(m1,m4),m2)/d3;
+    const n2=m2.map((v,i)=>k2*v-m1[i]),n3=m3.map((v,i)=>k3*v-m1[i]);
+    const den=n2[2]*n3[2],f2=Math.abs(den)>1e-9?-(n2[0]*n3[0]+n2[1]*n3[1])/den:-1,M=Math.max(W,H);
+    // Phone cameras (wide to 2× zoom) have f ≈ 0.5–1.8 × the long side; outside that the estimate
+    // is unreliable (weak perspective) and a typical value is used.
+    const f=f2>0&&Math.sqrt(f2)>.5*M&&Math.sqrt(f2)<1.8*M?Math.sqrt(f2):.85*M;
+    const a=(n2[0]**2+n2[1]**2)/(f*f)+n2[2]**2,b=(n3[0]**2+n3[1]**2)/(f*f)+n3[2]**2;
+    const hw=Math.sqrt(b/a);
+    return isFinite(hw)&&hw>.1&&hw<10?hw:edges();
+  }
+
   // Perspective warp (CPU, bilinear) on raw RGBA pixels: quad (pixels, TL,TR,BR,BL) → outW×outH.
   function warpPixels(src,sw,sh,quadPx,outW,outH){
     const W=Math.max(1,Math.round(outW)),H=Math.max(1,Math.round(outH)),d=new Uint8ClampedArray(W*H*4);
@@ -271,7 +292,9 @@
     }else if(e.mode==='quad'&&e.quad){
       const q=orderQuad(e.quad).map(([x,y])=>[x*W,y*W]);
       const dist=(p,r)=>Math.hypot(p[0]-r[0],p[1]-r[1]);
-      let ow=Math.max(dist(q[0],q[1]),dist(q[3],q[2])),oh=Math.max(dist(q[0],q[3]),dist(q[1],q[2]));
+      // Size from the longest edge, shape from the real proportions of the page.
+      const ratio=quadAspect(q,W,H),long=Math.max(dist(q[0],q[1]),dist(q[3],q[2]),dist(q[0],q[3]),dist(q[1],q[2]));
+      let ow=ratio>=1?long/ratio:long,oh=ow*ratio;
       // Documents: a page that is almost A4 comes out exactly A4.
       if(e.snap==='a4')for(const r of[Math.SQRT2,1/Math.SQRT2])if(Math.abs(oh/ow-r)/r<.12)oh=ow*r;
       const s=Math.min(1,maxSide/Math.max(ow,oh));ow*=s;oh*=s;
@@ -319,5 +342,5 @@
     return page;
   }
 
-  root.HoliooImage={makeCanvas,defaultEdit,isIdentity,orientedSize,drawOriented,boxToQuad,fullBox,aspectRatio,boxForAspect,orderQuad,squareToQuad,warpPixels,backgroundMap,filterPixels,renderEdited,applyFilter,scaleTo,toBlob,composeIdPage};
+  root.HoliooImage={makeCanvas,defaultEdit,isIdentity,orientedSize,drawOriented,boxToQuad,fullBox,aspectRatio,boxForAspect,orderQuad,squareToQuad,quadAspect,warpPixels,backgroundMap,filterPixels,renderEdited,applyFilter,scaleTo,toBlob,composeIdPage};
 })(typeof self!=='undefined'?self:window);

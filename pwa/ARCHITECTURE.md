@@ -28,6 +28,10 @@ Shared behavior that several screens use lives in `pwa/features/`:
 - `capture-actions.js` — camera, gallery import, batch helpers (`removeFromInbox`: photos leave Captures only once filed)
 - `camera-destination.js`, `camera-queue.js`, `camera-i18n.js` — camera destination logic, background save queue, camera texts
 - `image-pipeline.js`, `photo-edits.js`, `../ui/photo-editor.js`, `../workers/image-worker.js` — the photo editor: non-destructive edits (`edit` on the row, original `blob` kept; `rendered` + `thumb` made in a worker), opened from the photo viewer (Modifier); `photoBlob(row)` is what the viewer, PDF, publishing and Drive use
+- `scan-core.js`, `scan-detect.js`, `scanner.js`, `../workers/scanner-worker.js` — document scanner in the camera (modes Photo / Document / Tableau / Livre / Carte / QR): live page detection with OpenCV.js in a worker (loaded on first use), smooth tracking, auto-capture, book split, ID card page, QR (jsQR); each page keeps its original + a crop/filter edit rendered by the image worker
+- `ocr.js`, `text-actions.js` — offline text recognition (Tesseract.js, fra+eng) in the background; text in IndexedDB `kv` (`ocr:<photo id>`) for search and searchable PDFs; session image export
+- `pdf-actions.js` — PDF export with pdf-lib (loaded on demand): page size, quality, cover, contents, footer, metadata, invisible OCR text layer
+- `../pages/ScanReviewPage.js` — review after the camera: reorder, retake, delete with undo, crop, per-page filter with live preview, apply to all
 - `thumbs.js` — small stored previews (`thumb`) used by every photo grid; full photos only in the viewer, PDF and Drive
 - `pdf-actions.js` — PDF generation helpers
 - `community-actions.js` — publish/library/Profile/Drive UI actions
@@ -42,7 +46,7 @@ Shared behavior that several screens use lives in `pwa/features/`:
 - `styles.css` — shared visual tokens and shared component styling
 - `sw.js` — offline cache: versioned app files cache-first, page network-first (3.5 s timeout), CDN libraries/fonts in a cache kept across releases; never reloads open windows (app.js `reloadIfSafe` does, when it can't interrupt a capture)
 - `smoke-test.mjs` — critical flow checks
-- `tests/` — unit tests (`node --test pwa/tests`), run in CI on every pull request; not published
+- `tests/` — unit tests (`node --test pwa/tests`, needs `npm ci` for OpenCV.js / pdf-lib / jsQR test copies), run in CI on every pull request; not published; `tests/helpers/scenes.mjs` draws one test photo per scan mode
 
 Release: bump the `?v=` value everywhere in `index.html`, `sw.js` (`CORE` + `VERSION`) and `smoke-test.mjs` together.
 

@@ -165,7 +165,8 @@ const Scanner=(()=>{
 // The edit stored with a scanned page: perspective crop (if a page was found) + the mode's filter.
 function scanEdit(mode,quadFrame,w,h){
   const edit={...HoliooImage.defaultEdit(),filter:scanFilterFor(mode)};
-  if(quadFrame){edit.mode='quad';edit.quad=ScanCore.toEditQuad(quadFrame,w,h);edit.aspect='free'}
+  // Slightly inside the detected edges, so no sliver of desk or wall shows along the page.
+  if(quadFrame){edit.mode='quad';edit.quad=ScanCore.toEditQuad(ScanCore.insetQuad(quadFrame,.006),w,h);edit.aspect='free'}
   if(mode==='document')edit.snap='a4';
   return edit;
 }

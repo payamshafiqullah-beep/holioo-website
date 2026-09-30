@@ -180,6 +180,9 @@
     });
   }
 
-  root.ScanCore={orderQuad,area,isConvex,angles,quadValid,maxCornerShift,createTracker,judgeFrame,createAutoCapture,toEditQuad,fromEditQuad,fullQuad,splitSpread,findGutter,pageRatio,idCardLayout,tiltHint,mapToScreen};
+  // Quad pulled toward its centre by a fraction of its size.
+  function insetQuad(q,k){const o=orderQuad(q),cx=o.reduce((s,p)=>s+p[0],0)/4,cy=o.reduce((s,p)=>s+p[1],0)/4;return o.map(([x,y])=>[x+(cx-x)*k*2,y+(cy-y)*k*2])}
+
+  root.ScanCore={insetQuad,orderQuad,area,isConvex,angles,quadValid,maxCornerShift,createTracker,judgeFrame,createAutoCapture,toEditQuad,fromEditQuad,fullQuad,splitSpread,findGutter,pageRatio,idCardLayout,tiltHint,mapToScreen};
 })(typeof self!=='undefined'?self:typeof window!=='undefined'?window:globalThis);
 if(typeof module!=='undefined')module.exports=(typeof self!=='undefined'?self:globalThis).ScanCore;

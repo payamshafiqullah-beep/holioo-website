@@ -92,11 +92,10 @@
     return[x1-x0+g*x1,x3-x0+h*x3,x0,y1-y0+g*y1,y3-y0+h*y3,y0,g,h];
   }
 
-  // Perspective warp (CPU, bilinear). Only used for quad mode; rect mode uses the GPU path.
-  function warpQuad(srcCanvas,quadPx,outW,outH){
-    const sw=srcCanvas.width,sh=srcCanvas.height,src=ctx2d(srcCanvas).getImageData(0,0,sw,sh).data;
-    const out=makeCanvas(outW,outH),ox=ctx2d(out),img=ox.createImageData(out.width,out.height),d=img.data;
-    const[a,b,c,dd,e,f,g,h]=squareToQuad(quadPx),W=out.width,H=out.height;
+  // Perspective warp (CPU, bilinear) on raw RGBA pixels: quad (pixels, TL,TR,BR,BL) → outW×outH.
+  function warpPixels(src,sw,sh,quadPx,outW,outH){
+    const W=Math.max(1,Math.round(outW)),H=Math.max(1,Math.round(outH)),d=new Uint8ClampedArray(W*H*4);
+    const[a,b,c,dd,e,f,g,h]=squareToQuad(quadPx);
     for(let y=0;y<H;y++){
       const v=(y+.5)/H;
       for(let x=0;x<W;x++){
@@ -112,54 +111,51 @@
         d[o+3]=255;
       }
     }
-    ox.putImageData(img,0,0);
+    return{data:d,width:W,height:H};
+  }
+  function warpQuad(srcCanvas,quadPx,outW,outH){
+    const sw=srcCanvas.width,sh=srcCanvas.height,src=ctx2d(srcCanvas).getImageData(0,0,sw,sh).data;
+    const r=warpPixels(src,sw,sh,quadPx,outW,outH),out=makeCanvas(r.width,r.height),ox=ctx2d(out),img=ox.createImageData(r.width,r.height);
+    img.data.set(r.data);ox.putImageData(img,0,0);
     return out;
   }
 
-  // Smooth background estimate: shrink then enlarge (the canvas scaler acts as a wide blur).
-  function background(canvas,factor=24){
-    const small=makeCanvas(canvas.width/factor,canvas.height/factor),sx=ctx2d(small);
-    sx.imageSmoothingQuality='high';sx.drawImage(canvas,0,0,small.width,small.height);
-    const tiny=makeCanvas(small.width/2,small.height/2),tx=ctx2d(tiny);
-    tx.drawImage(small,0,0,tiny.width,tiny.height);sx.clearRect(0,0,small.width,small.height);sx.drawImage(tiny,0,0,small.width,small.height);
-    const big=makeCanvas(canvas.width,canvas.height),bx=ctx2d(big);
-    bx.imageSmoothingQuality='high';bx.drawImage(small,0,0,big.width,big.height);
-    return bx.getImageData(0,0,big.width,big.height).data;
-  }
-
+  // ---------- Filters: pure functions on RGBA pixels (tests/image-filters.test.mjs) ----------
   const clamp=v=>v<0?0:v>255?255:v;
+  const lumAt=(d,i)=>.299*d[i]+.587*d[i+1]+.114*d[i+2];
 
-  function applyFilter(canvas,filter){
-    if(!filter||filter==='original')return canvas;
-    const x=ctx2d(canvas),img=x.getImageData(0,0,canvas.width,canvas.height),d=img.data,n=d.length;
-    if(filter==='gray'){
-      for(let i=0;i<n;i+=4){const y=.299*d[i]+.587*d[i+1]+.114*d[i+2];d[i]=d[i+1]=d[i+2]=y}
-    }else if(filter==='contrast'){
-      for(let i=0;i<n;i+=4){
-        const y=.299*d[i]+.587*d[i+1]+.114*d[i+2];
-        for(let k=0;k<3;k++){const s=y+(d[i+k]-y)*1.2;d[i+k]=clamp((s-128)*1.5+128)}
-      }
-    }else if(filter==='document'||filter==='whiteboard'){
-      const bg=background(canvas),doc=filter==='document';
-      const black=doc?70:35,range=255-black;
-      for(let i=0;i<n;i+=4){
-        if(doc){
-          // Divide by the paper's local brightness: shadows and uneven light disappear, ink stays.
-          const bl=Math.max(20,.299*bg[i]+.587*bg[i+1]+.114*bg[i+2]);
-          const y=.299*d[i]+.587*d[i+1]+.114*d[i+2],v=clamp((Math.min(255,y/bl*245)-black)*255/range);
-          for(let k=0;k<3;k++){const c=clamp((Math.min(255,d[i+k]/bl*245)-black)*255/range);d[i+k]=v+(c-v)*.25}
-        }else{
-          // Per channel, so coloured markers keep their colour while the board turns white.
-          for(let k=0;k<3;k++)d[i+k]=clamp((Math.min(255,d[i+k]/Math.max(20,bg[i+k])*250)-black)*255/range);
-          const y=.299*d[i]+.587*d[i+1]+.114*d[i+2];
-          for(let k=0;k<3;k++)d[i+k]=clamp(y+(d[i+k]-y)*1.4);
-        }
-      }
-      if(doc)sharpen(d,canvas.width,canvas.height,.55);
+  // Local background brightness for every pixel (the paper, the board): a coarse grid of robust
+  // per-block values (a percentile, so text and marks don't count), smoothed, then interpolated.
+  // A high `pct` finds a light background (paper, whiteboard); a low one a dark board.
+  function backgroundMap(val,w,h,{cells=28,pct=.9}={}){
+    const bs=Math.max(4,Math.ceil(Math.max(w,h)/cells)),gw=Math.ceil(w/bs),gh=Math.ceil(h/bs);
+    let grid=new Float32Array(gw*gh);const hist=new Uint32Array(256);
+    for(let gy=0;gy<gh;gy++)for(let gx=0;gx<gw;gx++){
+      hist.fill(0);let n=0;
+      const x0=gx*bs,y0=gy*bs,x1=Math.min(w,x0+bs),y1=Math.min(h,y0+bs),step=Math.max(1,Math.floor(bs/16));
+      for(let y=y0;y<y1;y+=step)for(let x=x0;x<x1;x+=step){hist[val[y*w+x]|0]++;n++}
+      const target=n*pct;let acc=0,v=255;for(let k=0;k<256;k++){acc+=hist[k];if(acc>=target){v=k;break}}
+      grid[gy*gw+gx]=v;
     }
-    x.putImageData(img,0,0);
-    return canvas;
+    for(let pass=0;pass<2;pass++){ // 3×3 smoothing of the grid
+      const g2=new Float32Array(grid.length);
+      for(let gy=0;gy<gh;gy++)for(let gx=0;gx<gw;gx++){let s=0,n=0;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const x=gx+dx,y=gy+dy;if(x<0||y<0||x>=gw||y>=gh)continue;s+=grid[y*gw+x];n++}g2[gy*gw+gx]=s/n}
+      grid=g2;
+    }
+    const out=new Float32Array(w*h);
+    for(let y=0;y<h;y++){
+      const fy=Math.min(gh-1,Math.max(0,(y+.5)/bs-.5)),y0=Math.floor(fy),y1=Math.min(gh-1,y0+1),ty=fy-y0;
+      for(let x=0;x<w;x++){
+        const fx=Math.min(gw-1,Math.max(0,(x+.5)/bs-.5)),x0=Math.floor(fx),x1=Math.min(gw-1,x0+1),tx=fx-x0;
+        const a=grid[y0*gw+x0]+(grid[y0*gw+x1]-grid[y0*gw+x0])*tx,b=grid[y1*gw+x0]+(grid[y1*gw+x1]-grid[y1*gw+x0])*tx;
+        out[y*w+x]=a+(b-a)*ty;
+      }
+    }
+    return out;
   }
+
+  function lumArray(d,w,h){const L=new Uint8ClampedArray(w*h);for(let i=0,j=0;j<w*h;i+=4,j++)L[j]=lumAt(d,i);return L}
+  function percentile(arr,p){const hist=new Uint32Array(256);let n=0;for(let i=0;i<arr.length;i+=7){hist[arr[i]|0]++;n++}let acc=0;for(let k=0;k<256;k++){acc+=hist[k];if(acc>=n*p)return k}return 255}
 
   // Light unsharp mask (3x3) to crisp up handwriting and board text.
   function sharpen(d,w,h,amount){
@@ -171,6 +167,95 @@
         d[i+k]=clamp(src[i+k]+(src[i+k]-blur)*amount*2);
       }
     }
+  }
+  function saturate(d,i,k){const y=lumAt(d,i);for(let c=0;c<3;c++)d[i+c]=clamp(y+(d[i+c]-y)*k)}
+
+  // Light evened out: every pixel divided by its local background (shadows and uneven light
+  // disappear, the page becomes white), colours kept.
+  function flatten(d,w,h,{pct=.9,target=245}={}){
+    const bg=backgroundMap(lumArray(d,w,h),w,h,{pct});
+    for(let j=0,i=0;j<w*h;j++,i+=4){const k=target/Math.max(18,bg[j]);for(let c=0;c<3;c++)d[i+c]=clamp(d[i+c]*k)}
+    return bg;
+  }
+  function blackPoint(d,w,h,max=90){
+    const L=lumArray(d,w,h),lo=Math.min(max,percentile(L,.02)),range=255-lo;
+    if(lo<=0)return;
+    for(let i=0;i<d.length;i+=4)for(let c=0;c<3;c++)d[i+c]=clamp((d[i+c]-lo)*255/range);
+  }
+
+  // Black & white: adaptive threshold (Bradley–Roth, integral image) after evening out the light.
+  function adaptiveBW(d,w,h){
+    const L=lumArray(d,w,h),bg=backgroundMap(L,w,h,{pct:.9}),N=new Float32Array(w*h);
+    for(let j=0;j<w*h;j++)N[j]=Math.min(255,L[j]/Math.max(18,bg[j])*255);
+    const I=new Float64Array((w+1)*(h+1));
+    for(let y=0;y<h;y++){let row=0;for(let x=0;x<w;x++){row+=N[y*w+x];I[(y+1)*(w+1)+x+1]=I[y*(w+1)+x+1]+row}}
+    const r=Math.max(4,Math.round(Math.max(w,h)/32)),t=.14;
+    for(let y=0;y<h;y++){
+      const ya=Math.max(0,y-r),yb=Math.min(h,y+r+1);
+      for(let x=0;x<w;x++){
+        const xa=Math.max(0,x-r),xb=Math.min(w,x+r+1),n=(xb-xa)*(yb-ya);
+        const sum=I[yb*(w+1)+xb]-I[ya*(w+1)+xb]-I[yb*(w+1)+xa]+I[ya*(w+1)+xa];
+        const v=N[y*w+x],black=v<sum/n*(1-t)&&v<225;
+        const i=(y*w+x)*4;d[i]=d[i+1]=d[i+2]=black?0:255;
+      }
+    }
+  }
+
+  function filterPixels(d,w,h,filter){
+    const n=w*h*4;
+    switch(filter){
+      case'gray':{
+        const L=lumArray(d,w,h),lo=percentile(L,.01),hi=Math.max(lo+1,percentile(L,.99));
+        for(let i=0,j=0;i<n;i+=4,j++){const v=clamp((L[j]-lo)*255/(hi-lo));d[i]=d[i+1]=d[i+2]=v}
+        break;
+      }
+      case'contrast':
+        for(let i=0;i<n;i+=4){const y=lumAt(d,i);for(let k=0;k<3;k++){const s=y+(d[i+k]-y)*1.2;d[i+k]=clamp((s-128)*1.5+128)}}
+        break;
+      case'auto': // clean white background, crisper text, colours kept
+        flatten(d,w,h,{pct:.9,target:248});blackPoint(d,w,h,90);
+        for(let i=0;i<n;i+=4)saturate(d,i,1.15);
+        sharpen(d,w,h,.4);break;
+      case'shadows': // only the light is evened out; nothing else changes
+        flatten(d,w,h,{pct:.9,target:240});break;
+      case'lighten':
+        for(let i=0;i<n;i+=4)for(let k=0;k<3;k++)d[i+k]=clamp(255*Math.pow(d[i+k]/255,.7)+8);
+        break;
+      case'bw':adaptiveBW(d,w,h);break;
+      case'document':{ // earlier "Document" filter: mostly grey, strong contrast
+        const bg=backgroundMap(lumArray(d,w,h),w,h,{pct:.9}),black=70,range=255-black;
+        for(let i=0,j=0;i<n;i+=4,j++){
+          const bl=Math.max(20,bg[j]),y=lumAt(d,i),v=clamp((Math.min(255,y/bl*245)-black)*255/range);
+          for(let k=0;k<3;k++){const c=clamp((Math.min(255,d[i+k]/bl*245)-black)*255/range);d[i+k]=v+(c-v)*.25}
+        }
+        sharpen(d,w,h,.55);break;
+      }
+      case'whiteboard':case'board':{
+        // Whiteboard: the board turns white, reflections fade (glare is part of the local
+        // background, so it is divided away), marker colours are strengthened.
+        const bg=backgroundMap(lumArray(d,w,h),w,h,{pct:.85,cells:24});
+        for(let i=0,j=0;i<n;i+=4,j++){const k=250/Math.max(18,bg[j]);for(let c=0;c<3;c++)d[i+c]=clamp(d[i+c]*k)}
+        blackPoint(d,w,h,60);
+        for(let i=0;i<n;i+=4)saturate(d,i,1.5);
+        sharpen(d,w,h,.3);break;
+      }
+      case'board-dark':{
+        // Blackboard: chalk is brighter than the board around it → dark strokes on white paper.
+        const L=lumArray(d,w,h),bg=backgroundMap(L,w,h,{pct:.35,cells:24}),chalk=new Float32Array(w*h);
+        for(let j=0;j<w*h;j++)chalk[j]=Math.max(0,L[j]-bg[j]);
+        const top=Math.max(20,percentile(new Uint8ClampedArray(chalk),.995));
+        for(let i=0,j=0;i<n;i+=4,j++){const v=clamp(255-chalk[j]/top*235);d[i]=d[i+1]=d[i+2]=v}
+        break;
+      }
+    }
+  }
+
+  function applyFilter(canvas,filter){
+    if(!filter||filter==='original')return canvas;
+    const x=ctx2d(canvas),img=x.getImageData(0,0,canvas.width,canvas.height);
+    filterPixels(img.data,canvas.width,canvas.height,filter);
+    x.putImageData(img,0,0);
+    return canvas;
   }
 
   // Full edit: orientation → straighten/crop (or perspective) → filter. Returns a canvas.
@@ -187,6 +272,8 @@
       const q=orderQuad(e.quad).map(([x,y])=>[x*W,y*W]);
       const dist=(p,r)=>Math.hypot(p[0]-r[0],p[1]-r[1]);
       let ow=Math.max(dist(q[0],q[1]),dist(q[3],q[2])),oh=Math.max(dist(q[0],q[3]),dist(q[1],q[2]));
+      // Documents: a page that is almost A4 comes out exactly A4.
+      if(e.snap==='a4')for(const r of[Math.SQRT2,1/Math.SQRT2])if(Math.abs(oh/ow-r)/r<.12)oh=ow*r;
       const s=Math.min(1,maxSide/Math.max(ow,oh));ow*=s;oh*=s;
       out=warpQuad(oriented,q,ow,oh);
     }else{
@@ -215,5 +302,22 @@
     return new Promise(r=>canvas.toBlob(r,type,quality));
   }
 
-  root.HoliooImage={makeCanvas,defaultEdit,isIdentity,orientedSize,drawOriented,boxToQuad,fullBox,aspectRatio,boxForAspect,orderQuad,renderEdited,applyFilter,scaleTo,toBlob};
+  // ID card: front and back (cropped canvases) on one white A4 page at true size.
+  function composeIdPage(front,back,{pageW=1654,pageH=2339}={}){
+    const page=makeCanvas(pageW,pageH),x=ctx2d(page);
+    x.fillStyle='#fff';x.fillRect(0,0,pageW,pageH);x.imageSmoothingQuality='high';
+    const mm=pageW/210,cw=85.6*mm,ch=54*mm,cx=(pageW-cw)/2;
+    const place=(c,cy)=>{
+      if(!c)return;
+      // A card photographed upright is turned to lie flat like the other.
+      x.save();x.translate(cx+cw/2,cy);
+      if(c.width<c.height){x.rotate(-Math.PI/2);x.drawImage(c,-ch/2,-cw/2,ch,cw)}else x.drawImage(c,-cw/2,-ch/2,cw,ch);
+      x.restore();
+      x.strokeStyle='#d7d9e0';x.lineWidth=2;x.strokeRect(cx,cy-ch/2,cw,ch);
+    };
+    place(front,pageH*.3);place(back,pageH*.7);
+    return page;
+  }
+
+  root.HoliooImage={makeCanvas,defaultEdit,isIdentity,orientedSize,drawOriented,boxToQuad,fullBox,aspectRatio,boxForAspect,orderQuad,squareToQuad,warpPixels,backgroundMap,filterPixels,renderEdited,applyFilter,scaleTo,toBlob,composeIdPage};
 })(typeof self!=='undefined'?self:window);

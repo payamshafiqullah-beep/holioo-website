@@ -1,13 +1,16 @@
 // Créer un PDF — sélection de séances, ordre des photos et options de mise en page.
 let pdfBuilderUrls=[];
 
-function renderPdfBuilder(){
+async function renderPdfBuilder(){
   for(const url of pdfBuilderUrls)URL.revokeObjectURL(url);
   pdfBuilderUrls=[];
 
   const ctx=findSessionContext();if(!ctx){navigate('files');return}
   const{course,session}=ctx;
-  const allSessions=course.sections.flatMap(s=>s.sessions.map(q=>({section:s,session:q}))).filter(x=>x.session.photoIds.length);
+  const everySession=course.sections.flatMap(s=>s.sessions.map(q=>({section:s,session:q})));
+  const written=new Set();
+  for(const x of everySession)if(!x.session.photoIds.length&&await sessionHasNotebookInk(x.session))written.add(x.session.id);
+  const allSessions=everySession.filter(x=>x.session.photoIds.length||written.has(x.session.id));
   const photoContext=new Map();
   for(const entry of allSessions)for(const id of entry.session.photoIds)photoContext.set(id,entry);
 

@@ -56,6 +56,11 @@ async function loadNotebookDoc(session){
 function syncNotebookBlocks(doc,session){
   const byId=new Map(doc.blocks.map(b=>[b.id,b]));
   const photoIds=Array.isArray(session.photoIds)?session.photoIds:[];
+  for(const block of doc.blocks){
+    if(block.type==='photo'&&!block.deleted&&!photoIds.includes(block.photoId||block.id)&&(doc.strokes||[]).some(st=>!st.deleted&&st.blockId===block.id)){
+      Object.assign(block,{type:'blank',photoId:null,frame:undefined,ratio:undefined,updatedAt:Date.now()});   // keep the writing
+    }
+  }
   const next=[];
   for(const photoId of photoIds){
     const found=byId.get(photoId);
@@ -129,7 +134,7 @@ async function renderSessionNotebook({course,section,session}){
     const f=clampFrame(frameOf(block));
     html.push(`<article class="notebook-block${block.id===notebookSelectedBlockId?' selected':''} ${block.type==='blank'?'blank':''}" data-block-id="${esc(block.id)}" style="--fx:${f.x};--fy:${f.y};--fw:${f.w};--fr:${frameRatio(f)}">
       <div class="notebook-margin" aria-hidden="true"></div>
-      <div class="notebook-photo">${media}<span class="notebook-handle" aria-hidden="true"></span></div>
+      <div class="notebook-photo">${media}<span class="notebook-handle" aria-hidden="true"></span><span class="notebook-delete" aria-hidden="true">${icon('x',{size:16,stroke:2.6})}</span></div>
       <canvas class="notebook-canvas committed" aria-hidden="true"></canvas>
       <canvas class="notebook-canvas live" aria-label="Couche d’écriture manuscrite"></canvas>
     </article>`);
@@ -146,14 +151,15 @@ function cleanupNotebookRuntime(){
   notebookRuntime.mql?.removeEventListener?.('change',notebookRuntime.onMedia);
   notebookRuntime.guards.forEach(([type,fn,opts])=>document.removeEventListener(type,fn,opts));
   clearTimeout(notebookRuntime.penTimer);
+  clearTimeout(notebookRuntime.press?.timer);
   notebookRuntime=null;
 }
 
 function setupNotebookRuntime(doc,{course,section,session,editable}){
   const root=byId('sessionNotebook');
   if(!root)return;
-  const rt=notebookRuntime={doc,course,section,session,editable,tool:'pen-black',ruler:false,hist:notebookHistoryFor(session.id),drawing:null,drag:null,resize:null,root,mql:phoneQuery(),penUntil:0,penTimer:0,guards:[]};
-  rt.resize=()=>requestAnimationFrame(()=>redrawNotebook(rt));
+  const rt=notebookRuntime={doc,course,section,session,editable,tool:'pen-black',ruler:false,hist:notebookHistoryFor(session.id),drawing:null,drag:null,press:null,editId:null,resize:null,root,mql:phoneQuery(),penUntil:0,penTimer:0,guards:[]};
+  rt.resize=()=>requestAnimationFrame(()=>{if(rt.root.isConnected&&notebookCanEdit()!==rt.editable)rt.onMedia();else redrawNotebook(rt)});
   rt.onMedia=()=>{if(rt.root.isConnected&&notebookCanEdit()!==rt.editable)renderSessionNotebook({course,section,session})};
   window.addEventListener('resize',rt.resize);
   rt.mql?.addEventListener?.('change',rt.onMedia);
@@ -206,15 +212,14 @@ function selectNotebookBlock(id){
 
 function bindNotebookToolbar(rt){
   const bar=byId('notebookToolbar');if(!bar)return;
-  const toolButtons=[...bar.querySelectorAll('[data-ink-tool],[data-ink-eraser],[data-ink-move]')];
+  const toolButtons=[...bar.querySelectorAll('[data-ink-tool],[data-ink-eraser]')];
   const pick=(tool,btn)=>{
     rt.tool=tool;
     toolButtons.forEach(b=>b.classList.toggle('active',b===btn));
-    rt.root.classList.toggle('move-mode',tool==='move');
+    setEditing(rt,null);
   };
   bar.querySelectorAll('[data-ink-tool]').forEach(btn=>btn.onclick=()=>pick(btn.dataset.inkTool,btn));
   bar.querySelector('[data-ink-eraser]')?.addEventListener('click',e=>pick('eraser',e.currentTarget));
-  bar.querySelector('[data-ink-move]')?.addEventListener('click',e=>pick('move',e.currentTarget));
   bar.querySelector('[data-ink-ruler]')?.addEventListener('click',e=>{
     rt.ruler=!rt.ruler;
     e.currentTarget.classList.toggle('active',rt.ruler);
@@ -230,9 +235,54 @@ function isDrawablePointer(e,rt){
   return false;
 }
 
+const LONG_PRESS_MS=500;
+const LONG_PRESS_SLOP=10;   // px the pointer may drift during the hold
+
+const blockObj=(rt,block)=>rt.doc.blocks.find(b=>b.id===block.dataset.blockId);
+function setEditing(rt,id){
+  rt.editId=id;
+  document.querySelectorAll('.notebook-block').forEach(b=>b.classList.toggle('editing',b.dataset.blockId===id));
+}
+const nearEl=(e,el,r)=>{
+  const b=el?.getBoundingClientRect();
+  return!!b&&Math.hypot(e.clientX-(b.left+b.width/2),e.clientY-(b.top+b.height/2))<=r;
+};
+// What is under the pointer on a photo: 'delete' (the cross), 'corner' (resize handle), 'inside', or null.
+function photoHit(e,block,obj){
+  const photo=obj?.type==='photo'?block.querySelector('.notebook-photo'):null;
+  if(!photo)return null;
+  if(block.classList.contains('editing')&&nearEl(e,photo.querySelector('.notebook-delete'),26))return'delete';
+  if(nearEl(e,photo.querySelector('.notebook-handle'),34))return'corner';
+  const pr=photo.getBoundingClientRect();
+  return e.clientX>=pr.left&&e.clientX<=pr.right&&e.clientY>=pr.top&&e.clientY<=pr.bottom?'inside':null;
+}
+
 function notebookPointerDown(e,rt,block){
   if(!rt.editable)return;
-  if(rt.tool==='move'){startFrameDrag(e,rt,block);return}
+  const obj=blockObj(rt,block),hit=photoHit(e,block,obj);
+  if(rt.editId){
+    if(rt.editId===obj?.id&&hit){
+      e.preventDefault();
+      if(hit==='delete')confirmDeletePhoto(obj.photoId||obj.id);
+      else beginFrameDrag(rt,block,obj,hit==='corner'?'resize':'move',e.clientX,e.clientY,e.pointerId,e.currentTarget);
+      return;
+    }
+    setEditing(rt,null);   // a tap anywhere else ends the photo editing
+  }
+  if(hit){
+    // Holding the pen or a finger on a photo for half a second lets you move and resize it.
+    const press={id:e.pointerId,x:e.clientX,y:e.clientY,hit,timer:0};
+    press.timer=setTimeout(()=>{
+      if(rt.press!==press)return;
+      rt.press=null;
+      if(rt.drawing){clearLiveCanvas(rt.drawing.block);rt.drawing.block.classList.remove('inking');rt.drawing=null}
+      setEditing(rt,obj.id);selectNotebookBlock(obj.id);
+      beginFrameDrag(rt,block,obj,hit==='corner'?'resize':'move',press.x,press.y,press.id,live);
+    },LONG_PRESS_MS);
+    rt.press=press;
+    const live=e.currentTarget;
+    live.setPointerCapture(e.pointerId);
+  }
   if(!isDrawablePointer(e,rt))return;
   const rect=block.getBoundingClientRect();
   const pt=normalizePoint(e.clientX-rect.left,e.clientY-rect.top,rect);
@@ -242,18 +292,15 @@ function notebookPointerDown(e,rt,block){
   e.preventDefault();
 }
 
-// Move tool: drag the photo, or its bottom-right corner to resize it (the ratio is kept).
-function startFrameDrag(e,rt,block){
-  const obj=rt.doc.blocks.find(b=>b.id===block.dataset.blockId),photo=block.querySelector('.notebook-photo');
-  if(!obj||obj.type!=='photo'||!photo)return;
-  const pr=photo.getBoundingClientRect();
-  const corner=Math.hypot(e.clientX-pr.right,e.clientY-pr.bottom)<=40;
-  const inside=e.clientX>=pr.left&&e.clientX<=pr.right&&e.clientY>=pr.top&&e.clientY<=pr.bottom;
-  if(!corner&&!inside)return;
-  selectNotebookBlock(obj.id);
-  rt.drag={block,obj,mode:corner?'resize':'move',sx:e.clientX,sy:e.clientY,rect:block.getBoundingClientRect(),before:frameOf(obj),had:obj.frame,pointerId:e.pointerId,moved:false};
-  e.currentTarget.setPointerCapture(e.pointerId);
-  e.preventDefault();
+function cancelPress(rt,e){
+  const pr=rt.press;
+  if(pr&&(!e||pr.id===e.pointerId)){clearTimeout(pr.timer);rt.press=null}
+}
+
+// Drag the photo, or its bottom-right corner to resize it (the ratio is kept).
+function beginFrameDrag(rt,block,obj,mode,x,y,pointerId,canvas){
+  rt.drag={block,obj,mode,sx:x,sy:y,rect:block.getBoundingClientRect(),before:frameOf(obj),had:obj.frame,pointerId,moved:false};
+  canvas.setPointerCapture?.(pointerId);
 }
 
 function moveFrameDrag(e,g){
@@ -264,6 +311,8 @@ function moveFrameDrag(e,g){
 }
 
 function notebookPointerMove(e,rt,block){
+  const pr=rt.press;
+  if(pr&&pr.id===e.pointerId&&Math.hypot(e.clientX-pr.x,e.clientY-pr.y)>LONG_PRESS_SLOP)cancelPress(rt,e);
   const g=rt.drag;
   if(g){
     if(g.pointerId===e.pointerId&&g.block===block){moveFrameDrag(e,g);e.preventDefault()}
@@ -283,6 +332,7 @@ function notebookPointerMove(e,rt,block){
 }
 
 function notebookPointerUp(e,rt,block){
+  cancelPress(rt,e);
   const g=rt.drag;
   if(g){
     if(g.pointerId!==e.pointerId)return;
@@ -305,6 +355,7 @@ function notebookPointerUp(e,rt,block){
 }
 
 function notebookPointerCancel(e,rt,block){
+  cancelPress(rt,e);
   const g=rt.drag;
   if(g){
     if(g.pointerId!==e.pointerId)return;
@@ -538,4 +589,10 @@ async function notebookExportPages(session){
     out.push({blockId:block.id,photoId:block.type==='photo'?(block.photoId||block.id):null,blob:await renderNotebookPageBlob(doc,block,photo)});
   }
   return out;
+}
+
+// Does the session hold handwriting? (the PDF builder lists such sessions even without photos)
+async function sessionHasNotebookInk(session){
+  let row=null;try{row=await DB.get('kv',inkKey(session.id))}catch{}
+  return!!row?.doc?.strokes?.some(s=>!s.deleted);
 }

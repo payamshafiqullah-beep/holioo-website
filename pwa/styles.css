@@ -433,14 +433,16 @@ html.radial-lock,html.radial-lock body{overscroll-behavior:none;-webkit-user-sel
 .notebook-photo img{display:block;width:100%;height:100%;object-fit:contain;-webkit-user-drag:none;user-select:none}
 .notebook-block.blank .notebook-photo{display:none}
 .notebook-handle{display:none;position:absolute;right:6px;bottom:6px;width:26px;height:26px;border-radius:50%;background:var(--accent);border:3px solid #fff;box-shadow:0 2px 8px rgba(29,33,64,.3)}
-.notebook.move-mode .notebook-photo{outline:2px solid var(--accent)}
-.notebook.move-mode .notebook-handle{display:block}
+.notebook-delete{display:none;position:absolute;right:6px;top:6px;width:30px;height:30px;place-items:center;border-radius:50%;background:var(--danger);color:#fff;border:3px solid #fff;box-shadow:0 2px 8px rgba(29,33,64,.3)}
+.notebook-block.editing .notebook-photo{outline:2px solid var(--accent)}
+.notebook-block.editing .notebook-handle{display:block}
+.notebook-block.editing .notebook-delete{display:grid}
 .notebook-blank-label,.notebook-missing{display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;color:var(--muted);font-weight:800;text-align:center}
 .notebook-canvas{position:absolute;z-index:2;inset:0;width:100%;height:100%;display:block}
 .notebook-canvas.committed{pointer-events:none}
 .notebook-canvas.live{touch-action:pan-y pinch-zoom;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
-.notebook.finger-draw .notebook-canvas.live,.notebook.pen-active .notebook-canvas.live,.notebook.move-mode .notebook-canvas.live{touch-action:none}
-.notebook.move-mode .notebook-canvas.live{cursor:grab}
+.notebook.finger-draw .notebook-canvas.live,.notebook.pen-active .notebook-canvas.live,.notebook-block.editing .notebook-canvas.live{touch-action:none}
+.notebook-block.editing .notebook-canvas.live{cursor:grab}
 .notebook-block.inking .notebook-canvas.live{touch-action:none;cursor:crosshair}
 .ink-toolbar{position:fixed;z-index:75;left:50%;bottom:calc(78px + env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;align-items:center;gap:6px;max-width:min(94vw,520px);padding:8px;border-radius:18px;background:rgba(255,255,255,.92);box-shadow:0 16px 48px rgba(29,33,64,.22);backdrop-filter:blur(18px)}
 .ink-tool{display:grid;place-items:center;flex:none;width:38px;height:38px;border:0;border-radius:12px;background:transparent;color:var(--ink);cursor:pointer}

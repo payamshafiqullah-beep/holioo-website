@@ -97,7 +97,10 @@ async function generatePdfFile(course,sessionIds,opts){
 
     // Handwritten notebook pages replace the plain photo (they have no text layer: the ink is drawn over the photo).
     const inkPages=new Map();
-    for(const e of entries)inkPages.set(e.session.id,await notebookExportPages(e.session));
+    for(const e of entries){
+      try{inkPages.set(e.session.id,await notebookExportPages(e.session))}
+      catch(err){console.warn(err);inkPages.set(e.session.id,[]);showToast('Notes manuscrites non incluses (erreur de rendu)')}
+    }
     const pageLabel=e=>`${course.name} · ${e.section.name} · ${e.session.title}`;
     const pages=[];
     for(const id of orderedIds){

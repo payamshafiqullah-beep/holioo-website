@@ -582,3 +582,12 @@ a{color:inherit}
 /* Folder tiles: icon beside the name instead of above it. */
 .folder-card{display:grid;grid-template-columns:auto 1fr;column-gap:10px;row-gap:0;align-items:center}
 .folder-card .ico{grid-row:span 2;margin:0}
+
+/* Course management uses the same long-press interaction as photo grids. */
+.course-managed{cursor:pointer}
+.course-managed[hidden]{display:none}
+.course-delete{display:grid;place-items:center;flex:none;width:44px;height:44px;border-radius:12px;color:var(--muted);background:transparent}
+.course-delete:hover,.course-delete:focus-visible{background:#ffe9ed;color:#b4233a}
+.course-managed:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.reorder-grid > [data-course]{touch-action:pan-y;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.reorder-ghost .course-delete{visibility:hidden}

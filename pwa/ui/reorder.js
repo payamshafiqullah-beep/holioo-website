@@ -8,12 +8,12 @@
 // live, and onChange receives the final order on release. A quick tap still works as a tap,
 // and a finger that moves before the hold completes scrolls the page as usual.
 
-function makeReorderable(host,{onChange,holdMs=280}={}){
+function makeReorderable(host,{onChange,holdMs=280,itemSelector='[data-photo-id]',idAttribute='photoId'}={}){
   if(host._reorder){host._reorder.onChange=onChange;return host._reorder}
   const api=host._reorder={onChange,renumber:()=>renumber()};
   host.classList.add('reorder-grid');
   let drag=null,suppressClick=false;
-  const items=()=>[...host.children].filter(el=>el.dataset.photoId);
+  const items=()=>[...host.children].filter(el=>el.dataset[idAttribute]);
   const renumber=()=>items().forEach((el,i)=>{
     const n=el.querySelector('.num');if(n)n.textContent=String(i+1);
     if(el===drag?.card){const g=drag.ghost?.querySelector('.num');if(g)g.textContent=String(i+1)} // the lifted photo shows where it will land
@@ -37,7 +37,7 @@ function makeReorderable(host,{onChange,holdMs=280}={}){
     // Scroll the page when the photo is carried near the top or bottom edge.
     if(e.clientY<90)window.scrollBy(0,-10);else if(e.clientY>innerHeight-150)window.scrollBy(0,10);
 
-    const target=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-photo-id]');
+    const target=document.elementFromPoint(e.clientX,e.clientY)?.closest(itemSelector);
     if(!target||target===drag.card||target.parentElement!==host)return;
     const list=items(),from=list.indexOf(drag.card),to=list.indexOf(target);
     const before=new Map(list.map(el=>[el,el.getBoundingClientRect()]));
@@ -62,7 +62,7 @@ function makeReorderable(host,{onChange,holdMs=280}={}){
       host.classList.remove('is-dragging');
       renumber();
       suppressClick=true;setTimeout(()=>suppressClick=false,60);
-      const ids=items().map(el=>el.dataset.photoId);
+      const ids=items().map(el=>el.dataset[idAttribute]);
       if(ids.join()!==drag.initial)api.onChange?.(ids);
       navigator.vibrate?.(10);
     }
@@ -83,12 +83,12 @@ function makeReorderable(host,{onChange,holdMs=280}={}){
   };
 
   host.addEventListener('pointerdown',e=>{
-    const card=e.target.closest('[data-photo-id]');
+    const card=e.target.closest(itemSelector);
     if(!card||card.parentElement!==host||drag)return;
     const btn=e.target.closest('button');if(btn&&btn!==card)return; // action buttons on a photo stay tappable
     if(e.pointerType==='mouse'&&e.button!==0)return;
     const r=card.getBoundingClientRect();
-    drag={card,pointerId:e.pointerId,startX:e.clientX,startY:e.clientY,offsetX:e.clientX-r.left,offsetY:e.clientY-r.top,active:false,initial:items().map(el=>el.dataset.photoId).join(),timer:setTimeout(lift,holdMs)};
+    drag={card,pointerId:e.pointerId,startX:e.clientX,startY:e.clientY,offsetX:e.clientX-r.left,offsetY:e.clientY-r.top,active:false,initial:items().map(el=>el.dataset[idAttribute]).join(),timer:setTimeout(lift,holdMs)};
     document.addEventListener('pointermove',onMove,{passive:false});
     document.addEventListener('pointerup',stop);
     document.addEventListener('pointercancel',stop);

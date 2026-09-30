@@ -43,7 +43,7 @@ function loadState(){
     }
     if(!parsed)return defaultState();
     const base=defaultState();const merged={...base,...parsed,version:3,profile:{...base.profile,...parsed.profile},settings:{...base.settings,...parsed.settings}};
-    merged.courses=Array.isArray(parsed.courses)&&parsed.courses.length?parsed.courses:base.courses;merged.inbox=Array.isArray(parsed.inbox)?parsed.inbox:[];merged.files=Array.isArray(parsed.files)?parsed.files:[];merged.favorites=Array.isArray(parsed.favorites)?parsed.favorites:[];
+    merged.courses=Array.isArray(parsed.courses)?parsed.courses:base.courses;merged.inbox=Array.isArray(parsed.inbox)?parsed.inbox:[];merged.files=Array.isArray(parsed.files)?parsed.files:[];merged.favorites=Array.isArray(parsed.favorites)?parsed.favorites:[];
     merged.courses.forEach(ensureDefaultSections);return merged;
   }catch(e){console.warn(e);return defaultState()}
 }

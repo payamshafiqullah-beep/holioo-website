@@ -132,16 +132,16 @@ function StatCard({tone,iconName,value,label}){
   return`<div class="stat-card tone-${tone}">${IconBadge(iconName,tone,'sm')}<strong>${esc(String(value))}</strong><small>${esc(label)}</small></div>`;
 }
 
-function CourseCard(course,index){
+function CourseCard(course,index,managed=false){
   const v=courseVisual(course,index),s=courseStats(course);
   const overview=course.sections.map(x=>`${x.name} ${x.sessions.length}`).join(' · ');
   const tags=course.sections.map(x=>Tag(x.name,sectionTone(x.name))).join('');
   const statusTag=s.status==='done'?Tag('Terminé','mint'):s.status==='review'?Tag('À revoir','peach'):'';
-  return`<button class="course-card" data-course="${course.id}" data-kind="${s.status}" data-search="${esc(course.name.toLowerCase())}">
-    <span class="course-card-top">${IconBadge(v.iconName,v.tone,'lg')}<span class="course-card-copy"><strong>${esc(course.name)}</strong><small>${esc(overview)}</small></span>${statusTag}</span>
+  return`<${managed?'div role="button" tabindex="0"':'button'} class="course-card${managed?' course-managed':''}" data-course="${course.id}" data-kind="${s.status}" data-search="${esc(course.name.toLowerCase())}">
+    <span class="course-card-top">${IconBadge(v.iconName,v.tone,'lg')}<span class="course-card-copy"><strong>${esc(course.name)}</strong><small>${esc(overview)}</small></span>${statusTag}${managed?`<button class="course-delete" data-delete-course="${course.id}" aria-label="Supprimer ${esc(course.name)}">${icon('trash',{size:20})}</button>`:''}</span>
     <span class="course-card-progress">${ProgressBar(s.pct,v.tone)}<b>${s.filled}/${s.sections} sections</b></span>
     <span class="course-card-foot"><span class="tags">${tags}</span><small>${icon('clock',{size:14})}${s.last?`Dernière activité ${fmtShort(s.last)}`:'Aucune activité'}</small></span>
-  </button>`;
+  </${managed?'div':'button'}>`;
 }
 
 function sectionTone(name){return name==='CM'?'lavender':name==='TD'?'sky':name==='TP'?'peach':name==='Projet'?'mint':'pink'}

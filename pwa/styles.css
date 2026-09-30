@@ -112,6 +112,52 @@ a{color:inherit}
 .nav-capture:hover .capture-orb{box-shadow:0 12px 30px rgba(255,111,71,.48),0 0 0 6px rgba(255,255,255,.9)}
 .nav-capture.active{color:var(--capture-2)}
 
+/* ---------- Quick Capture (Accueil) + radial menu: ui/radial-menu.js, features/quick-capture.js ---------- */
+/* The finger stays on the button during the gesture: no scroll, callout, text selection or tap flash. */
+.nav-capture{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+.nav-capture .capture-orb{position:relative}
+.nav-capture:focus-visible{outline:none}
+.nav-capture:focus-visible .capture-orb{box-shadow:0 10px 24px rgba(255,111,71,.38),0 0 0 4px #fff,0 0 0 7px var(--accent)}
+.nav-capture.radial-pressing .capture-orb{transform:scale(1.1)}
+.nav-capture.radial-pressing .capture-orb::after{content:"";position:absolute;inset:-9px;border-radius:50%;border:3px solid var(--capture-2);animation:qc-hold .25s linear both}
+@keyframes qc-hold{from{opacity:0;transform:scale(.75)}to{opacity:1;transform:scale(1)}}
+
+html.radial-lock,html.radial-lock body{overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.radial{position:fixed;z-index:100;inset:0;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+.radial[data-mode="gesture"]{pointer-events:none}
+.radial-backdrop{position:absolute;inset:0;background:rgba(29,33,64,.46);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);opacity:0;transition:opacity .15s var(--ease)}
+.radial.open .radial-backdrop{opacity:1}
+.radial-center{position:absolute;display:grid;place-items:center;width:60px;height:60px;margin:-30px 0 0 -30px;border-radius:50%;color:#fff;background:linear-gradient(145deg,#FFA062 0%,var(--capture) 45%,var(--capture-2) 100%);box-shadow:0 0 0 6px rgba(255,255,255,.9);transition:transform .15s var(--ease),background .15s}
+.radial.center-hot .radial-center{transform:scale(1.12);background:var(--ink)}
+.radial-center:focus-visible{outline:3px solid #fff;outline-offset:4px}
+.radial-item{
+  position:absolute;display:grid;place-items:center;width:var(--s,56px);height:var(--s,56px);border-radius:50%;
+  background:#fff;color:var(--ink);box-shadow:0 8px 22px rgba(29,33,64,.2),inset 0 0 0 3px var(--c);
+  transform:translate(-50%,-50%) scale(.35);opacity:0;
+  transition:transform .15s var(--ease),opacity .15s var(--ease),background .12s,color .12s,box-shadow .12s;
+}
+.radial.open .radial-item{transform:translate(-50%,-50%) translate(var(--dx),var(--dy));opacity:1}
+.radial.open .radial-item.hot{transform:translate(-50%,-50%) translate(var(--dx),var(--dy)) scale(1.2);z-index:2}
+.radial-item.hot,.radial-item.parent{background:var(--c);color:var(--fg);box-shadow:0 10px 26px rgba(29,33,64,.28),inset 0 0 0 3px rgba(255,255,255,.55)}
+.radial.open .radial-item.pre,.radial-item.pre{transform:translate(-50%,-50%) translate(var(--px),var(--py)) scale(.35);opacity:0}
+.radial.closing .radial-item{transform:translate(-50%,-50%) scale(.35);opacity:0}
+.radial-dot{max-width:88%;overflow:hidden;font-size:calc(var(--s,56px)*var(--k,.3));font-weight:800;line-height:1.25;letter-spacing:-.02em;white-space:nowrap;text-overflow:clip}
+.radial-item small{position:absolute;top:calc(100% + 5px);left:50%;transform:translateX(-50%);max-width:calc(var(--s,56px) + 12px);padding:2px 6px;border-radius:8px;background:rgba(255,255,255,.94);color:var(--ink);font-size:11px;font-weight:700;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+.radial-item.marked::after{content:"";position:absolute;top:1px;right:1px;width:12px;height:12px;border-radius:50%;background:var(--capture-2);border:2px solid #fff}
+.radial-item:focus-visible{outline:3px solid #fff;outline-offset:3px}
+.radial-title{position:absolute;display:flex;flex-direction:column;align-items:center;gap:2px;max-width:min(88vw,360px);padding:10px 16px;border-radius:18px;background:rgba(255,255,255,.97);box-shadow:var(--shadow-md);text-align:center;pointer-events:none;transform:translate(-50%,-4px);opacity:0;transition:opacity .15s,transform .15s var(--ease)}
+.radial.open .radial-title{opacity:1;transform:translate(-50%,0)}
+.radial-title b{max-width:100%;overflow:hidden;font-size:15px;font-weight:800;letter-spacing:-.01em;white-space:nowrap;text-overflow:ellipsis}
+.radial-title span{font-size:12.5px;font-weight:600;color:var(--muted)}
+.radial.closing .radial-backdrop,.radial.closing .radial-title{opacity:0}
+
+.qc-bubble{position:fixed;z-index:95;width:max-content;max-width:min(300px,calc(100vw - 32px));padding:12px 16px;border-radius:16px;background:var(--ink);color:#fff;font-size:14px;font-weight:600;line-height:1.35;text-align:center;box-shadow:var(--shadow-lg);transform:translateX(-50%);animation:qc-pop .2s var(--ease)}
+.qc-bubble::after{content:"";position:absolute;left:50%;bottom:-6px;width:12px;height:12px;margin-left:-6px;border-radius:2px;background:var(--ink);transform:rotate(45deg)}
+.qc-bubble p{margin:0}
+.qc-bubble-btn{display:inline-flex;align-items:center;gap:6px;height:38px;margin-top:10px;padding:0 14px;border-radius:12px;background:#fff;color:var(--ink);font-size:14px;font-weight:700}
+.qc-bubble-btn:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+@keyframes qc-pop{from{opacity:0;transform:translate(-50%,6px)}to{opacity:1;transform:translate(-50%,0)}}
+
 /* ---------- Header ---------- */
 .page-header{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);min-height:44px}
 .page-header-large{margin:0;font-size:30px;line-height:1.1;font-weight:800;letter-spacing:-.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

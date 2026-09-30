@@ -806,7 +806,6 @@ body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
 @keyframes focus-ring{0%{opacity:1;transform:scale(1.4)}40%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1)}}
 .cam-notice.scan-hint{background:rgba(20,22,32,.66);font-size:13px}
 .cam-notice.scan-hint.warn{background:rgba(229,72,107,.88)}
-.camera[data-mode="qr"] .shutter{visibility:hidden}
 .cam-panel-note{margin:0;font-size:12px;line-height:1.45;color:rgba(255,255,255,.62)}
 .qr-result{margin:0 0 var(--s3);padding:12px 14px;border-radius:14px;background:var(--bg);font-size:14px;line-height:1.45;word-break:break-all;user-select:text;-webkit-user-select:text}
 /* Landscape phones: controls in a column on the right, preview uses the full height. */

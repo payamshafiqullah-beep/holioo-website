@@ -483,7 +483,6 @@ function renderScanTools(){
   tools.classList.toggle('hidden',!isScanMode(camMode));
   const auto=state.scanAuto!==false&&camMode!=='id',b=byId('scanAutoBtn');
   if(b){b.textContent=auto?camT('scanAuto'):camT('scanManual');b.classList.toggle('on',auto);b.setAttribute('aria-pressed',String(auto));b.setAttribute('aria-label',camT('scanAutoLabel',{state:auto?camT('on'):camT('off')}));b.disabled=camMode==='id'}
-  const shutter=byId('shutter');if(shutter)shutter.hidden=camMode==='qr';
 }
 function toggleScanAuto(){state.scanAuto=state.scanAuto===false;saveState();renderScanTools();showToast(camT('scanAutoLabel',{state:state.scanAuto?camT('on'):camT('off')}))}
 function toggleCameraGrid(){
@@ -602,7 +601,8 @@ async function importScanFiles(files,dest){
 // run in cameraQueue (features/camera-queue.js) while the next photo can already be taken.
 
 function capturePhoto({auto=false}={}){
-  if(camMode==='qr')return;
+  // The shutter is always there: in QR mode (codes are read by themselves) it switches back to Photo and shoots.
+  if(camMode==='qr'){if(auto)return;applyCameraMode('photo')}
   if(!cameraDestContext()){if(!auto)openDestinationPicker(camT('chooseFirst'));return}
   const video=byId('cameraVideo');
   if(!cameraStream||!video?.videoWidth){

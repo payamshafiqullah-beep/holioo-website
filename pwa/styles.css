@@ -133,27 +133,25 @@ html.radial-lock,html.radial-lock body{overscroll-behavior:none;-webkit-user-sel
 .radial.center-hot .radial-center{transform:scale(1.12);background:var(--ink)}
 .radial-center:focus-visible{outline:3px solid #fff;outline-offset:4px}
 .radial-item{
-  position:absolute;display:grid;place-items:center;width:var(--s,56px);height:var(--s,56px);border-radius:50%;isolation:isolate;
-  color:var(--ink);
+  position:absolute;display:grid;place-items:center;width:var(--s,56px);height:var(--s,56px);border-radius:50%;
+  background:#fff;color:var(--ink);box-shadow:0 8px 22px rgba(29,33,64,.2),inset 0 0 0 3px var(--c);
   transform:translate(-50%,-50%) scale(.35);opacity:0;
-  transition:transform .15s var(--ease),opacity .15s var(--ease),color .12s;
+  transition:transform .15s var(--ease),opacity .15s var(--ease),background .12s,color .12s,box-shadow .12s;
 }
-/* Each circle is a water drop (ui/magnet.js): its background stretches toward the finger, the label only moves. */
-.radial-item .mag-blob{position:absolute;inset:0;z-index:-1;border-radius:50%;background:#fff;box-shadow:0 8px 22px rgba(29,33,64,.2),inset 0 0 0 3px var(--c);transform-origin:50% 50%;pointer-events:none;transition:background .12s,box-shadow .12s}
-.radial-item .mag-glyph{position:relative;display:grid;place-items:center;width:100%;height:100%;pointer-events:none}
-/* A course stretching toward the finger never hides the sections it is heading for. */
-.radial .radial-item.r2{z-index:3}
-.radial.open .radial-item.r2.hot{z-index:4}
 .radial.open .radial-item{transform:translate(-50%,-50%) translate(var(--dx),var(--dy));opacity:1}
 .radial.open .radial-item.hot{transform:translate(-50%,-50%) translate(var(--dx),var(--dy)) scale(1.2);z-index:2}
-.radial-item.hot,.radial-item.parent{color:var(--fg)}
-.radial-item.hot .mag-blob,.radial-item.parent .mag-blob{background:var(--c);box-shadow:0 10px 26px rgba(29,33,64,.28),inset 0 0 0 3px rgba(255,255,255,.55)}
+.radial-item.hot,.radial-item.parent{background:var(--c);color:var(--fg);box-shadow:0 10px 26px rgba(29,33,64,.28),inset 0 0 0 3px rgba(255,255,255,.55)}
 .radial.open .radial-item.pre,.radial-item.pre{transform:translate(-50%,-50%) translate(var(--px),var(--py)) scale(.35);opacity:0}
 .radial.closing .radial-item{transform:translate(-50%,-50%) scale(.35);opacity:0}
 .radial-dot{max-width:88%;overflow:hidden;font-size:calc(var(--s,56px)*var(--k,.3));font-weight:800;line-height:1.25;letter-spacing:-.02em;white-space:nowrap;text-overflow:clip}
 .radial-item small{position:absolute;top:calc(100% + 5px);left:50%;transform:translateX(-50%);max-width:calc(var(--s,56px) + 12px);padding:2px 6px;border-radius:8px;background:rgba(255,255,255,.94);color:var(--ink);font-size:11px;font-weight:700;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
 .radial-item.marked::after{content:"";position:absolute;top:1px;right:1px;width:12px;height:12px;border-radius:50%;background:var(--capture-2);border:2px solid #fff}
 .radial-item:focus-visible{outline:3px solid #fff;outline-offset:3px}
+/* Selection lens: a small liquid glass under the finger (ui/radial-menu.js, lensPoint). */
+.radial-lens{position:absolute;left:0;top:0;border-radius:50%;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.55);-webkit-backdrop-filter:blur(3px) saturate(1.6);backdrop-filter:blur(3px) saturate(1.6);opacity:0;pointer-events:none;transform-origin:50% 50%;transition:opacity .12s;will-change:transform}
+.radial-lens-label{position:absolute;left:0;top:0;z-index:5;padding:3px 9px;border-radius:999px;background:#fff;color:var(--ink);font-size:12px;font-weight:700;line-height:1.3;white-space:nowrap;box-shadow:0 4px 12px rgba(29,33,64,.2);opacity:0;pointer-events:none;transition:opacity .12s}
+.radial-item .radial-dot{transition:transform .15s var(--ease)}
+.radial-item.lensed .radial-dot{transform:scale(1.2)}
 .radial-title{position:absolute;display:flex;flex-direction:column;align-items:center;gap:2px;width:max-content;max-width:min(88vw,360px);padding:10px 16px;border-radius:18px;background:rgba(255,255,255,.97);box-shadow:var(--shadow-md);text-align:center;pointer-events:none;transform:translate(-50%,-4px);opacity:0;transition:opacity .15s,transform .15s var(--ease)}
 .radial.open .radial-title{opacity:1;transform:translate(-50%,0)}
 .radial-title b{max-width:100%;overflow:hidden;font-size:15px;font-weight:800;letter-spacing:-.01em;white-space:nowrap;text-overflow:ellipsis}

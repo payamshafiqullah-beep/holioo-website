@@ -3,7 +3,8 @@
 // in features/scanner.js, the destination sheet in ui/camera-picker.js, texts in features/camera-i18n.js.
 function renderCapture(){
   const glass=(id,name,label,extra='')=>`<button class="glass-btn" id="${id}" aria-label="${esc(label)}" ${extra}>${icon(name,{size:21})}</button>`;
-  camMode=SCAN_MODES.includes(state.camMode)?state.camMode:'photo';
+  // QR is a one-off: the camera always opens in a mode with the shutter (the last one used, or Photo).
+  camMode=SCAN_MODES.includes(state.camMode)&&state.camMode!=='qr'?state.camMode:'photo';
   app.innerHTML=`<div class="camera" data-mode="${camMode}">
     <div class="camera-stage" id="cameraStage">
       <video id="cameraVideo" autoplay playsinline muted></video>

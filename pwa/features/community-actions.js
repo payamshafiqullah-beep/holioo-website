@@ -128,3 +128,30 @@ async function connectDrive(){
 }
 
 function showInstallSheet(){openSheet({title:'Installer Holioo sur iPhone',subtitle:'Ouvrez cette page dans Safari.',body:'<div class="notice">Touchez Partager → Sur l’écran d’accueil → Ajouter. Holioo s’ouvrira ensuite comme une app.</div>',confirmText:deferredInstallPrompt?'Installer maintenant':'Compris',onConfirm:async()=>{if(deferredInstallPrompt){deferredInstallPrompt.prompt();await deferredInstallPrompt.userChoice;deferredInstallPrompt=null}return true},secondaryText:''})}
+// Ownership is checked again against the server; cached cards are never authorization.
+async function removePublicMaterial(itemId){
+  if(!currentUser||!sb||!navigator.onLine)throw new Error('Connexion Internet et compte Google nécessaires.');
+  const owner=currentUser.id;
+  const{data:item,error:readError}=await sb.from('public_materials').select('id,owner_id,session_local_id,storage_paths').eq('id',itemId).eq('owner_id',owner).maybeSingle();
+  if(readError)throw readError;
+  if(!item||item.owner_id!==owner)throw new Error('Publication introuvable ou non autorisée.');
+  // Hide first. If storage fails, retain the row and its paths for a safe retry.
+  const{data:hidden,error:hideError}=await sb.from('public_materials').update({is_published:false}).eq('id',itemId).eq('owner_id',owner).select('id');
+  if(hideError)throw hideError;if(!hidden?.length)throw new Error('Suppression non autorisée.');
+  const paths=(item.storage_paths||[]).filter(p=>p.startsWith(`${owner}/`));
+  if(paths.length!==(item.storage_paths||[]).length)throw new Error('Chemin de fichier non autorisé.');
+  for(let start=0;start<paths.length;start+=1000){const{error}=await sb.storage.from('public-materials').remove(paths.slice(start,start+1000));if(error)throw error}
+  const{data:deleted,error:deleteError}=await sb.from('public_materials').delete().eq('id',itemId).eq('owner_id',owner).select('id');
+  if(deleteError)throw deleteError;if(!deleted?.length)throw new Error('Suppression non confirmée. Réessayez.');
+  state.favorites=state.favorites.filter(f=>f.id!==itemId);
+  const context=findSessionContext(item.session_local_id);if(context)context.session.visibility='private';
+  saveState();
+}
+function confirmDeletePublicMaterial(item){
+  let busy=false;
+  openSheet({title:'Supprimer cette publication ?',subtitle:'Le PDF ou les photos publiées seront retirés de la bibliothèque pour tous. Vos originaux personnels resteront sur cet appareil.',confirmText:'Supprimer',confirmClass:'coral',onConfirm:async()=>{
+    if(busy)return false;busy=true;
+    try{await removePublicMaterial(item.id);currentLibrary={step:'years'};await render();showToast('Publication supprimée');return true}
+    catch(e){console.error(e);showToast(e.message||'Suppression impossible. Réessayez.');busy=false;return false}
+  }});
+}

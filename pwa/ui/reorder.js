@@ -1,100 +1,130 @@
 'use strict';
-// Press-and-hold to drag photos into a new order, iPhone style. Shared by every photo grid.
-//
-//   makeReorderable(host,{onChange(ids)})
-//
-// Items are the direct children of `host` that carry data-photo-id. Holding a photo lifts it
-// (it grows slightly and follows the finger), the others make room, the .num badges renumber
-// live, and onChange receives the final order on release. A quick tap still works as a tap,
-// and a finger that moves before the hold completes scrolls the page as usual.
+// Touch uses cancelable touch events so native scrolling cannot cancel a lifted item.
+// Mouse/pen uses pointer events. Fixed layout slots prevent feedback/jitter after a swap.
+const reorderControls=new Set();
+function destroyReorderables(){for(const control of [...reorderControls])control.destroy()}
 
-function makeReorderable(host,{onChange,holdMs=280}={}){
-  if(host._reorder){host._reorder.onChange=onChange;return host._reorder}
-  const api=host._reorder={onChange,renumber:()=>renumber()};
-  host.classList.add('reorder-grid');
-  let drag=null,suppressClick=false;
-  const items=()=>[...host.children].filter(el=>el.dataset.photoId);
-  const renumber=()=>items().forEach((el,i)=>{
-    const n=el.querySelector('.num');if(n)n.textContent=String(i+1);
-    if(el===drag?.card){const g=drag.ghost?.querySelector('.num');if(g)g.textContent=String(i+1)} // the lifted photo shows where it will land
-  });
-
-  // Slide the other photos from their old position to the new one.
-  const animateFrom=before=>items().forEach(el=>{
-    const old=before.get(el);if(!old||el===drag?.card)return;
-    const now=el.getBoundingClientRect(),dx=old.left-now.left,dy=old.top-now.top;
-    if(!dx&&!dy)return;
-    el.style.transition='none';el.style.transform=`translate(${dx}px,${dy}px)`;
-    requestAnimationFrame(()=>requestAnimationFrame(()=>{el.style.transition='';el.style.transform=''}));
-  });
-
-  const onMove=e=>{
-    if(!drag||e.pointerId!==drag.pointerId)return;
-    if(!drag.active){if(Math.hypot(e.clientX-drag.startX,e.clientY-drag.startY)>8)stop();return}
-    e.preventDefault();
-    drag.ghost.style.left=`${e.clientX-drag.offsetX}px`;
-    drag.ghost.style.top=`${e.clientY-drag.offsetY}px`;
-    // Scroll the page when the photo is carried near the top or bottom edge.
-    if(e.clientY<90)window.scrollBy(0,-10);else if(e.clientY>innerHeight-150)window.scrollBy(0,10);
-
-    const target=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-photo-id]');
-    if(!target||target===drag.card||target.parentElement!==host)return;
-    const list=items(),from=list.indexOf(drag.card),to=list.indexOf(target);
-    const before=new Map(list.map(el=>[el,el.getBoundingClientRect()]));
-    host.insertBefore(drag.card,from<to?target.nextSibling:target);
-    renumber();animateFrom(before);
-    navigator.vibrate?.(5);
-  };
-
-  // While a photo is lifted, the page must not scroll (touch events are the only reliable way on iOS).
-  const blockScroll=e=>{if(drag?.active)e.preventDefault()};
-
-  const stop=()=>{
+function makeReorderable(host,{onChange,holdMs=320,itemSelector='[data-photo-id]',idAttribute='photoId'}={}){
+  host._reorder?.destroy();
+  let drag=null,frame=0,suppressUntil=0;
+  const items=()=>[...host.children].filter(el=>el.matches(itemSelector));
+  const visible=()=>items().filter(el=>!el.hidden);
+  const ids=()=>items().map(el=>el.dataset[idAttribute]);
+  const announce=document.createElement('span');announce.className='sr-only';announce.setAttribute('aria-live','polite');host.after(announce);
+  const api={onChange,renumber:()=>renumber(),destroy};host._reorder=api;reorderControls.add(api);host.classList.add('reorder-grid');
+  function renumber(){items().forEach((el,i)=>{
+    const badge=el.querySelector('.num');if(badge)badge.textContent=String(i+1);
+    const handle=el.querySelector('.reorder-handle');if(handle)handle.setAttribute('aria-label',`Déplacer l’élément ${i+1}. Utilisez les flèches du clavier ou faites glisser.`);
+  })}
+  for(const el of items()){
+    const handle=document.createElement('button');handle.type='button';handle.className='reorder-handle';handle.dataset.reorderHandle='';
+    handle.innerHTML='<span aria-hidden="true">⠿</span>';el.appendChild(handle);
+  }
+  renumber();
+  function setVisibleOrder(ordered){
+    // Filtered-out items retain their saved positions.
+    let n=0;for(const el of items().map(el=>el.hidden?el:ordered[n++]))host.appendChild(el);
+    renumber();
+  }
+  function commit(){api.onChange?.(ids())}
+  function finish(cancel=false){
     if(!drag)return;
-    clearTimeout(drag.timer);
-    document.removeEventListener('pointermove',onMove);
-    document.removeEventListener('pointerup',stop);
-    document.removeEventListener('pointercancel',stop);
-    document.removeEventListener('touchmove',blockScroll);
-    if(drag.active){
-      drag.ghost.remove();
-      drag.card.classList.remove('drag-placeholder');
-      host.classList.remove('is-dragging');
-      renumber();
-      suppressClick=true;setTimeout(()=>suppressClick=false,60);
-      const ids=items().map(el=>el.dataset.photoId);
-      if(ids.join()!==drag.initial)api.onChange?.(ids);
-      navigator.vibrate?.(10);
+    const d=drag;drag=null;clearTimeout(d.timer);cancelAnimationFrame(frame);frame=0;
+    document.removeEventListener('pointermove',pointerMove);document.removeEventListener('pointerup',pointerUp);document.removeEventListener('pointercancel',pointerCancel);
+    document.removeEventListener('touchmove',touchMove);document.removeEventListener('touchend',touchEnd);document.removeEventListener('touchcancel',touchCancel);
+    window.removeEventListener('blur',cancelDrag);window.removeEventListener('resize',cancelDrag);
+    if(!d.active)return;
+    if(cancel)for(const el of d.original)host.appendChild(el);
+    d.ghost.remove();d.card.classList.remove('drag-placeholder');host.classList.remove('is-dragging');document.body.classList.remove('reorder-active');
+    suppressUntil=Date.now()+450;renumber();
+    if(!cancel&&ids().join()!==d.initial){commit();announce.textContent=`Position ${visible().indexOf(d.card)+1} enregistrée.`}
+    else announce.textContent=cancel?'Déplacement annulé.':'';
+  }
+  const cancelDrag=()=>finish(true);
+  function lift(){
+    if(!drag||!host.isConnected)return finish(true);
+    const d=drag,r=d.card.getBoundingClientRect();d.active=true;
+    d.slots=visible().map(el=>{const b=el.getBoundingClientRect();return{x:b.left+b.width/2,y:b.top+b.height/2,width:b.width,height:b.height}});
+    d.scrollY=window.scrollY;d.scrollX=window.scrollX;d.index=visible().indexOf(d.card);
+    d.width=r.width;d.height=r.height;
+    const ghost=d.card.cloneNode(true);ghost.removeAttribute('id');ghost.setAttribute('aria-hidden','true');ghost.classList.add('reorder-ghost');
+    Object.assign(ghost.style,{width:`${r.width}px`,height:`${r.height}px`,left:'0',top:'0'});
+    document.body.appendChild(ghost);d.ghost=ghost;d.card.classList.add('drag-placeholder');host.classList.add('is-dragging');document.body.classList.add('reorder-active');
+    navigator.vibrate?.(15);announce.textContent='Élément saisi. Faites glisser, puis relâchez.';frame=requestAnimationFrame(tick);
+  }
+  function tick(){
+    if(!drag?.active)return;
+    const d=drag;if(!host.isConnected)return finish(true);
+    d.ghost.style.transform=`translate3d(${d.x-d.offsetX}px,${d.y-d.offsetY}px,0) scale(1.035)`;
+    // Continues even if the finger stops moving near an edge. Speed increases toward the edge.
+    const edge=80,bottom=window.innerHeight-90;
+    const speed=d.y<edge?-Math.ceil((edge-d.y)/edge*15):d.y>bottom?Math.ceil((d.y-bottom)/edge*15):0;
+    if(speed)window.scrollBy(0,Math.max(-18,Math.min(18,speed)));
+    const x=d.x-d.offsetX+d.width/2+(window.scrollX-d.scrollX),y=d.y-d.offsetY+d.height/2+(window.scrollY-d.scrollY);
+    const distances=d.slots.map(s=>Math.hypot(x-s.x,y-s.y));let to=distances.indexOf(Math.min(...distances));
+    // A deliberate crossing, not a one-pixel tie, is required to change slots.
+    if(to!==d.index&&distances[to]+12<distances[d.index]){
+      const ordered=visible();ordered.splice(d.index,1);ordered.splice(to,0,d.card);setVisibleOrder(ordered);d.index=to;
+      const badge=d.ghost.querySelector('.num');if(badge)badge.textContent=String(items().indexOf(d.card)+1);
     }
-    drag=null;
-  };
-
-  const lift=()=>{
+    frame=requestAnimationFrame(tick);
+  }
+  function start(target,x,y,mode,id,immediate=false){
+    if(drag)return;
+    const card=target.closest(itemSelector);if(!card||card.parentElement!==host)return;
+    const button=target.closest('button');if(button&&button!==card&&!button.matches('[data-reorder-handle]'))return;
+    const r=card.getBoundingClientRect();drag={card,mode,id,x,y,startX:x,startY:y,offsetX:x-r.left,offsetY:y-r.top,initial:ids().join(),original:items(),active:false};
+    if(mode==='touch'){
+      document.addEventListener('touchmove',touchMove,{passive:false});document.addEventListener('touchend',touchEnd);document.addEventListener('touchcancel',touchCancel);
+    }else{
+      document.addEventListener('pointermove',pointerMove,{passive:false});document.addEventListener('pointerup',pointerUp);document.addEventListener('pointercancel',pointerCancel);
+    }
+    window.addEventListener('blur',cancelDrag);window.addEventListener('resize',cancelDrag);
+    if(immediate)lift();else drag.timer=setTimeout(lift,holdMs);
+  }
+  function move(x,y,e){
     if(!drag)return;
-    drag.active=true;
-    const r=drag.card.getBoundingClientRect(),ghost=drag.card.cloneNode(true);
-    ghost.classList.add('reorder-ghost');
-    Object.assign(ghost.style,{width:`${r.width}px`,height:`${r.height}px`,left:`${r.left}px`,top:`${r.top}px`});
-    document.body.appendChild(ghost);
-    drag.ghost=ghost;
-    drag.card.classList.add('drag-placeholder');
-    host.classList.add('is-dragging');
-    navigator.vibrate?.(18);
-  };
-
-  host.addEventListener('pointerdown',e=>{
-    const card=e.target.closest('[data-photo-id]');
-    if(!card||card.parentElement!==host||drag)return;
-    const btn=e.target.closest('button');if(btn&&btn!==card)return; // action buttons on a photo stay tappable
-    if(e.pointerType==='mouse'&&e.button!==0)return;
-    const r=card.getBoundingClientRect();
-    drag={card,pointerId:e.pointerId,startX:e.clientX,startY:e.clientY,offsetX:e.clientX-r.left,offsetY:e.clientY-r.top,active:false,initial:items().map(el=>el.dataset.photoId).join(),timer:setTimeout(lift,holdMs)};
-    document.addEventListener('pointermove',onMove,{passive:false});
-    document.addEventListener('pointerup',stop);
-    document.addEventListener('pointercancel',stop);
-    document.addEventListener('touchmove',blockScroll,{passive:false});
-  });
-  host.addEventListener('click',e=>{if(suppressClick){e.preventDefault();e.stopPropagation()}},true);
-  host.addEventListener('contextmenu',e=>e.preventDefault());
+    drag.x=x;drag.y=y;
+    if(drag.active){if(e.cancelable)e.preventDefault();return}
+    if(Math.hypot(x-drag.startX,y-drag.startY)>10){
+      if(drag.mode==='touch')finish(true);else lift();
+    }
+  }
+  function pointerDown(e){
+    if(e.pointerType==='touch'||e.isPrimary===false||e.button!==0)return;
+    start(e.target,e.clientX,e.clientY,'pointer',e.pointerId,!!e.target.closest('[data-reorder-handle]'));
+    if(drag)e.preventDefault();
+  }
+  function pointerMove(e){if(drag?.id===e.pointerId)move(e.clientX,e.clientY,e)}
+  function pointerUp(e){if(drag?.id===e.pointerId)finish()}
+  function pointerCancel(e){if(drag?.id===e.pointerId)finish(true)}
+  function touchStart(e){
+    if(e.touches.length!==1){finish(true);return}
+    const t=e.changedTouches[0],handle=!!e.target.closest('[data-reorder-handle]');
+    start(e.target,t.clientX,t.clientY,'touch',t.identifier,handle);
+    if(drag?.active&&e.cancelable)e.preventDefault();
+  }
+  function touchMove(e){
+    if(e.touches.length!==1)return finish(true);
+    const t=[...e.touches].find(t=>t.identifier===drag?.id);if(t)move(t.clientX,t.clientY,e);
+  }
+  function touchEnd(e){if([...e.changedTouches].some(t=>t.identifier===drag?.id))finish()}
+  function touchCancel(){finish(true)}
+  function click(e){if(Date.now()<suppressUntil||e.target.closest('[data-reorder-handle]')){e.preventDefault();e.stopImmediatePropagation()}}
+  function keydown(e){
+    if(e.key==='Escape'&&drag){e.preventDefault();finish(true);return}
+    const handle=e.target.closest('[data-reorder-handle]');if(!handle)return;
+    const delta={ArrowLeft:-1,ArrowUp:-1,ArrowRight:1,ArrowDown:1}[e.key];if(!delta)return;
+    e.preventDefault();e.stopPropagation();const card=handle.closest(itemSelector),ordered=visible(),from=ordered.indexOf(card),to=from+delta;
+    if(to<0||to>=ordered.length)return;
+    ordered.splice(from,1);ordered.splice(to,0,card);setVisibleOrder(ordered);handle.focus();commit();announce.textContent=`Position ${to+1} enregistrée.`;
+  }
+  function contextmenu(e){if(drag||e.target.closest(itemSelector))e.preventDefault()}
+  function nativeDrag(e){e.preventDefault()}
+  function destroy(){
+    finish(true);host.removeEventListener('pointerdown',pointerDown);host.removeEventListener('touchstart',touchStart);host.removeEventListener('click',click,true);host.removeEventListener('keydown',keydown);host.removeEventListener('contextmenu',contextmenu);host.removeEventListener('dragstart',nativeDrag);
+    host.querySelectorAll('.reorder-handle').forEach(el=>el.remove());announce.remove();reorderControls.delete(api);delete host._reorder;
+  }
+  host.addEventListener('pointerdown',pointerDown);host.addEventListener('touchstart',touchStart,{passive:false});host.addEventListener('click',click,true);host.addEventListener('keydown',keydown);host.addEventListener('contextmenu',contextmenu);host.addEventListener('dragstart',nativeDrag);
   return api;
 }

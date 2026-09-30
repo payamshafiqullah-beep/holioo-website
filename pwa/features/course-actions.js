@@ -5,7 +5,7 @@ async function fillSessionThumbs(session){
   const ctx=findSessionContext(session.id);
   for(let i=0;i<session.photoIds.length;i++){
     const id=session.photoIds[i],row=await DB.get('photos',id);if(!row?.blob)continue;const url=await photoThumbUrl(id);if(!url||!box.isConnected)continue;const status=photoStatusLabel(row),d=document.createElement('div');d.className='thumb gallery-thumb';d.dataset.photoId=id;
-    d.innerHTML=`<img src="${url}" alt="Photo ${i+1}" draggable="false" decoding="async"><span class="num">${i+1}</span><span class="thumb-status badge ${status.cls}">${status.label}</span><div class="thumb-actions"><button data-move="${id}" aria-label="Déplacer vers une autre séance">↗</button><button data-del="${id}" aria-label="Supprimer">×</button></div>`;
+    d.innerHTML=`<img src="${url}" alt="Photo ${i+1}" draggable="false" decoding="async"><span class="num">${i+1}</span><span class="thumb-status badge ${status.cls}">${status.label}</span><div class="thumb-actions"><button data-del="${id}" aria-label="Supprimer cette photo">${icon('trash',{size:20})}</button></div>`;
     d.onclick=()=>openPhotoViewer(session.photoIds,Math.max(0,session.photoIds.indexOf(id)),{title:session.title,source:'session',sourceId:session.id,editable:true,returnView:'session',courseId:ctx?.course.id,currentSectionId:ctx?.section.id,sectionId:ctx?.section.id,sessionId:session.id});
     box.appendChild(d);
   }
@@ -22,4 +22,4 @@ function movePhotoToSession(sourceSession,photoId){
 }
 
 
-async function deleteSessionPhoto(session,id){openSheet({title:'Supprimer la photo ?',subtitle:'Elle sera supprimée de Holioo sur cet appareil. Une copie déjà synchronisée dans Drive peut rester jusqu’à suppression manuelle.',confirmText:'Supprimer',confirmClass:'coral',onConfirm:async()=>{session.photoIds=session.photoIds.filter(x=>x!==id);await DB.del('photos',id);saveState();render();return true}})}
+function deleteSessionPhoto(session,id){confirmDeletePhoto(id)}

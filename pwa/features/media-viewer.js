@@ -74,10 +74,44 @@ function viewerMoveCurrent(){
   openSheet({title:'Déplacer cette photo',subtitle:'Choisissez une autre séance.',body:`<div class="field"><label>Destination</label><select id="viewerMoveTarget">${targets.map(t=>`<option value="${t.session.id}">${esc(t.course.name)} • ${esc(t.section.name)} • ${esc(t.session.title)}</option>`).join('')}</select></div>`,confirmText:'Déplacer',confirmClass:'purple',onConfirm:()=>{const target=targets.find(t=>t.session.id===byId('viewerMoveTarget').value);if(!target)return false;ctx.session.photoIds=ctx.session.photoIds.filter(x=>x!==photoId);target.session.photoIds.push(photoId);saveState();queueSync();v.ids=v.ids.filter(x=>x!==photoId);if(!v.ids.length){showToast('Photo déplacée');navigate('session')}else{v.index=Math.min(v.index,v.ids.length-1);renderPhotoViewer();showToast('Photo déplacée')}return true}})
 }
 
+// Remove bytes before changing references; failed storage operations leave the UI intact.
+async function removeLocalPhoto(id){
+  await DB.del('photos',id);
+  for(const c of state.courses)for(const section of c.sections)for(const session of section.sessions)session.photoIds=session.photoIds.filter(x=>x!==id);
+  for(const batch of state.inbox)batch.photoIds=batch.photoIds.filter(x=>x!==id);
+  state.inbox=state.inbox.filter(batch=>batch.photoIds.length);
+  const cleanBatch=batch=>{if(!batch)return;batch.photoIds=batch.photoIds.filter(x=>x!==id);batch.selected?.delete(id);for(const child of batch.splitQueue||[])cleanBatch(child)};
+  cleanBatch(currentBatch);cleanBatch(state.captureDraft);
+  saveState();queueSync();
+}
+function confirmDeletePhoto(id,after=()=>render()){
+  let busy=false;
+  openSheet({title:'Supprimer cette photo ?',subtitle:'La photo sera supprimée de vos captures et séances sur cet appareil. Les copies déjà publiées ou enregistrées dans Drive resteront disponibles.',confirmText:'Supprimer',confirmClass:'coral',onConfirm:async()=>{
+    if(busy)return false;busy=true;
+    try{await removeLocalPhoto(id);await after();showToast('Photo supprimée');return true}
+    catch(e){console.error(e);showToast('Suppression impossible. Réessayez.');busy=false;return false}
+  }});
+}
 function viewerDeleteCurrent(){
-  const v=currentPhotoViewer;if(!v||v.source!=='session')return;
-  const ctx=findSessionContext(v.sessionId);if(!ctx)return;const photoId=v.ids[v.index];
-  openSheet({title:'Supprimer cette photo ?',subtitle:'Elle sera retirée de Holioo sur cet appareil.',confirmText:'Supprimer',confirmClass:'coral',onConfirm:async()=>{ctx.session.photoIds=ctx.session.photoIds.filter(x=>x!==photoId);await DB.del('photos',photoId);saveState();v.ids=v.ids.filter(x=>x!==photoId);if(!v.ids.length){showToast('Photo supprimée');navigate('session')}else{v.index=Math.min(v.index,v.ids.length-1);renderPhotoViewer();showToast('Photo supprimée')}return true}})
+  const v=currentPhotoViewer;if(!v?.editable)return;
+  const photoId=v.ids[v.index];
+  confirmDeletePhoto(photoId,async()=>{
+    v.ids=v.ids.filter(x=>x!==photoId);revokeViewerUrl();
+    if(!v.ids.length){navigate(v.source==='batch'?'inbox':v.returnView||'files');return}
+    v.index=Math.min(v.index,v.ids.length-1);await renderPhotoViewer();
+  });
+}
+async function removeLocalPdf(id){
+  await DB.del('files',id);state.files=state.files.filter(f=>f.id!==id);saveState();queueSync();
+}
+function confirmDeletePdf(id,returnView=currentView){
+  const meta=state.files.find(f=>f.id===id);if(!meta)return;
+  let busy=false;
+  openSheet({title:`Supprimer « ${meta.title} » ?`,subtitle:'Le PDF sera supprimé de Holioo sur cet appareil. Les photos originales, les copies dans Drive et la version publiée dans la bibliothèque seront conservées.',confirmText:'Supprimer',confirmClass:'coral',onConfirm:async()=>{
+    if(busy)return false;busy=true;
+    try{await removeLocalPdf(id);if(currentFileId===id){currentFileId=null;revokeViewerUrl()}navigate(returnView==='pdfViewer'?currentPdfReturnView:returnView);showToast('PDF supprimé');return true}
+    catch(e){console.error(e);showToast('Suppression impossible. Réessayez.');busy=false;return false}
+  }});
 }
 
 function openPdfViewer(fileId,returnView='files'){

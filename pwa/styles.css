@@ -583,7 +583,6 @@ a{color:inherit}
 .folder-card{display:grid;grid-template-columns:auto 1fr;column-gap:10px;row-gap:0;align-items:center}
 .folder-card .ico{grid-row:span 2;margin:0}
 
-/* =====================================================================
    PHOTO EDITOR — full screen, dark (ui/photo-editor.js)
    ===================================================================== */
 body.pe-lock{overflow:hidden}
@@ -686,3 +685,40 @@ body.pe-lock{overflow:hidden}
 .dock-btn.edit{color:#FFD66B}
 /* Messages never cover the editor's tools: shown at the top while editing. */
 body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
+=======
+/* Course management uses the same long-press interaction as photo grids. */
+.course-managed{cursor:pointer}
+.course-managed[hidden]{display:none}
+.course-delete{display:grid;place-items:center;flex:none;width:44px;height:44px;border-radius:12px;color:var(--muted);background:transparent}
+.course-delete:hover,.course-delete:focus-visible{background:#ffe9ed;color:#b4233a}
+.course-managed:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.reorder-grid > [data-course]{touch-action:pan-y;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.reorder-ghost .course-delete{visibility:hidden}
+
+/* Stable touch sorting: the original slot never changes size. */
+.reorder-grid > .drag-placeholder{opacity:.25;transform:none!important;border:3px dashed var(--accent)}
+.reorder-ghost{transform-origin:center;will-change:transform;transition:none!important;box-shadow:0 14px 35px rgba(29,33,64,.28)!important;rotate:0deg}
+.reorder-active{user-select:none;-webkit-user-select:none;overscroll-behavior:none}
+.reorder-handle{position:absolute;right:3px;bottom:3px;z-index:4;display:grid;place-items:center;width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.94);color:#333a60;box-shadow:0 2px 8px #0002;touch-action:none;cursor:grab;font-size:28px;line-height:1}
+
+.course-managed{position:relative;padding-bottom:52px}
+.course-managed .reorder-handle{right:12px;bottom:6px;background:var(--surface)}
+.reorder-handle:focus-visible{outline:3px solid var(--accent);outline-offset:-3px}
+.reorder-ghost .reorder-handle{visibility:hidden}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(prefers-reduced-motion:reduce){.reorder-grid > *{transition:none!important}}
+
+.image-tile{position:relative}
+.image-open{display:block;width:100%;height:100%;padding:0}
+.image-delete{position:absolute;right:4px;bottom:4px;display:grid;place-items:center;width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.95);color:#b4233a;box-shadow:0 2px 8px #0002}
+.file-card .danger,.page-header-right .danger{color:#b4233a}
+.file-card[hidden]{display:none}
+
+.capture-delete{left:3px;right:auto;z-index:4}
+.thumb-actions button{height:40px}
+.gallery-thumb .reorder-handle{bottom:3px}
+.gallery-thumb .thumb-actions{right:auto;left:3px;bottom:3px;width:44px}
+.gallery-thumb .thumb-actions button{width:44px;height:44px;display:grid;place-items:center}
+.reorder-ghost .capture-delete{visibility:hidden}
+
+/* ==============================================================

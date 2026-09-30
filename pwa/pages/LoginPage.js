@@ -11,7 +11,7 @@ function renderLogin(){
       <h1 class="hero-title">Vos cours. Capturés, organisés, retrouvés.</h1>
       <p class="lead">Connectez-vous avec votre compte Google. Vos cours seront sauvegardés dans votre propre Google Drive.</p>
       <div class="list-stack">
-        ${feature('camera','peach','Capture immédiate','Photographiez sans choisir de cours avant.')}
+        ${feature('camera','peach','Capture immédiate','Chaque photo est rangée directement dans le bon cours.')}
         ${feature('hardDrive','lavender','Local-first','Vos photos restent disponibles sans Internet.')}
         ${feature('cloud','mint','Votre Google Drive','Holioo n’accède qu’aux fichiers qu’il crée.')}
       </div>

@@ -25,7 +25,9 @@ If only one screen changes, edit that page file first. Do not rewrite unrelated 
 Shared behavior that several screens use lives in `pwa/features/`:
 
 - `course-actions.js` — photo reorder, move, delete, session gallery helpers
-- `capture-actions.js` — camera, gallery import, batch helpers
+- `capture-actions.js` — camera, gallery import, batch helpers (`removeFromInbox`: photos leave Captures only once filed)
+- `camera-destination.js`, `camera-queue.js`, `camera-i18n.js` — camera destination logic, background save queue, camera texts
+- `thumbs.js` — small stored previews (`thumb`) used by every photo grid; full photos only in the viewer, PDF and Drive
 - `pdf-actions.js` — PDF generation helpers
 - `community-actions.js` — publish/library/Profile/Drive UI actions
 - `media-viewer.js` — shared photo/PDF viewer state and actions
@@ -37,8 +39,11 @@ Shared behavior that several screens use lives in `pwa/features/`:
 - `core.js` — shared state, Supabase bootstrap, navigation helpers, sync queue
 - `app.js` — route dispatcher and lifecycle listeners only
 - `styles.css` — shared visual tokens and shared component styling
-- `sw.js` — offline PWA cache
+- `sw.js` — offline cache: versioned app files cache-first, page network-first (3.5 s timeout), CDN libraries/fonts in a cache kept across releases; never reloads open windows (app.js `reloadIfSafe` does, when it can't interrupt a capture)
 - `smoke-test.mjs` — critical flow checks
+- `tests/` — unit tests (`node --test pwa/tests`), run in CI on every pull request; not published
+
+Release: bump the `?v=` value everywhere in `index.html`, `sw.js` (`CORE` + `VERSION`) and `smoke-test.mjs` together.
 
 ## Future change rule
 

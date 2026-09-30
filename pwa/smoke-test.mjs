@@ -11,7 +11,7 @@ const pageFiles=[
 ];
 const uiFiles=['./ui/icons.js','./ui/components.js','./ui/reorder.js','./ui/shell.js','./ui/camera-picker.js'];
 const featureFiles=[
-  './features/media-viewer.js','./features/course-actions.js','./features/camera-i18n.js','./features/camera-destination.js',
+  './features/media-viewer.js','./features/course-actions.js','./features/thumbs.js','./features/camera-i18n.js','./features/camera-destination.js',
   './features/camera-queue.js','./features/capture-actions.js',
   './features/pdf-actions.js','./features/community-actions.js'
 ];
@@ -28,7 +28,7 @@ const drive=read('./drive.js');
 const html=read('./index.html');
 const sw=read('./sw.js');
 const manifest=JSON.parse(read('./manifest.webmanifest'));
-if(!html.includes('20260930-camera-v1'))throw new Error('Asset cache-bust version missing');
+if(!html.includes('20260930-review-v1'))throw new Error('Asset cache-bust version missing');
 
 const required=[
   'Diviser le lot','Organiser les photos','Captures à trier','Section personnalisée','Nouvelle séance',
@@ -60,6 +60,12 @@ for(const p of [...pageFiles,...uiFiles,...featureFiles,'./app.js','./core.js','
 if(manifest.display!=='standalone'||manifest.scope!=='./')throw new Error('PWA manifest invalid');
 if(/GOOGLE_CLIENT_SECRET|SUPABASE_SERVICE_ROLE_KEY/.test(app+drive))throw new Error('Sensitive server secret referenced in frontend');
 
+// App review (data safety, sync, performance) must not regress.
+for(const s of ['removeFromInbox','photoThumbUrl','releaseThumbUrls','recoverOrphanPhotos','reloadIfSafe','backup-'])if(!(app+read('./app.js')).includes(s))throw new Error(`Review fix missing: ${s}`);
+if(/state\.inbox=state\.inbox\.filter\(x=>x\.id!==batch\.id\)/.test(app))throw new Error('Opening a Captures batch must not remove it before it is filed');
+if(sw.includes('client.navigate'))throw new Error('The service worker must not reload open windows (it can interrupt a capture)');
+if(/supabase-js@2"/.test(html))throw new Error('Pin the Supabase library to an exact version');
+for(const s of ['pushItem','updateContent','useFolderCache'])if(!drive.includes(s))throw new Error(`Drive sync fix missing: ${s}`);
 console.log(`Holioo modular smoke test: PASS (${pageFiles.length} page files)`);
 
 for(const s of ['HOLIOO UI v2','--bg:#F7F7FB','--accent:#5B67F1','.bottom-nav','.capture-orb','.shutter','.cam-dest','.cam-sheet'])if(!read('./styles.css').includes(s))throw new Error(`UI v2 style missing: ${s}`);

@@ -138,5 +138,22 @@ function renderLibraryItem(){
     for(let x=0;x<(i.storage_paths||[]).length;x++){const{data}=sb.storage.from('public-materials').getPublicUrl(i.storage_paths[x]),d=document.createElement('div');d.className='thumb';d.innerHTML=`<img src="${data.publicUrl}" alt="Photo publique ${x+1}" loading="lazy"><span class="num">${x+1}</span>`;byId('publicThumbs').appendChild(d)}
   }
   byId('favMaterial').onclick=()=>{toggleFavorite(i);showToast(isFavorite(i.id)?'Ajouté aux favoris':'Retiré des favoris');render()};
-  byId('reportMaterial').onclick=()=>showToast('Signalement enregistré pour ce test');
+  byId('reportMaterial').onclick=()=>reportMaterial(i);
+}
+
+// A report is sent by e-mail to the Holioo contact address (the same one as in the privacy policy),
+// with the reference of the material, so it can be reviewed and removed.
+const HOLIOO_CONTACT='payamshafiqullah@gmail.com';
+function reportMaterial(item){
+  openSheet({title:'Signaler ce matériel',subtitle:'Votre application e-mail va s’ouvrir avec la référence du matériel. Expliquez le problème (données personnelles, contenu inapproprié, erreur…).',confirmText:'Écrire le signalement',onConfirm:()=>{
+    const subject=`Signalement Holioo — ${item.title||'matériel'}`;
+    const body=`Matériel signalé : ${item.title||''}
+Cours : ${item.course||''} · ${item.section||''}
+Référence : ${item.id}
+
+Problème :
+`;
+    location.href=`mailto:${HOLIOO_CONTACT}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    return true;
+  }});
 }

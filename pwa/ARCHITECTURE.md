@@ -27,6 +27,7 @@ Shared behavior that several screens use lives in `pwa/features/`:
 - `course-actions.js` — photo reorder, move, delete, session gallery helpers
 - `capture-actions.js` — camera, gallery import, batch helpers (`removeFromInbox`: photos leave Captures only once filed)
 - `camera-destination.js`, `camera-queue.js`, `camera-i18n.js` — camera destination logic, background save queue, camera texts
+- `image-pipeline.js`, `photo-edits.js`, `../ui/photo-editor.js`, `../workers/image-worker.js` — the photo editor: non-destructive edits (`edit` on the row, original `blob` kept; `rendered` + `thumb` made in a worker), opened from the photo viewer (Modifier); `photoBlob(row)` is what the viewer, PDF, publishing and Drive use
 - `thumbs.js` — small stored previews (`thumb`) used by every photo grid; full photos only in the viewer, PDF and Drive
 - `pdf-actions.js` — PDF generation helpers
 - `community-actions.js` — publish/library/Profile/Drive UI actions

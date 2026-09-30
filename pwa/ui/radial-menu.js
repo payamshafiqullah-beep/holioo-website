@@ -1,99 +1,154 @@
 'use strict';
-// Radial menu — press and hold a button: a ring of items opens around it. Drag onto an item and
-// release to choose it; an item with children opens a second ring further out. Releasing on the
-// button (center) or outside every item cancels. A simple tap opens the same menu in tap mode
-// (choose by tapping), and the keyboard works too: Enter opens, arrows move, Escape closes.
-// Reusable: nothing here knows about courses or the camera (see features/quick-capture.js).
+// Radial menu — one continuous gesture, the finger never leaves the screen:
+//   press the trigger → a ring of items opens around it;
+//   drag onto an item → it lights up; if it has children, a second ring opens further out in
+//   that direction (dragging back onto another item of the first ring switches the second ring);
+//   lift on a child → it is chosen. Lifting anywhere else (the trigger, between items, outside)
+//   cancels. Choosing happens only when the finger lifts, never on hover.
+// The keyboard works too (accessibility): Enter opens, arrows move, Enter chooses, Escape closes.
 //
+// Reusable on any element:  createRadialMenu({trigger, items, onSelect})
+// Nothing here knows about courses or the camera (see features/quick-capture.js).
 // Geometry and hit testing are pure functions, tested in tests/radial-menu.test.mjs.
-// Angles are in degrees, 0 = right, 90 = straight up; the items of a ring go left to right.
+// Angles are in degrees, 0 = right, 90 = straight up, counter-clockwise.
 
 const RADIAL={
-  hold:250,        // ms of press before the menu opens (moving the finger opens it at once)
-  drag:10,         // px of movement that counts as a drag
   size:56,minSize:44,gap:8,ringGap:14,
   margin:10,       // min distance between an item and the screen edge
-  minAngle:12,     // items stay above the button line
   stepMax:40,      // widest spacing between two neighbours of the first ring
-  spanMax:156,
-  anchorR:32,      // radius of the button itself: the first ring starts past it
+  anchorR:32,      // radius of the trigger itself: the first ring starts past it
   minR1:96,
+  maxR1:260,       // beyond this the ring is out of thumb reach: items shrink instead
   maxItems:7,
+  dwell:180,       // ms the finger rests on another course before its sections replace the open ones
   anim:150
 };
 const radDeg=r=>r*180/Math.PI;
+const radNorm=a=>((a%360)+360)%360;
+const radDiff=(a,b)=>Math.abs(((a-b)%360+540)%360-180);
 
 // Smallest angle between two neighbours so that items of `size` px don't touch on a ring of radius r.
 const radialMinStep=(r,size,gap=RADIAL.gap)=>radDeg(2*Math.asin(Math.min(1,(size+gap)/(2*r))));
 
 const radialPoint=(o,r,a)=>({x:o.x+r*Math.cos(a*Math.PI/180),y:o.y-r*Math.sin(a*Math.PI/180)});
 
-// Angles [lo, hi] where an item of `size` stays fully on screen on a ring of radius r around o,
-// or null. vp = {w, h, top, bottom} (top / bottom: safe areas, in px).
-function radialRange(o,r,size,vp,opt=RADIAL){
-  const half=size/2+opt.margin;
-  const cHi=(vp.w-half-o.x)/r,cLo=(half-o.x)/r;
-  if(cHi<-1||cLo>1)return null;
-  const sMin=(o.y-(vp.h-(vp.bottom||0)-half))/r;   // below the screen bottom
-  if(sMin>1)return null;
-  const aMin=sMin>0?radDeg(Math.asin(sMin)):0;
-  const lo=Math.max(radDeg(Math.acos(Math.min(1,cHi))),aMin,opt.minAngle);
-  const hi=Math.min(radDeg(Math.acos(Math.max(-1,cLo))),180-aMin,180-opt.minAngle);
-  return hi>=lo?[lo,hi]:null;
+// Arcs of angles where an item of `size` at radius r around o stays fully on screen, computed
+// exactly (each screen edge hides one arc of the circle): [{start, len, full}], degrees
+// counter-clockwise from start; full: the whole circle. vp = {w, h, top, bottom} (safe areas, px).
+function radialFree(o,r,size,vp,opt=RADIAL){
+  const half=size/2+opt.margin,x0=half,x1=vp.w-half,y0=(vp.top||0)+half,y1=vp.h-(vp.bottom||0)-half;
+  const acos=c=>radDeg(Math.acos(Math.max(-1,Math.min(1,c)))),asin=c=>radDeg(Math.asin(Math.max(-1,Math.min(1,c))));
+  const blocked=[];   // [from, to] with from < to, possibly past 360
+  const cR=(x1-o.x)/r,cL=(x0-o.x)/r,sT=(o.y-y0)/r,sB=(o.y-y1)/r;
+  if(cR<=-1||cL>=1||sT<=-1||sB>=1)return[];
+  if(cR<1){const a=acos(cR);blocked.push([-a,a])}                     // past the right edge
+  if(cL>-1){const a=acos(cL);blocked.push([a,360-a])}                 // past the left edge
+  if(sT<1){const a=asin(sT);blocked.push([a,180-a])}                  // above the top
+  if(sB>-1){const a=asin(sB);blocked.push([180-a,360+a])}             // below the bottom
+  if(!blocked.length)return[{start:0,len:360,full:true}];
+  // Unroll on [0, 720) so arcs crossing 0° stay whole, merge, and take the gaps.
+  const segs=[];
+  for(const[f0,t0]of blocked){const f=radNorm(f0),len=t0-f0;segs.push([f,f+len],[f+360,f+360+len])}
+  segs.sort((p,q)=>p[0]-q[0]);
+  const merged=[];for(const sg of segs){const last=merged.at(-1);if(last&&sg[0]<=last[1])last[1]=Math.max(last[1],sg[1]);else merged.push([...sg])}
+  const free=[];
+  for(let i=0;i+1<merged.length;i++){
+    const start=merged[i][1],end=merged[i+1][0];
+    if(end>start&&start<360+merged[0][0])free.push({start:radNorm(start),len:end-start,full:false});
+  }
+  // The same gap appears twice after unrolling: keep one of each.
+  const out=[];for(const f of free)if(!out.some(g=>Math.abs(g.start-f.start)<1e-6))out.push(f);
+  return out;
 }
 
-// n angles `step` apart around `center`, left to right.
+// One arc: the one containing angle `at` if given, else the longest. null: nothing fits.
+function radialRun(arcs,at=null){
+  if(!arcs.length)return null;
+  if(arcs[0].full)return arcs[0];
+  if(at!==null){const hit=arcs.find(r=>radNorm(at-r.start)<=r.len+1e-9);if(hit)return hit}
+  return arcs.reduce((a,b)=>b.len>a.len?b:a);
+}
+
+// n angles `step` apart around `center`, counter-clockwise first (left to right when centered up).
 const radialAngles=(n,center,step)=>Array.from({length:n},(_,i)=>center+(n-1)*step/2-i*step);
 
-// First ring for n items. Items shrink (down to minSize) and the ring grows until everything fits
-// on screen, with room for the second ring above it. The smallest ring that fits wins: it keeps
-// every item within thumb reach. Returns {size, r1, r2, step1, angles1}.
+// Center for `total` degrees inside the arc, as close to `want` as the arc allows (when `want` is
+// outside the arc: from the arc's end nearest to it).
+function radialCenter(run,want,total){
+  if(run.full)return want;
+  const end=run.start+run.len,w=run.start+radNorm(want-run.start);
+  const target=w<=end?w:radDiff(want,run.start)<=radDiff(want,end)?run.start:end;
+  return Math.min(Math.max(target,run.start+total/2),end-total/2);
+}
+
+// First ring for n items around o. It opens where the screen has room — upwards when it can
+// (above the finger, not under the hand), else towards the free side — and only where the second
+// ring also fits further out. Items shrink (down to minSize) and the ring grows until everything
+// fits; the smallest ring that fits wins (thumb reach). Returns {size, r1, r2, step1, angles1}.
 function radialFit(n,o,vp,opt=RADIAL){
-  const tryFit=strict=>{
+  const place=(s,r,run)=>{
+    const min=radialMinStep(r,s,opt.gap),avail=run.full?360*(n-1)/Math.max(1,n):run.len;
+    if(n>1&&(n-1)*min>avail+1e-9)return null;
+    const step=n>1?Math.max(min,Math.min(opt.stepMax,avail/(n-1))):0,total=(n-1)*step,center=radialCenter(run,90,total);
+    // The first item (the most used) goes at the end of the arc nearest to straight up — above the
+    // finger, not under the hand; when both ends are as high, left to right.
+    const up=radDiff(center-total/2,90)<radDiff(center+total/2,90)-1;
+    const angles1=up?radialAngles(n,center,step).reverse():radialAngles(n,center,step);
+    return{size:s,r1:r,r2:r+s+opt.ringGap,step1:step,angles1};
+  };
+  // roomy: every item also keeps room on both sides for 4 children centered on it, so they fan
+  // straight out from it instead of being pushed sideways over a neighbour.
+  const tryFit=(roomy,dr)=>{
     for(let s=opt.size;s>=opt.minSize;s-=2){
-      const rMin=Math.max(opt.minR1,opt.anchorR+s/2+opt.gap);
-      // The second ring (r1 + s + ringGap) must fit below the top of the screen.
-      const rMax=strict?o.y-(vp.top||0)-opt.margin-s/2-(s+opt.ringGap):Math.max(vp.w,vp.h);
-      for(let r=rMin;r<=rMax;r+=2){
-        const range=radialRange(o,r,s,vp,opt);if(!range)continue;
-        const span=Math.min(range[1]-range[0],opt.spanMax),min=radialMinStep(r,s,opt.gap);
-        if(n>1&&(n-1)*min>span+1e-9)continue;
-        const step=n>1?Math.max(min,Math.min(opt.stepMax,span/(n-1))):0,total=(n-1)*step;
-        const center=Math.min(Math.max(90,range[0]+total/2),range[1]-total/2);
-        return{size:s,r1:r,r2:r+s+opt.ringGap,step1:step,angles1:radialAngles(n,center,step)};
+      for(let r=Math.max(opt.minR1,opt.anchorR+s/2+opt.gap);r<=opt.maxR1;r+=dr){
+        const r2=r+s+opt.ringGap;
+        // Farther out, fewer angles stay on screen: once the second ring has none, stop growing.
+        let run=radialRun(radialFree(o,r2,s,vp,opt));if(!run)break;
+        if(roomy&&!run.full){const m=1.5*radialMinStep(r2,s,opt.gap)*1.08;if(run.len<2*m)continue;run={start:run.start+m,len:run.len-2*m,full:false}}
+        const fit=place(s,r,run);if(fit)return fit;
       }
     }
     return null;
   };
-  // A tiny window where nothing fits: smallest items, evenly spread, even if they touch.
-  return tryFit(true)||tryFit(false)||(()=>{const s=opt.minSize,r=opt.minR1,step=n>1?156/(n-1):0;return{size:s,r1:r,r2:r+s+opt.ringGap,step1:step,angles1:radialAngles(n,90,step)}})();
+  // Coarse search first (fast); a tight corner may only fit within a narrow band of radii.
+  const fit=tryFit(true,3)||tryFit(false,3)||tryFit(false,1);if(fit)return fit;
+  // A tiny window: the first ring alone, smallest items.
+  const s=opt.minSize,r=Math.max(opt.minR1,opt.anchorR+s/2+opt.gap);
+  const run=radialRun(radialFree(o,r,s,vp,opt))||{start:0,len:360,full:true};
+  return place(s,r,run)||{size:s,r1:r,r2:r+s+opt.ringGap,step1:n>1?300/(n-1):0,angles1:radialAngles(n,90,n>1?300/(n-1):0)};
 }
 
 // Second ring: k children around their parent's angle, as close to it as the screen allows.
 // `shown` < k when they don't all fit: the caller then turns the last one into a "more" item.
 function radialChildren(k,parentAngle,o,vp,fit,opt=RADIAL){
   const s=fit.size,r=fit.r2;
-  const range=radialRange(o,r,s,vp,opt)||[90,90];
+  const run=radialRun(radialFree(o,r,s,vp,opt),radNorm(parentAngle))||{start:radNorm(parentAngle),len:0,full:false};
   const step=radialMinStep(r,s,opt.gap)*1.08;
-  const capacity=Math.max(1,Math.floor((range[1]-range[0])/step+1e-9)+1);
+  const capacity=run.full?Math.max(1,Math.floor(360/step)):Math.max(1,Math.floor(run.len/step+1e-9)+1);
   const shown=Math.min(k,capacity),total=(shown-1)*step;
-  const center=Math.min(Math.max(parentAngle,range[0]+total/2),range[1]-total/2);
-  return{angles:radialAngles(shown,center,step),step,shown,capacity};
+  return{angles:radialAngles(shown,radialCenter(run,parentAngle,total),step),step,shown,capacity};
 }
 
 // What is under point p: {center:true}, {ring:1, index}, {ring:2, index} or null (outside).
-// First ring: by angle inside its band (forgiving: the finger hides the items). Second ring:
-// the nearest item within reach.
-function radialHit(p,o,fit,ring2=null,opt=RADIAL){
+// First ring: by direction, inside its band (forgiving: the finger hides the items). Second
+// ring: the nearest item within reach. While `active`'s children are open, a drag towards a far
+// child may pass over a neighbour: that neighbour is only `tentative` — the component switches to
+// it when the finger rests on it.
+function radialHit(p,o,fit,ring2=null,active=-1,opt=RADIAL){
   const dx=p.x-o.x,dy=o.y-p.y,d=Math.hypot(dx,dy);
   const dead=Math.min(44,fit.r1-fit.size/2-6);
   if(d<dead)return{center:true};
   if(d<=fit.r1+fit.size/2+opt.ringGap/2){
-    if(dy<=0)return null;
     const a=radDeg(Math.atan2(dy,dx)),tol=Math.max(fit.step1/2,16);
     let best=-1,err=Infinity;
-    fit.angles1.forEach((b,i)=>{const e=Math.abs(a-b);if(e<err){err=e;best=i}});
-    return err<=tol?{ring:1,index:best}:null;
+    fit.angles1.forEach((b,i)=>{const e=radDiff(a,b);if(e<err){err=e;best=i}});
+    if(err>tol)return null;
+    if(ring2&&active>=0&&best!==active){
+      const q=radialPoint(o,fit.r1,fit.angles1[best]);
+      if(Math.hypot(p.x-q.x,p.y-q.y)>fit.size*.6)return radDiff(a,fit.angles1[active])<=tol?{ring:1,index:active}:null;
+      return{ring:1,index:best,tentative:true};
+    }
+    return{ring:1,index:best};
   }
   if(ring2){
     let best=-1,dist=Infinity;
@@ -111,44 +166,54 @@ function radialInk(hex){
   return(1.05/(L+.05))>=((L+.05)/(0.0189+.05))?'#fff':'#1D2140';
 }
 
+// ─── Shared by every menu on the page ─────────────────────────
+const radialOpen=new Set();     // menus open right now (closed when the screen changes)
+let radialSwallowUntil=0;       // the click a mouse sends after a gesture that was already handled
+let radialSafe=null;
+let radialPress=null;           // the trigger a finger is down on: {id, trigger, cancel}
+if(typeof window!=='undefined'&&window.addEventListener){
+  window.addEventListener('click',e=>{
+    if(performance.now()<radialSwallowUntil){radialSwallowUntil=0;e.preventDefault();e.stopImmediatePropagation()}
+  },true);
+  // The trigger left the page (the screen was redrawn) while the finger was down: cancel.
+  document.addEventListener('lostpointercapture',e=>{
+    if(radialPress&&e.pointerId===radialPress.id&&!radialPress.trigger.isConnected)radialPress.cancel();
+  });
+}
+function radialCloseAll(){for(const m of[...radialOpen])m.close()}
+
 // ─── Component ────────────────────────────────────────────────
 // createRadialMenu({
-//   anchor,                 the button that opens the menu
-//   isEnabled(),            false: the button keeps its normal behaviour
-//   origin(),               {x, y} center of the rings (default: center of the anchor)
+//   trigger,                the element the finger presses (any element; it gets the no-scroll /
+//                           no-selection / no-callout protections)
 //   items(),                [{id, label, short, color, aria, marked, more, children}] — children: [] or () => []
+//   onSelect(item, parent, {mode}), called synchronously inside the pointerup (or the Enter key)
 //   overflowItem(parent),   item shown last when a parent's children don't all fit
-//   describe(info),         {title, sub} for the label above the rings; info = {mode, item, parent, center}
-//   onSelect(item, parent, {mode}), called synchronously inside the pointerup / click / key event
+//   describe(info),         {title, sub} for the label near the rings; info = {mode, item, parent, center}
 //   onEmpty(),              items() returned nothing
+//   isEnabled(), origin(),  optional: when the trigger answers; the rings' center (default: the trigger's center)
 //   label, closeLabel, centerHtml
 // })
 function createRadialMenu(o){
-  const anchor=o.anchor;
+  const trigger=o.trigger||o.anchor;
+  if(!trigger)return null;
   const escHtml=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[c]));
   const reduced=()=>!!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   const enabled=()=>!o.isEnabled||o.isEnabled();
   let st=null;         // the open menu
-  let press=null;      // the pointer on the button, before the menu opens and while dragging
-  let swallowUntil=0;  // the click a mouse sends after a gesture that was already handled (one only)
-  let safeTop=null;
-  let touchHandled=false;  // this touch was handled here: its touchend must not become a click
-
-  // Touch needs none: the button's touchend cancels the browser's click (see below).
-  const swallow=e=>{if(e.pointerType!=='touch')swallowUntil=performance.now()+350};
-  // Wherever it lands (the button, the menu, or the camera screen that just opened).
-  window.addEventListener('click',e=>{if(performance.now()<swallowUntil){swallowUntil=0;e.preventDefault();e.stopImmediatePropagation()}},true);
+  let press=null;      // the finger (or mouse button) currently down on the trigger: {id, x, y}
+  const api={};
 
   function viewport(){
-    if(safeTop===null){
-      const p=document.createElement('div');p.style.cssText='position:fixed;top:0;left:0;height:0;padding-top:env(safe-area-inset-top);visibility:hidden;pointer-events:none';
-      document.body.appendChild(p);safeTop=p.offsetHeight||0;p.remove();
+    if(!radialSafe){
+      const p=document.createElement('div');p.style.cssText='position:fixed;top:0;left:0;height:0;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);visibility:hidden;pointer-events:none';
+      document.body.appendChild(p);const cs=getComputedStyle(p);radialSafe={top:parseFloat(cs.paddingTop)||0,bottom:parseFloat(cs.paddingBottom)||0};p.remove();
     }
-    return{w:window.innerWidth,h:window.innerHeight,top:safeTop,bottom:0};
+    return{w:window.innerWidth,h:window.innerHeight,...radialSafe};
   }
   function originPoint(){
     if(o.origin)return o.origin();
-    const r=anchor.getBoundingClientRect();return{x:r.left+r.width/2,y:r.top+r.height/2};
+    const r=trigger.getBoundingClientRect();return{x:r.left+r.width/2,y:r.top+r.height/2};
   }
   const kidsOf=it=>typeof it.children==='function'?it.children():(it.children||[]);
 
@@ -158,6 +223,8 @@ function createRadialMenu(o){
     return`<button type="button" role="menuitem" tabindex="-1" class="radial-item r${ring}${it.marked?' marked':''}${it.more?' more':''}${from?' pre':''}" data-ring="${ring}" data-i="${i}" aria-label="${escHtml(it.aria||it.label)}"${it.children?' aria-haspopup="menu" aria-expanded="false"':''} style="left:${st.o.x}px;top:${st.o.y}px;--dx:${dx.toFixed(1)}px;--dy:${dy.toFixed(1)}px;${from?`--px:${from.x.toFixed(1)}px;--py:${from.y.toFixed(1)}px;`:''}--c:${escHtml(c)};--fg:${radialInk(c)};--k:${k}"><span class="radial-dot">${escHtml(t)}</span>${ring===1&&it.label!==it.short?`<small>${escHtml(it.label)}</small>`:''}</button>`;
   }
 
+  // mode 'gesture': the finger is down, the menu ignores clicks (the trigger has the pointer).
+  // mode 'keys': opened from the keyboard or a screen reader; items are focusable buttons.
   function open(mode,{keyboard=false}={}){
     if(st)return true;
     const items=o.items();
@@ -168,8 +235,9 @@ function createRadialMenu(o){
     el.setAttribute('role','menu');el.setAttribute('aria-label',o.label||'');
     el.style.setProperty('--s',`${fit.size}px`);
     st={mode,items,fit,o:org,vp,el,parent:-1,children:[],ring2:null,hot:null,openedAt:performance.now()};
+    st.box=menuBox();
     el.innerHTML=`<div class="radial-backdrop"></div>
-      <div class="radial-title" aria-hidden="true" style="left:${org.x}px"><b></b><span></span></div>
+      <div class="radial-title" aria-hidden="true"><b></b><span></span></div>
       <button type="button" class="radial-center" aria-label="${escHtml(o.closeLabel||'Fermer')}" style="left:${org.x}px;top:${org.y}px">${o.centerHtml||'×'}</button>
       ${items.map((it,i)=>itemHtml(it,1,i,radialPoint(org,fit.r1,fit.angles1[i]))).join('')}`;
     el.addEventListener('click',onOverlayClick);
@@ -182,16 +250,25 @@ function createRadialMenu(o){
     fitLabels();
     document.documentElement.classList.add('radial-lock');
     try{window.getSelection()?.removeAllRanges()}catch{}
-    anchor.setAttribute('aria-expanded','true');
+    trigger.setAttribute('aria-expanded','true');trigger.classList.add('radial-active');
     void el.offsetWidth;el.classList.add('open');
     describe(null,null);
     window.addEventListener('resize',onResize);
+    radialOpen.add(api);
     if(keyboard)focusItem(1,0);
     return true;
   }
 
+  // Where circles can be: the trigger, the first ring, and the second ring of every item (4 children):
+  // the label near the rings must not cover any of them.
+  function menuBox(){
+    const{fit,o:org,vp}=st,pad=fit.size*.6+4,pts=[org,...fit.angles1.map(a=>radialPoint(org,fit.r1,a))];
+    for(const a of fit.angles1)for(const b of radialChildren(4,a,org,vp,fit).angles)pts.push(radialPoint(org,fit.r2,b));
+    return pts.map(p=>({x0:p.x-pad,x1:p.x+pad,y0:p.y-pad,y1:p.y+pad}));
+  }
+
   // The names under the first ring are shown only if none of them touches another item or name
-  // (all or nothing, so the ring looks the same everywhere). Otherwise: the label above the rings.
+  // (all or nothing, so the ring looks the same everywhere). Otherwise: the label near the rings.
   function fitLabels(){
     const s=st.fit.size,box=(x,y,w,h)=>({x0:x-w/2,x1:x+w/2,y0:y,y1:y+h});
     const pts=st.items.map((_,i)=>radialPoint(st.o,st.fit.r1,st.fit.angles1[i]));
@@ -199,25 +276,28 @@ function createRadialMenu(o){
     const labels=[...st.el.querySelectorAll('.radial-item.r1 small')];
     const boxes=labels.map(sm=>{const p=pts[+sm.parentElement.dataset.i];return{own:+sm.parentElement.dataset.i,...box(p.x,p.y+s/2+5,sm.offsetWidth,sm.offsetHeight)}});
     const hit=(a,b)=>a.x0<b.x1&&a.x1>b.x0&&a.y0<b.y1&&a.y1>b.y0;
-    const clash=boxes.some((b,k)=>b.x0<0||b.x1>st.vp.w||b.y1>st.vp.h||solid.some((r,j)=>j!==b.own&&hit(b,r))||boxes.some((o,m)=>m!==k&&hit(b,o)));
+    const clash=boxes.some((b,k)=>b.x0<0||b.x1>st.vp.w||b.y1>st.vp.h||solid.some((r,j)=>j!==b.own&&hit(b,r))||boxes.some((q,m)=>m!==k&&hit(b,q)));
     if(clash)labels.forEach(sm=>sm.remove());
   }
 
   function teardown(){
     if(!st)return null;
-    const s=st;st=null;
+    const s=st;st=null;press=null;
+    clearTimeout(s.dwell?.t);
+    if(radialPress?.trigger===trigger)radialPress=null;
+    radialOpen.delete(api);
     window.removeEventListener('resize',onResize);
     document.documentElement.classList.remove('radial-lock');
-    anchor.setAttribute('aria-expanded','false');
+    trigger.setAttribute('aria-expanded','false');trigger.classList.remove('radial-active');
     return s;
   }
-  // Cancel: animated; the focus goes back to the button if it was in the menu.
+  // Cancel: animated; the focus goes back to the trigger if it was in the menu.
   function close({focus=false}={}){
     const s=teardown();if(!s)return;
     const hadFocus=s.el.contains(document.activeElement);
     s.el.classList.remove('open');s.el.classList.add('closing');
     setTimeout(()=>s.el.remove(),reduced()?0:RADIAL.anim);
-    if(focus||hadFocus)anchor.focus({preventScroll:true});
+    if((focus||hadFocus)&&trigger.isConnected)trigger.focus({preventScroll:true});
   }
   function choose(item,parent){
     const s=teardown();if(!s)return;
@@ -238,8 +318,16 @@ function createRadialMenu(o){
     const box=st.el.querySelector('.radial-title');
     box.querySelector('b').textContent=t.title||'';
     box.querySelector('span').textContent=t.sub||'';
-    // Just above the outer ring (it grows upwards when the text takes two lines), never under the status bar.
-    box.style.top=`${Math.max(st.vp.top+8,st.o.y-st.fit.r2-st.fit.size*.6-12-box.offsetHeight)}px`;
+    box.hidden=!t.title&&!t.sub;
+    // Near the rings without covering a circle: just above them, just below, or at the top or the
+    // bottom of the screen — the first spot that is free (else the one covering the least).
+    const w=box.offsetWidth,h=box.offsetHeight,{vp,box:circles}=st;
+    const x=Math.min(Math.max(st.o.x,w/2+8),vp.w-w/2-8),minY=vp.top+8,maxY=vp.h-(vp.bottom||0)-8-h;
+    const ys=circles.map(c=>c.y0),ye=circles.map(c=>c.y1);
+    const cover=y=>circles.reduce((sum,c)=>sum+Math.max(0,Math.min(x+w/2,c.x1)-Math.max(x-w/2,c.x0))*Math.max(0,Math.min(y+h,c.y1)-Math.max(y,c.y0)),0);
+    const spots=[Math.min(...ys)-8-h,Math.max(...ye)+8,minY,maxY].map(y=>Math.min(Math.max(y,minY),maxY));
+    box.style.left=`${x}px`;
+    box.style.top=`${spots.find(y=>!cover(y))??spots.reduce((a,b)=>cover(b)<cover(a)?b:a)}px`;
   }
 
   function openChildren(i){
@@ -280,9 +368,17 @@ function createRadialMenu(o){
     else describe(st.parent>=0&&!h?.center?st.items[st.parent]:null,null,!!h?.center);
   }
 
-  // Gesture: the finger moves over the rings.
+  // The finger moves: light up what is under it (nothing is chosen yet).
   function track(x,y){
-    const h=radialHit({x,y},st.o,st.fit,st.ring2);
+    if(!st)return;
+    const h=radialHit({x,y},st.o,st.fit,st.ring2,st.parent);
+    // Passing over another course while its neighbour's sections are open: switch only if the
+    // finger stays there a moment (it may just be on its way to a far section).
+    if(h?.tentative){
+      if(st.dwell?.i!==h.index){clearTimeout(st.dwell?.t);const i=h.index;st.dwell={i,t:setTimeout(()=>{if(st?.dwell?.i===i){st.dwell=null;openChildren(i);setHot({ring:1,index:i})}},RADIAL.dwell)}}
+      return;
+    }
+    if(st.dwell){clearTimeout(st.dwell.t);st.dwell=null}
     if(h?.ring===1){
       if(st.items[h.index].children)openChildren(h.index);else closeChildren();
       setHot(h);
@@ -290,32 +386,25 @@ function createRadialMenu(o){
     else if(h?.center){closeChildren();setHot(h)}
     else setHot(null);
   }
-  // Gesture: the finger is lifted.
+  // The finger lifts: a child (or an item without children) is chosen; anywhere else cancels.
   function release(x,y){
-    const h=radialHit({x,y},st.o,st.fit,st.ring2);
+    if(!st)return;
+    const h=radialHit({x,y},st.o,st.fit,st.ring2,st.parent);
     if(h?.ring===2){choose(st.children[h.index],st.items[st.parent]);return}
-    if(h?.ring===1){
-      const it=st.items[h.index];
-      if(!it.children){choose(it,null);return}
-      // Released on a parent: the menu stays open on its children, to finish with a tap.
-      st.mode='tap';st.el.dataset.mode='tap';openChildren(h.index);setHot(null);
-      describe(it,null);
-      return;
-    }
+    if(h?.ring===1&&!st.items[h.index].children){choose(st.items[h.index],null);return}
     close();
   }
 
-  // Tap mode and keyboard: ordinary clicks on the items.
+  // Keyboard / screen reader mode only: clicks on the items (Enter on a focused item is a click).
   function onOverlayClick(e){
-    if(!st||st.mode!=='tap')return;
+    if(!st||st.mode!=='keys')return;
     const b=e.target.closest('.radial-item');
-    if(!b){close({focus:e.detail===0});return}
+    if(!b){close({focus:true});return}
     const ring=+b.dataset.ring,i=+b.dataset.i;
     if(ring===2){choose(st.children[i],st.items[st.parent]);return}
     const it=st.items[i];
     if(!it.children){choose(it,null);return}
-    openChildren(i);setHot({ring:1,index:i});
-    if(e.detail===0)focusItem(2,0);
+    openChildren(i);setHot({ring:1,index:i});focusItem(2,0);
   }
   function onKey(e){
     if(!st)return;
@@ -337,68 +426,74 @@ function createRadialMenu(o){
     }
   }
 
-  // ─── The button ───
-  anchor.setAttribute('aria-expanded','false');
-  anchor.addEventListener('pointerdown',e=>{
-    if(!enabled()||(e.pointerType==='mouse'&&e.button!==0))return;
+  // ─── The trigger: one continuous gesture ───
+  trigger.classList.add('radial-trigger');
+  trigger.setAttribute('aria-haspopup','menu');
+  trigger.setAttribute('aria-expanded','false');
+  // Finger down: the first ring opens at once, and every move / the lift keeps coming here.
+  trigger.addEventListener('pointerdown',e=>{
+    if(!enabled()||!e.isPrimary||(e.pointerType==='mouse'&&e.button!==0))return;
     e.preventDefault();
-    touchHandled=e.pointerType==='touch';
-    if(st){close();swallow(e);return}   // a tap on the button closes the open menu
-    try{anchor.setPointerCapture(e.pointerId)}catch{}
-    press={id:e.pointerId,x:e.clientX,y:e.clientY,lx:e.clientX,ly:e.clientY,opened:false,timer:setTimeout(startGesture,RADIAL.hold)};
-    anchor.classList.add('radial-pressing');
+    if(st)close();
+    try{trigger.setPointerCapture(e.pointerId)}catch{}
+    if(!open('gesture'))return;
+    press={id:e.pointerId,x:e.clientX,y:e.clientY};
+    radialPress={id:e.pointerId,trigger,cancel};
+    track(e.clientX,e.clientY);
   });
-  function startGesture(){
-    if(!press||press.opened)return;
-    clearTimeout(press.timer);press.opened=true;anchor.classList.remove('radial-pressing');
-    if(!open('gesture')){press=null;return}
-    track(press.lx,press.ly);
-  }
-  anchor.addEventListener('pointermove',e=>{
+  trigger.addEventListener('pointermove',e=>{
     if(!press||e.pointerId!==press.id)return;
-    press.lx=e.clientX;press.ly=e.clientY;
-    if(!press.opened){if(Math.hypot(e.clientX-press.x,e.clientY-press.y)>RADIAL.drag)startGesture();return}
-    if(st?.mode==='gesture')track(e.clientX,e.clientY);
+    press.x=e.clientX;press.y=e.clientY;
+    track(e.clientX,e.clientY);
   });
-  anchor.addEventListener('pointerup',e=>{
+  // Finger up: choose or cancel, right here — so a camera opened by onSelect counts as a user action.
+  trigger.addEventListener('pointerup',e=>{
     if(!press||e.pointerId!==press.id)return;
-    clearTimeout(press.timer);
-    const p=press;press=null;anchor.classList.remove('radial-pressing');
-    swallow(e);
-    if(!p.opened){open('tap');return}
-    if(st?.mode==='gesture')release(e.clientX,e.clientY);
+    press=null;
+    if(e.pointerType!=='touch')radialSwallowUntil=performance.now()+350;   // the mouse's click that follows
+    release(e.clientX,e.clientY);
   });
-  const cancelPress=()=>{
-    if(!press)return;
-    clearTimeout(press.timer);press=null;anchor.classList.remove('radial-pressing');
-    if(st?.mode==='gesture')close();
-  };
-  anchor.addEventListener('pointercancel',cancelPress);
-  anchor.addEventListener('lostpointercapture',()=>{if(press?.opened)cancelPress()});
-  // Keyboard and screen readers activate the button with a click and no pointer gesture.
-  anchor.addEventListener('click',e=>{
+  function cancel(){if(press){press=null;close()}}
+  trigger.addEventListener('pointercancel',e=>{if(press&&e.pointerId===press.id)cancel()});
+
+  // iOS protections: no scroll, bounce, text selection, callout or delayed click from this touch.
+  // The same touch also drives the menu, in case a browser sends fewer pointer events.
+  trigger.addEventListener('touchstart',e=>{
+    if(!enabled())return;
+    if(e.cancelable)e.preventDefault();
+    if(e.touches.length>1)cancel();              // a second finger: not this gesture
+  },{passive:false});
+  trigger.addEventListener('touchmove',e=>{
+    if(e.cancelable&&(press||st))e.preventDefault();
+    const t=e.touches[0];if(press&&t){press.x=t.clientX;press.y=t.clientY;track(t.clientX,t.clientY)}
+  },{passive:false});
+  trigger.addEventListener('touchend',e=>{
+    if(e.cancelable&&enabled())e.preventDefault();
+    const t=e.changedTouches[0];
+    if(press&&t){press=null;release(t.clientX,t.clientY)}
+  },{passive:false});
+  trigger.addEventListener('touchcancel',cancel);
+  trigger.addEventListener('contextmenu',e=>{if(enabled())e.preventDefault()});
+  trigger.addEventListener('selectstart',e=>{if(enabled())e.preventDefault()});
+
+  // Keyboard, and screen readers (they activate with a click and no pointer gesture).
+  trigger.addEventListener('keydown',e=>{
+    if(!enabled()||st)return;
+    if(e.key==='Enter'||e.key===' '||e.key==='ArrowUp'||e.key==='ArrowDown'){e.preventDefault();open('keys',{keyboard:true})}
+  });
+  trigger.addEventListener('click',e=>{
     if(!enabled())return;
     e.preventDefault();e.stopPropagation();
-    if(st){if(performance.now()-st.openedAt>400)close({focus:true});return}
-    open('tap',{keyboard:e.detail===0});
+    if(!st)open('keys',{keyboard:true});
   });
-  anchor.addEventListener('keydown',e=>{
-    if(!enabled()||st)return;
-    if(e.key==='Enter'||e.key===' '||e.key==='ArrowUp'){e.preventDefault();open('tap',{keyboard:true})}
-  });
-  // iOS: no callout, no text selection, no scroll or bounce while the finger is on the button,
-  // and no delayed click once the gesture is handled.
-  anchor.addEventListener('contextmenu',e=>{if(enabled())e.preventDefault()});
-  anchor.addEventListener('selectstart',e=>{if(enabled())e.preventDefault()});
-  anchor.addEventListener('touchmove',e=>{if((press||st)&&e.cancelable)e.preventDefault()},{passive:false});
-  anchor.addEventListener('touchend',e=>{if((enabled()||touchHandled)&&e.cancelable)e.preventDefault();touchHandled=false},{passive:false});
 
-  return{
-    open:(opts)=>open('tap',opts),
+  Object.assign(api,{
+    open:()=>open('keys',{keyboard:true}),
     close,
     isOpen:()=>!!st,
     state:()=>st&&{mode:st.mode,parent:st.parent,hot:st.hot,fit:st.fit,ring2:st.ring2,origin:st.o,items:st.items.map(i=>i.id),children:st.children.map(i=>i.id)}
-  };
+  });
+  return api;
 }
 
-if(typeof module!=='undefined')module.exports={RADIAL,radialMinStep,radialPoint,radialRange,radialAngles,radialFit,radialChildren,radialHit,radialInk};
+if(typeof module!=='undefined')module.exports={RADIAL,radialMinStep,radialPoint,radialFree,radialRun,radialAngles,radialCenter,radialFit,radialChildren,radialHit,radialInk};

@@ -1,16 +1,15 @@
 'use strict';
-// Quick Capture (Accueil): hold the orange camera button, drag onto a course, then onto one of its
-// sections, and release — the camera opens straight into that course/section, in today's session
-// (or a new one, created with today's date on the first photo). Releasing on the button or outside
-// the items does nothing. A tap opens the same menu to choose by touch; from the keyboard: Enter,
-// arrows, Escape. The menu is ui/radial-menu.js; the photos then follow the normal camera path
-// (saved on the device first, then Google Drive), see features/capture-actions.js.
+// Quick Capture: press the trigger, and without lifting the finger drag onto a course, then onto
+// one of its sections, and lift — the camera opens straight into that course/section, in today's
+// session (or a new one, created with today's date on the first photo). Lifting anywhere else
+// cancels. The menu is ui/radial-menu.js; the photos then follow the normal camera path (saved on
+// the device first, then Google Drive), see features/capture-actions.js.
+//
+// On Accueil the trigger sits in the "Reprendre" card. To put it somewhere else:
+//   `${QuickCaptureTrigger({id:'myQuick'})}` in the page's HTML, then  attachQuickCapture(byId('myQuick'));
+// (any element works as the trigger; a second argument replaces "open the camera" with your own callback).
 
-let quickCaptureMenu=null;
 let quickCaptureFileDest=null;   // where the photo from the phone's own camera app goes
-
-const quickCaptureButton=()=>bottomNav.querySelector('.nav-capture');
-const quickCaptureEnabled=()=>currentView==='home'&&!appShell.classList.contains('hidden-chrome')&&!sheetRoot.innerHTML;
 
 // Short label inside a ring item: "VHDL", "TD", "TS" (Traitement du signal), "Mat" (Mathématiques).
 function quickCaptureShort(name){
@@ -38,24 +37,26 @@ function quickCaptureSections(course){
 }
 
 function quickCaptureDescribe({mode,item,parent,center}){
-  const tap=mode==='tap';
+  const keys=mode==='keys';
   if(center)return{title:camT('qcMenu'),sub:camT('qcCancel')};
   if(item?.more)return{title:item.label,sub:camT('qcMoreHint')};
   if(item&&parent){
     const section=state.courses.find(c=>c.id===parent.id)?.sections.find(s=>s.id===item.id);
-    return{title:`${parent.label} · ${item.label}`,sub:`${camT(tap?'qcTapOpen':'qcRelease')} · ${camT(section&&todaySession(section)?'qcToday':'qcNew')}`};
+    return{title:`${parent.label} · ${item.label}`,sub:`${camT(keys?'qcKeyOpen':'qcRelease')} · ${camT(section&&todaySession(section)?'qcToday':'qcNew')}`};
   }
-  if(item)return{title:item.label,sub:camT(tap?'qcTapSection':'qcDragSection')};
-  return{title:camT('qcMenu'),sub:camT(tap?'qcTapCourse':'qcDragCourse')};
+  if(item)return{title:item.label,sub:camT(keys?'qcKeySection':'qcDragSection')};
+  return{title:camT('qcMenu'),sub:camT(keys?'qcKeyCourse':'qcDragCourse')};
 }
 
-function quickCaptureSelect(item,parent){
-  if(item.more){openQuickCamera(null,{courseId:parent?.id||null});return}
+// Chosen item → destination, then onPick(dest) (default: open the camera there).
+// "Plus…" gives dest null (+ the course when it came from the second ring).
+function quickCaptureSelect(item,parent,onPick){
+  if(item.more){onPick(null,{courseId:parent?.id||null});return}
   const course=state.courses.find(c=>c.id===parent?.id),section=course?.sections.find(s=>s.id===item.id);
-  if(section)openQuickCamera(quickCaptureDestination(course,section));
+  if(section)onPick(quickCaptureDestination(course,section),{});
 }
 
-// Called inside the gesture's own event (pointerup, click or key): browsers open the camera only
+// Called inside the gesture's own event (pointerup, or Enter): browsers open the camera only
 // during a user action, so it is asked for right here, with no await or timer before it.
 // No destination ("Plus…"): the camera opens with the destination list on top.
 function openQuickCamera(dest,{courseId=null}={}){
@@ -64,6 +65,26 @@ function openQuickCamera(dest,{courseId=null}={}){
   prewarmCamera();
   navigate('capture',dest?{cameraDest:dest}:{});
   if(!dest)openCameraPicker({current:courseId?{courseId}:camDest,onPick:d=>setCameraDestination(d)});
+}
+
+// Makes any element a Quick Capture trigger: courses → sections → camera, in one gesture.
+function attachQuickCapture(trigger,onPick=openQuickCamera){
+  if(!trigger||trigger.dataset.quickCapture)return null;
+  trigger.dataset.quickCapture='1';
+  return createRadialMenu({
+    trigger,
+    items:quickCaptureItems,
+    overflowItem:()=>({id:'more',more:true,label:camT('qcMoreSections'),short:'•••',color:'#8A8FA3',aria:camT('qcMoreSections')}),
+    describe:quickCaptureDescribe,
+    onSelect:(item,parent)=>quickCaptureSelect(item,parent,onPick),
+    onEmpty:()=>showQuickCaptureBubble('empty',trigger),
+    label:camT('qcMenu'),closeLabel:camT('qcClose'),centerHtml:icon('x',{size:26,stroke:2.4})
+  });
+}
+
+// The trigger button (Accueil: in the "Reprendre" card, where the illustration was).
+function QuickCaptureTrigger({id='quickCapture'}={}){
+  return`<button type="button" class="qc-trigger" id="${id}" aria-label="${esc(camT('qcButton'))}"><span class="qc-trigger-orb">${icon('camera',{size:26,stroke:2})}</span><small>${esc(camT('qcTrigger'))}</small></button>`;
 }
 
 // Without a live camera (old browser, page not on https): the phone's own camera app.
@@ -81,22 +102,26 @@ function quickCaptureInput(){
   return el;
 }
 
-// Small bubble above the button: the one-time hint, or "no course yet" with a way to create one.
-function showQuickCaptureBubble(kind){
+// Small bubble next to the trigger: the one-time hint, or "no course yet" with a way to create one.
+// Below the trigger when there is more room there, else above; the arrow points at the trigger.
+function showQuickCaptureBubble(kind,trigger){
   closeQuickCaptureBubble();
-  const orb=quickCaptureButton()?.querySelector('.capture-orb');if(!orb)return;
-  const r=orb.getBoundingClientRect(),keyboard=document.activeElement===quickCaptureButton();
+  if(!trigger?.isConnected)return;
+  const r=(trigger.querySelector('.qc-trigger-orb')||trigger).getBoundingClientRect(),cx=r.left+r.width/2;
+  const below=window.innerHeight-r.bottom>r.top,keyboard=document.activeElement===trigger;
   const el=document.createElement('div');
-  el.className=`qc-bubble ${kind}`;el.id='qcBubble';el.setAttribute('role','status');
-  el.style.left=`${r.left+r.width/2}px`;el.style.bottom=`${window.innerHeight-r.top+14}px`;
+  el.className=`qc-bubble ${kind}${below?' below':''}`;el.id='qcBubble';el.setAttribute('role','status');
   el.innerHTML=kind==='empty'
     ?`<p>${esc(camT('qcNoCourses'))}</p><button type="button" class="qc-bubble-btn" id="qcCreateCourse">${icon('plus',{size:16,stroke:2.4})}${esc(camT('qcCreateCourse'))}</button>`
     :`<p>${esc(camT('qcHint'))}</p>`;
   document.body.appendChild(el);
+  const w=el.offsetWidth,left=Math.min(Math.max(cx,w/2+12),window.innerWidth-w/2-12);
+  el.style.left=`${left}px`;el.style.setProperty('--ax',`${cx-left}px`);
+  if(below)el.style.top=`${r.bottom+14}px`;else el.style.bottom=`${window.innerHeight-r.top+14}px`;
   byId('qcCreateCourse')?.addEventListener('click',()=>{closeQuickCaptureBubble();navigate('courses');openNewCourseSheet()});
   if(keyboard)byId('qcCreateCourse')?.focus({preventScroll:true});
   el._off=e=>{if(!el.contains(e.target))closeQuickCaptureBubble()};
-  el._t=setTimeout(closeQuickCaptureBubble,kind==='empty'?9000:7000);
+  el._t=setTimeout(closeQuickCaptureBubble,kind==='empty'?9000:8000);
   setTimeout(()=>{if(el.isConnected)document.addEventListener('pointerdown',el._off,true)},0);
 }
 function closeQuickCaptureBubble(){
@@ -104,28 +129,13 @@ function closeQuickCaptureBubble(){
   clearTimeout(el._t);document.removeEventListener('pointerdown',el._off,true);el.remove();
 }
 
-// After every render: the button is Quick Capture on Accueil only; elsewhere it opens the camera as before.
+// After every render: menus and bubbles belong to the screen that opened them; on Accueil the
+// gesture is explained once, the first time the trigger is seen.
 function syncQuickCapture(){
-  const btn=quickCaptureButton();if(!btn)return;
-  const on=quickCaptureEnabled();
-  btn.classList.toggle('quick-capture',on);
-  if(on){btn.setAttribute('aria-label',camT('qcButton'));btn.setAttribute('aria-haspopup','menu')}
-  else{btn.setAttribute('aria-label','Capture');btn.removeAttribute('aria-haspopup');quickCaptureMenu?.close();closeQuickCaptureBubble()}
-  // First visit of Accueil: the gesture is explained once.
-  if(on&&!state.quickCaptureHintSeen&&state.courses.length){
-    state.quickCaptureHintSeen=true;saveState();
-    setTimeout(()=>{if(quickCaptureEnabled()&&!quickCaptureMenu?.isOpen())showQuickCaptureBubble('hint')},700);
+  if(currentView!=='home'){radialCloseAll();closeQuickCaptureBubble();return}
+  const trigger=byId('heroQuick');
+  if(trigger&&!state.quickCaptureTriggerHintSeen&&state.courses.length){
+    state.quickCaptureTriggerHintSeen=true;saveState();
+    setTimeout(()=>{if(currentView==='home'&&trigger.isConnected&&!radialOpen.size)showQuickCaptureBubble('hint',trigger)},700);
   }
 }
-
-quickCaptureMenu=createRadialMenu({
-  anchor:quickCaptureButton(),
-  isEnabled:quickCaptureEnabled,
-  origin:()=>{const r=quickCaptureButton().querySelector('.capture-orb').getBoundingClientRect();return{x:r.left+r.width/2,y:r.top+r.height/2}},
-  items:quickCaptureItems,
-  overflowItem:()=>({id:'more',more:true,label:camT('qcMoreSections'),short:'•••',color:'#8A8FA3',aria:camT('qcMoreSections')}),
-  describe:quickCaptureDescribe,
-  onSelect:quickCaptureSelect,
-  onEmpty:()=>showQuickCaptureBubble('empty'),
-  label:camT('qcMenu'),closeLabel:camT('qcClose'),centerHtml:icon('x',{size:26,stroke:2.4})
-});

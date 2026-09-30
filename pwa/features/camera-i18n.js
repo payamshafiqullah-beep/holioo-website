@@ -64,15 +64,15 @@ const CAMERA_STRINGS={
     reviewSaveError:'Modification impossible. Réessayez.',reviewApplying:'Filtre appliqué à {n} page(s)…',reviewApplied:'Filtre appliqué à toutes les pages',
     reviewDeleted:'Page supprimée',reviewUndo:'Annuler',
     // Quick Capture (Accueil, features/quick-capture.js)
-    qcButton:'Capture rapide : maintenez et glissez vers un cours, ou touchez pour choisir',
+    qcButton:'Capture rapide : appuyez, glissez vers un cours puis une section, et relâchez pour ouvrir la caméra',qcTrigger:'Capture rapide',
     qcMenu:'Capture rapide',qcClose:'Fermer la capture rapide',
     qcDragCourse:'Glissez vers un cours',qcDragSection:'Glissez vers une section',
     qcRelease:'Relâchez pour ouvrir la caméra',qcCancel:'Relâchez ici pour annuler',
-    qcTapCourse:'Touchez un cours',qcTapSection:'Touchez une section',qcTapOpen:'Touchez pour ouvrir la caméra',
+    qcKeyCourse:'Choisissez un cours (flèches, Entrée)',qcKeySection:'Choisissez une section',qcKeyOpen:'Entrée pour ouvrir la caméra',
     qcToday:'séance du jour',qcNew:'nouvelle séance',
     qcMore:'Plus…',qcMoreCourses:'Autres cours',qcMoreSections:'Autres sections',qcMoreHint:'Choisir dans la liste complète',
     qcCourseAria:'{name} : afficher les sections',qcSectionAria:'{course}, {section} : ouvrir la caméra',
-    qcHint:'Maintenez et glissez pour capturer directement dans un cours',
+    qcHint:'Appuyez ici, glissez vers un cours puis une section sans lever le doigt, et relâchez : la caméra s’ouvre directement.',
     qcNoCourses:'Aucun cours pour l’instant. Créez-en un pour capturer directement dedans.',qcCreateCourse:'Créer un cours'
   }
 };

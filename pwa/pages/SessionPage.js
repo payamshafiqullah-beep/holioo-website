@@ -25,23 +25,21 @@ async function renderSession(){
   const ctx=findSessionContext();if(!ctx){navigate('courses');return}
   const{course,section,session}=ctx,n=session.photoIds.length,pub=session.visibility==='public';
   const active=sessionViewMode==='notebook'?'notebook':'gallery';
-  const actions=n?`<div class="button-stack">
+  const actions=n||active==='notebook'?`<div class="button-stack">
         ${ActionButton({label:'Créer un PDF',id:'buildPdf',iconName:'fileText'})}
-        ${ActionButton({label:pub?'Publiée dans la bibliothèque':'Publier dans la bibliothèque',id:'publishSession',variant:pub?'soft':'ghost',iconName:pub?'checkCircle':'globe'})}
+        ${n?`${ActionButton({label:pub?'Publiée dans la bibliothèque':'Publier dans la bibliothèque',id:'publishSession',variant:pub?'soft':'ghost',iconName:pub?'checkCircle':'globe'})}
         ${ActionButton({label:'Reconnaître le texte',id:'ocrSession',variant:'ghost',iconName:'scan'})}
-        ${ActionButton({label:'Exporter les images',id:'exportImages',variant:'ghost',iconName:'share'})}
+        ${ActionButton({label:'Exporter les images',id:'exportImages',variant:'ghost',iconName:'share'})}`:''}
         ${ActionButton({label:'Renommer la séance',id:'renameSession',variant:'ghost',iconName:'pencil'})}
       </div>`:'';
   const galleryView=n?`${SectionTitle('Galerie',{action:'Plein écran',id:'openFirstPhoto'})}
       <div class="thumbs" id="sessionThumbs"></div>
-      <p class="reorder-hint">${icon('more',{size:14})}Maintenez une photo ou faites glisser sa poignée pour changer l’ordre.</p>
-      ${actions}`
-    :`${EmptyState({iconName:'camera',title:'Aucune photo',text:'Cette séance ne contient pas encore de photos.'})}${actions}`;
+      <p class="reorder-hint">${icon('more',{size:14})}Maintenez une photo ou faites glisser sa poignée pour changer l’ordre.</p>`
+    :EmptyState({iconName:'camera',title:'Aucune photo',text:'Cette séance ne contient pas encore de photos.'});
   const notebookView=active!=='notebook'?'':`${SectionTitle('Carnet',{action:'+ Page blanche',id:'addBlankPage'})}
       <div class="session-notebook-help">${icon('pencil',{size:15})}<span>Écrivez au stylet. Le doigt sert à faire défiler la page.</span></div>
       <div class="notebook" id="sessionNotebook"></div>
-      ${notebookToolbar()}
-      ${actions||ActionButton({label:'Créer un PDF',id:'buildPdf',iconName:'fileText'})}`;
+      ${notebookToolbar()}`;
   app.innerHTML=`<section class="screen${active==='notebook'?' screen-wide':''}">
     ${PageHeader({back:true,title:`${course.name} · ${section.name}`})}
     ${PageIntro({eyebrow:'SÉANCE',title:session.title,subtitle:`${plural(n,'photo')} · ${fmtDate(session.createdAt)}`})}
@@ -49,6 +47,7 @@ async function renderSession(){
     ${sessionViewToggle(active)}
     <div class="session-gallery-view ${active==='gallery'?'':'hidden'}">${galleryView}</div>
     <div class="session-notebook-view ${active==='notebook'?'':'hidden'}">${notebookView}</div>
+    ${actions}
   </section>`;
   byId('backBtn').onclick=()=>navigate('section');
   byId('sessionViewToggle')?.addEventListener('click',async e=>{

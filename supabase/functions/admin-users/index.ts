@@ -1,4 +1,4 @@
-// POST {action, ...} — admin only. Actions: list, update, block, unblock, delete.
+// POST {action, ...} — admin only. Actions: list, stats, update, block, unblock, delete.
 import { admin, cors, json, requestUser, sql } from '../_shared/util.ts';
 
 const EDITABLE = ['display_name', 'university', 'faculty', 'program', 'level', 'semester', 'academic_year'] as const;
@@ -14,7 +14,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const sb = admin();
     const target = String(body.id || '');
-    if (body.action !== 'list' && !target) return json({ error: 'Utilisateur manquant' }, 400);
+    if (!['list', 'stats'].includes(body.action) && !target) return json({ error: 'Utilisateur manquant' }, 400);
     if (['block', 'delete'].includes(body.action) && target === me.id) return json({ error: 'Vous ne pouvez pas vous bloquer ou vous supprimer vous-même' }, 400);
 
     switch (body.action) {
@@ -47,6 +47,39 @@ Deno.serve(async (req) => {
             };
           }).sort((a, b) => String(b.last_sign_in_at || '').localeCompare(String(a.last_sign_in_at || ''))),
         });
+      }
+      case 'stats': {
+        // Usage counts for the owner. A "person" is a signed-in user (all their devices count once) or a guest device.
+        const [summary] = await sql`
+          with t as (select (now() at time zone 'Europe/Paris')::date as today),
+          a as (select device_id, user_id, coalesce(user_id::text, device_id::text) as who, last_seen_at from private.app_activity),
+          d as (select dd.day, a.who, a.user_id is not null as is_user from private.app_activity_daily dd join a using (device_id))
+          select
+            (select count(*) from public.profiles where not (coalesce(email, '') ~ '^device_.*@holioo[.]app$'))::int as registered,
+            (select count(distinct who) from a where user_id is not null)::int as users_seen,
+            (select count(*) from a where user_id is null)::int as guests_seen,
+            (select count(distinct who) from a where user_id is not null and last_seen_at > now() - interval '10 minutes')::int as online_users,
+            (select count(*) from a where user_id is null and last_seen_at > now() - interval '10 minutes')::int as online_guests,
+            (select count(distinct who) from d, t where is_user and day = t.today)::int as today_users,
+            (select count(distinct who) from d, t where not is_user and day = t.today)::int as today_guests,
+            (select count(distinct who) from d, t where is_user and day >= t.today - 6)::int as week_users,
+            (select count(distinct who) from d, t where not is_user and day >= t.today - 6)::int as week_guests,
+            (select count(distinct who) from d, t where is_user and day >= t.today - 29)::int as month_users,
+            (select count(distinct who) from d, t where not is_user and day >= t.today - 29)::int as month_guests`;
+        const daily = await sql`
+          select dd.day::text as day,
+                 count(distinct a.user_id)::int as users,
+                 count(distinct a.device_id) filter (where a.user_id is null)::int as guests
+          from private.app_activity_daily dd join private.app_activity a using (device_id)
+          where dd.day >= (now() at time zone 'Europe/Paris')::date - 89
+          group by dd.day order by dd.day`;
+        const devices = await sql`
+          select a.device_id::text as id, a.user_id is not null as is_user, a.platform, a.app_version as version,
+                 a.first_seen_at, a.last_seen_at, a.opens, p.email, coalesce(p.display_name, p.name) as name,
+                 (select count(*) from private.app_activity_daily dd where dd.device_id = a.device_id)::int as days_active
+          from private.app_activity a left join public.profiles p on p.id = a.user_id
+          order by a.last_seen_at desc limit 5000`;
+        return json({ summary, daily, devices });
       }
       case 'update': {
         const changes: Record<string, string> = {};

@@ -21,3 +21,5 @@ verify_jwt = false
 verify_jwt = false
 [functions.admin-users]
 verify_jwt = false
+[functions.app-ping]
+verify_jwt = false

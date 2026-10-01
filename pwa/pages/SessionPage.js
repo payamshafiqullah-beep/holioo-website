@@ -15,6 +15,9 @@ function notebookToolbar(){
     ${tool('pen-red','Stylo rouge','#E5484D')}
     ${tool('highlighter','Surligneur jaune','#FACC15')}
     <button class="ink-tool" type="button" data-ink-eraser title="Gomme" aria-label="Gomme">${icon('eraser',{size:18})}</button>
+    <span class="ink-sep" aria-hidden="true"></span>
+    ${[['Fin',6],['Moyen',10],['Épais',15]].map(([label,d],i)=>`<button class="ink-tool ink-size" type="button" data-ink-size="${i}" title="Épaisseur : ${label.toLowerCase()}" aria-label="Épaisseur : ${label.toLowerCase()}"><span class="ink-size-dot" style="--d:${d}px"></span></button>`).join('')}
+    <span class="ink-sep" aria-hidden="true"></span>
     <button class="ink-tool" type="button" data-ink-ruler title="Règle" aria-label="Règle">${icon('ruler',{size:18})}</button>
     <button class="ink-tool" type="button" id="inkUndo" data-ink-undo title="Annuler" aria-label="Annuler">${icon('undo',{size:18})}</button>
     <button class="ink-tool" type="button" id="inkRedo" data-ink-redo title="Rétablir" aria-label="Rétablir">${icon('redo',{size:18})}</button>

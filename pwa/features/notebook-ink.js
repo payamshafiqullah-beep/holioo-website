@@ -42,6 +42,15 @@ function notebookCanEdit(){return !isPhoneNotebook()}
 function normalizePoint(x,y,rect){return[Math.max(0,Math.min(1,x/rect.width)),Math.max(0,Math.min(1,y/rect.height))]}
 function strokeColor(tool){return INK_TOOLS[tool]?.color||INK_TOOLS['pen-black'].color}
 function strokeSize(tool){return INK_TOOLS[tool]?.size||INK_TOOLS['pen-black'].size}
+
+// Three widths (thin / medium / thick) per kind of tool, in px on a 900px-wide page. The choice is remembered on the
+// device (state.settings.inkSizes) and stored in each stroke, so changing it never alters what is already written.
+const INK_SIZES={pen:[2.5,4,7],highlighter:[10,15,24],eraser:[10,18,32]};
+const ERASER_TOLERANCE_PER_PX=1/720;   // eraser reach (0..1 of the page) per px of eraser size: 18px = .025
+const inkKind=tool=>tool==='eraser'?'eraser':INK_TOOLS[tool]?.kind||'pen';
+const inkSizeIndex=kind=>{const i=state.settings.inkSizes?.[kind];return i>=0&&i<INK_SIZES[kind].length?i:1};
+const inkSize=tool=>INK_SIZES[inkKind(tool)][inkSizeIndex(inkKind(tool))];
+function setInkSizeIndex(kind,i){state.settings.inkSizes={...state.settings.inkSizes,[kind]:i};saveState()}
 function strokeOpacity(tool){return INK_TOOLS[tool]?.opacity??1}
 
 async function loadNotebookDoc(session){
@@ -213,11 +222,16 @@ function selectNotebookBlock(id){
 function bindNotebookToolbar(rt){
   const bar=byId('notebookToolbar');if(!bar)return;
   const toolButtons=[...bar.querySelectorAll('[data-ink-tool],[data-ink-eraser]')];
+  const sizeButtons=[...bar.querySelectorAll('[data-ink-size]')];
+  const showSize=()=>sizeButtons.forEach(b=>b.classList.toggle('active',+b.dataset.inkSize===inkSizeIndex(inkKind(rt.tool))));
   const pick=(tool,btn)=>{
     rt.tool=tool;
     toolButtons.forEach(b=>b.classList.toggle('active',b===btn));
+    showSize();
     setEditing(rt,null);
   };
+  sizeButtons.forEach(btn=>btn.onclick=()=>{setInkSizeIndex(inkKind(rt.tool),+btn.dataset.inkSize);showSize()});
+  showSize();
   bar.querySelectorAll('[data-ink-tool]').forEach(btn=>btn.onclick=()=>pick(btn.dataset.inkTool,btn));
   bar.querySelector('[data-ink-eraser]')?.addEventListener('click',e=>pick('eraser',e.currentTarget));
   bar.querySelector('[data-ink-ruler]')?.addEventListener('click',e=>{
@@ -286,7 +300,7 @@ function notebookPointerDown(e,rt,block){
   if(!isDrawablePointer(e,rt))return;
   const rect=block.getBoundingClientRect();
   const pt=normalizePoint(e.clientX-rect.left,e.clientY-rect.top,rect);
-  rt.drawing={block,blockId:block.dataset.blockId,points:[[pt[0],pt[1],e.pressure||.5]],pointerId:e.pointerId,tool:rt.tool};
+  rt.drawing={block,blockId:block.dataset.blockId,points:[[pt[0],pt[1],e.pressure||.5]],pointerId:e.pointerId,tool:rt.tool,size:inkSize(rt.tool)};
   block.classList.add('inking');
   e.currentTarget.setPointerCapture(e.pointerId);
   e.preventDefault();
@@ -320,7 +334,7 @@ function notebookPointerMove(e,rt,block){
   }
   const d=rt.drawing;
   if(!d||d.pointerId!==e.pointerId||d.block!==block)return;
-  const events=e.getCoalescedEvents?.()||[e];
+  const coalesced=e.getCoalescedEvents?.(),events=coalesced?.length?coalesced:[e];
   const rect=block.getBoundingClientRect();
   for(const ev of events){
     const pt=normalizePoint(ev.clientX-rect.left,ev.clientY-rect.top,rect);
@@ -373,11 +387,11 @@ function finishNotebookStroke(rt,d){
   clearLiveCanvas(d.block);
   if(d.points.length<2)return;
   if(d.tool==='eraser'){
-    const deleted=eraseNotebookStrokes(rt.doc,d.blockId,d.points);
+    const deleted=eraseNotebookStrokes(rt.doc,d.blockId,d.points,d.size*ERASER_TOLERANCE_PER_PX);
     if(deleted.length){rt.hist.undo.push({type:'delete',ids:deleted});rt.hist.redo=[]}
   }else{
     const points=rt.ruler?snapRulerPoints(d.points):d.points;
-    const stroke={id:uid(),sessionId:rt.doc.sessionId,blockId:d.blockId,tool:d.tool,points,createdAt:Date.now(),updatedAt:Date.now(),deleted:false};
+    const stroke={id:uid(),sessionId:rt.doc.sessionId,blockId:d.blockId,tool:d.tool,size:d.size,points,createdAt:Date.now(),updatedAt:Date.now(),deleted:false};
     rt.doc.strokes.push(stroke);
     rt.hist.undo.push({type:'add',ids:[stroke.id]});rt.hist.redo=[];
   }
@@ -403,11 +417,11 @@ function snapRulerPoints(points){
   return[start,next];
 }
 
-function eraseNotebookStrokes(doc,blockId,points){
+function eraseNotebookStrokes(doc,blockId,points,tolerance=.025){
   const deleted=[];
   const active=visibleInkStrokes(doc).filter(s=>s.blockId===blockId);
   for(const stroke of active){
-    if(strokeTouchesPath(stroke.points,points,.025)){
+    if(strokeTouchesPath(stroke.points,points,tolerance)){
       stroke.deleted=true;
       stroke.updatedAt=Date.now();
       deleted.push(stroke.id);
@@ -515,13 +529,13 @@ function drawLiveNotebookStroke(d){
   const {ctx,w,h}=setupCanvas(canvas,d.block);
   if(d.tool==='eraser'){
     ctx.strokeStyle='rgba(229,72,107,.8)';
-    ctx.lineWidth=18;ctx.lineCap='round';ctx.lineJoin='round';
+    ctx.lineWidth=d.size*w/INK_REF_WIDTH;ctx.lineCap='round';ctx.lineJoin='round';
     ctx.beginPath();
     d.points.forEach((p,i)=>{const x=p[0]*w,y=p[1]*h;i?ctx.lineTo(x,y):ctx.moveTo(x,y)});
     ctx.stroke();
     return;
   }
-  drawStroke(ctx,{tool:d.tool,points:notebookRuntime?.ruler?snapRulerPoints(d.points):d.points},w,h);
+  drawStroke(ctx,{tool:d.tool,size:d.size,points:notebookRuntime?.ruler?snapRulerPoints(d.points):d.points},w,h);
 }
 
 function clearLiveCanvas(block){
@@ -532,7 +546,7 @@ function clearLiveCanvas(block){
 function drawStroke(ctx,stroke,w,h){
   if(!stroke.points?.length)return;
   const pts=stroke.points.map(p=>[p[0]*w,p[1]*h,p[2]??.5]);
-  const outline=HoliooPerfectFreehand.getStroke(pts,{size:strokeSize(stroke.tool)*w/INK_REF_WIDTH,thinning:.45,smoothing:.5,streamline:.45,simulatePressure:false,last:true});
+  const outline=HoliooPerfectFreehand.getStroke(pts,{size:(stroke.size||strokeSize(stroke.tool))*w/INK_REF_WIDTH,thinning:.45,smoothing:.5,streamline:.45,simulatePressure:false,last:true});
   ctx.save();
   ctx.globalAlpha=strokeOpacity(stroke.tool);
   ctx.fillStyle=strokeColor(stroke.tool);

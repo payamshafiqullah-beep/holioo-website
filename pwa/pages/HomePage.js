@@ -17,7 +17,7 @@ async function renderHome(){
     <div class="page-intro"><p class="greeting">Bonjour${firstName()?` ${esc(firstName())}`:''} 👋</p><h1 class="hero-title">Prêt à apprendre aujourd’hui ?</h1></div>
     ${hero}
     ${SectionTitle('Mes cours',{action:'Voir tout',nav:'courses'})}
-    ${courses.length?`<div class="category-grid">${courses.map((c,i)=>{const v=courseVisual(c,i),s=courseStats(c);return CategoryCard({tone:v.tone,iconName:v.iconName,title:c.name,meta:`${s.filled}/${s.sections} sections · ${plural(s.sessions,'séance')}`,pct:s.pct,attrs:`data-course="${c.id}"`})}).join('')}</div>`
+    ${courses.length?`<div class="category-grid" id="homeCourses">${courses.map((c,i)=>{const v=courseVisual(c,i),s=courseStats(c);return CategoryCard({tone:v.tone,iconName:v.iconName,title:c.name,meta:`${s.filled}/${s.sections} sections · ${plural(s.sessions,'séance')}`,pct:s.pct,attrs:`data-course="${c.id}"`})}).join('')}</div>${courses.length>1?'<p class="reorder-hint">Maintenez un cours puis faites-le glisser pour changer son ordre.</p>':''}`
       :EmptyState({iconName:'book',title:'Aucun cours',text:'Ajoutez votre premier cours pour commencer.',action:ActionButton({label:'Ajouter un cours',attrs:'data-nav="courses"',full:false})})}
     ${SectionTitle('Révisions du jour')}
     <div class="list-stack">
@@ -28,6 +28,13 @@ async function renderHome(){
   </section>`;
 
   bindCourseCards();
+  // The three courses shown here can be reordered; the new order is the order of the whole list (the others keep their place after them).
+  const grid=byId('homeCourses');
+  if(grid)makeReorderable(grid,{itemSelector:'[data-course]',idAttribute:'course',handle:false,onChange:ids=>{
+    const all=new Map(state.courses.map(c=>[c.id,c]));
+    state.courses=[...ids.map(id=>all.get(id)).filter(Boolean),...state.courses.filter(c=>!ids.includes(c.id))];
+    saveState();queueSync();showToast('Ordre des cours enregistré');
+  }});
   attachQuickCapture(byId('heroQuick'));
   byId('heroResume')?.addEventListener('click',()=>{currentCourseId=latest.course.id;currentSectionId=latest.section.id;currentSessionId=latest.session.id;navigate('session')});
   byId('homeInbox').onclick=()=>navigate(inboxCount?'inbox':'capture');

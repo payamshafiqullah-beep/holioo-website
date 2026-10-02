@@ -119,21 +119,13 @@ function openCameraPicker({current,onPick,message=''}){
   function renderMain(focusFirst=false){
     fixSection();
     const c=course(),sec=c?.sections.find(s=>s.id===sel.sectionId);
-    const recent=validRecentDestinations(state.cameraRecent,state.courses);
     const today=new Date();
     const sessions=[...(sec?.sessions||[])].reverse().slice(0,20);
-    const sum=sec?cameraDestinationParts({courseId:c.id,sectionId:sec.id,sessionId:sel.sessionId}):null;
     const check=`<span class="cam-check" aria-hidden="true">${icon('check',{size:14,stroke:3.2})}</span>`;
     setCard(`${header(camT('pickerTitle'),{timetable:true})}
-      ${sum?`<div class="cam-summary" style="--c:${colorOf(c)};--on:${inkOf(c)}" role="status" aria-live="polite">
-        <span class="cam-badge" aria-hidden="true">${icon('folder',{size:20,stroke:2.1})}</span>
-        <span class="cam-summary-text"><small>${esc(camT('summaryTo'))}</small><b>${esc(sum.course)} · ${esc(sum.section)}</b><span>${esc(sum.title)}${sum.isNew?'':` · ${esc(camT('photosCount',{n:sum.photos}))}`}</span></span>
-      </div>`:''}
       <div class="cam-sheet-scroll">
         ${message?`<p class="cam-sheet-note" role="note">${esc(message)}</p>`:''}
         ${!state.courses.length?`<p class="cam-sheet-msg">${esc(camT('noCourses'))}</p>`:`
-        ${recent.length?`<div class="cam-label">${esc(camT('recent'))}</div>
-        <div class="cam-recent" data-hscroll>${recent.map((d,i)=>{const p=cameraDestinationParts(d),rc=state.courses.find(x=>x.id===d.courseId);return`<button class="cam-recent-card" data-recent="${i}" data-k="r${i}" style="--c:${colorOf(rc)};--on:${inkOf(rc)}"><span class="cam-badge sm" aria-hidden="true">${icon('folder',{size:16,stroke:2.1})}</span><span class="cam-recent-text"><b>${esc(p.course)}</b><small>${esc(p.detail)}</small></span></button>`}).join('')}</div>`:''}
         <div class="cam-label" id="camLblCourse">${esc(camT('course'))}</div>
         <div class="cam-chips" role="radiogroup" aria-labelledby="camLblCourse" data-hscroll>${state.courses.map(x=>`<button role="radio" aria-checked="${x.id===sel.courseId}" class="cam-chip${x.id===sel.courseId?' on':''}" data-course="${x.id}" data-k="c${x.id}" style="--c:${colorOf(x)}"><i aria-hidden="true"></i>${esc(x.name)}<svg class="ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></button>`).join('')}</div>
         <div class="cam-label" id="camLblSection">${esc(camT('section'))}</div>
@@ -148,7 +140,6 @@ function openCameraPicker({current,onPick,message=''}){
         <button class="cam-btn ghost" id="camSheetCancel" data-k="cancel">${esc(camT('cancel'))}</button>
         <button class="cam-btn primary" id="camSheetUse" data-k="use" ${!sel.sectionId?'disabled':''}>${esc(camT('useDest'))}</button>
       </div>`,focusFirst);
-    card.querySelectorAll('[data-recent]').forEach(b=>b.onclick=()=>pick(recent[Number(b.dataset.recent)]));
     card.querySelectorAll('[data-course]').forEach(b=>b.onclick=()=>{if(sel.courseId!==b.dataset.course){sel={courseId:b.dataset.course,sectionId:null,sessionId:null}}renderMain()});
     card.querySelectorAll('[data-section]').forEach(b=>b.onclick=()=>{if(sel.sectionId!==b.dataset.section){sel.sectionId=b.dataset.section;sel.sessionId=null}renderMain()});
     card.querySelectorAll('[data-session]').forEach(b=>b.onclick=()=>{sel.sessionId=b.dataset.session||null;renderMain()});
@@ -223,7 +214,7 @@ function enableSheetDrag(root,card){
     drag.v=(e.clientY-drag.last)/Math.max(1,e.timeStamp-drag.t);drag.last=e.clientY;drag.t=e.timeStamp;
     drag.dy=Math.max(0,e.clientY-drag.y0);
     card.style.transform=`translateY(${drag.dy}px)`;
-    root.style.setProperty('--scrim-a',String(.55*(1-Math.min(1,drag.dy/360))));
+    root.style.setProperty('--scrim-a',String(.35*(1-Math.min(1,drag.dy/360))));
   });
   const end=e=>{
     if(!drag||e.pointerId!==drag.id)return;

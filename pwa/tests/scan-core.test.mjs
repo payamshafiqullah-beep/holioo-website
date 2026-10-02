@@ -19,6 +19,35 @@ test('corners are ordered TL, TR, BR, BL from any order, even for a turned page'
   assert.equal(C.orderQuad([[0,0],[1,0]]),null);
 });
 
+test('confidence: edges, a clear step, size and shape raise it; a bare side, a cut-off or a reflection lower it',()=>{
+  const good={support:.95,contrast:40,coverage:.3,minArea:.08,quad:Q,aspect:.75,weak:.9};
+  const c=C.confidence(good);
+  assert.ok(c>.9&&c<=1,`good ${c}`);
+  assert.ok(C.confidence({...good,support:.4})<.8,'weak edges: doubtful (under 80 %)');
+  assert.ok(C.confidence({...good,weak:0})<c*.7,'one side with no edge at all');
+  assert.ok(C.confidence({...good,through:2})<c,'edges that go on past the corners');
+  assert.ok(C.confidence({...good,cutoff:true})<c&&C.confidence({...good,glare:true})<c);
+  assert.ok(C.confidence({...good,quad:[[.1,.1],[.9,.1],[.2,.2],[.1,.9]]})<c,'a needle-thin corner');
+  assert.doesNotThrow(()=>C.confidence({}));
+  for(const v of[C.confidence({support:9,contrast:999,coverage:9,minArea:.01,quad:Q}),C.confidence({support:-1,contrast:0,coverage:0})])assert.ok(v>=0&&v<=1);
+});
+
+test('board frames the detector is not sure of are never auto-captured (the shutter still works)',()=>{
+  const ok={sharpness:200,brightness:140,support:.9};
+  assert.deepEqual(plain(C.judgeFrame({...ok,confidence:.9},'board')),{ok:true,warn:null});
+  assert.deepEqual(plain(C.judgeFrame({...ok,confidence:.5},'board')),{ok:false,warn:'lowconf'});
+  assert.equal(C.judgeFrame({...ok,confidence:.5},'document').ok,true,'documents are unchanged');
+  assert.equal(C.judgeFrame(ok,'board').ok,true,'no confidence given: unchanged');
+});
+
+test('a point dragged on the preview maps back to the same frame point (corners by hand)',()=>{
+  const view={videoW:1920,videoH:1080,elW:390,elH:700,zoom:1.6,crop:{x:240,y:135,w:1440,h:810}};
+  for(const p of[[.1,.2],[.5,.5],[.93,.81]]){
+    const [sx,sy]=C.mapToScreen([p],view)[0],back=C.mapFromScreen([sx,sy],view);
+    assert.ok(Math.abs(back[0]-p[0])<1e-9&&Math.abs(back[1]-p[1])<1e-9,`${p} → ${back}`);
+  }
+});
+
 test('plausible pages only: convex, big enough, no needle corners',()=>{
   assert.equal(C.quadValid(Q,{minArea:.2}),true);
   assert.equal(C.quadValid([[.4,.4],[.5,.4],[.5,.5],[.4,.5]],{minArea:.2}),false,'too small');

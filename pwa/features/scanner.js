@@ -19,7 +19,8 @@ const SCAN_DEFAULT_FILTER={document:'auto',board:'board',book:'auto',id:'auto'};
 const SCAN_FILTERS=['original','auto','gray','bw','lighten','shadows','board','board-dark'];
 const SCAN_STILL_SIDE=1600;      // longest side of the photo the edges are searched on after the shot
 const SCAN_FULL_EVERY=6;         // live frames: one full search in this many, the rest only re-fit the outline
-const SCAN_BLOCKING_WARNS=new Set(['far','cutoff','blur','dark']);
+const SCAN_BLOCKING_WARNS=new Set(['far','cutoff','blur','dark','lowconf']);
+const SCAN_ML_EVERY=3;           // board mode: the corner model looks at one live frame in this many (when it is installed)
 
 const Scanner=(()=>{
   let worker=null,seq=0,cvState='idle',cvProgress=0;
@@ -71,7 +72,15 @@ const Scanner=(()=>{
     return x.getImageData(0,0,w,h);
   }
 
-  function detectFrame(image,mode,prior=null){return call('detect',{image:{data:image.data.buffer,width:image.width,height:image.height},mode,prior},[image.data.buffer])}
+  function detectFrame(image,mode,prior=null,hint=null){return call('detect',{image:{data:image.data.buffer,width:image.width,height:image.height},mode,prior,hint},[image.data.buffer])}
+
+  // Board corner model (features/scan-ml.js), when one is installed: looked at in the background, its last
+  // outline goes to the next full search as a candidate (it is only used if it sits on real edges).
+  function pollModel(r){
+    if(r.mode!=='board'||typeof ScanML==='undefined'||!ScanML.ready()||r.mlBusy||r.frame%SCAN_ML_EVERY!==0)return;
+    r.mlBusy=true;
+    ScanML.predict(r.video,r.region).then(m=>{r.ml=m?{quad:m.quad,at:performance.now()}:null}).catch(()=>{r.ml=null}).finally(()=>{r.mlBusy=false});
+  }
 
   // ---------- live session ----------
   function start({video,overlay,mode,getZoom,onAuto,onQr,onStatus}){
@@ -81,6 +90,7 @@ const Scanner=(()=>{
       shown:null,target:null,quality:null,gutter:.5,raw:null,status:{},lastQr:{text:null,at:0},tilt:null,cutStreak:0,lastTick:0,el:null};
     buildOverlay(r);
     if(mode!=='qr')prepare();
+    if(mode==='board'&&typeof ScanML!=='undefined')ScanML.prepare();
     const tick=async()=>{
       if(!r.alive)return;
       r.timer=setTimeout(tick,mode==='qr'?220:90);
@@ -95,10 +105,14 @@ const Scanner=(()=>{
           if(res.text&&(res.text!==r.lastQr.text||t-r.lastQr.at>4000)){r.lastQr={text:res.text,at:t};r.onQr?.(res.text)}
           r.raw=res.corners;r.target=res.corners;setStatus(r,{state:res.text?'qr':'search'});
         }else if(cvState==='ready'){
+          // Corners set by hand: nothing to search for.
+          if(r.manual){setStatus(r,{state:'tracking',manual:true,warn:null,auto:false});return}
           const img=grab(video,region,512);
           // Outline of the last frame lets the worker skip the full search while it still fits the page.
           const prior=r.raw&&r.frame%SCAN_FULL_EVERY!==0?r.raw:null;r.frame++;
-          const res=await detectFrame(img,mode,prior);
+          pollModel(r);
+          const hint=r.ml&&t-r.ml.at<1200?r.ml.quad:null;
+          const res=await detectFrame(img,mode,prior,hint);
           if(!r.alive)return;
           r.quality=ScanCore.judgeFrame(res,mode);
           const st=r.tracker.update(res.quad,t);
@@ -113,7 +127,7 @@ const Scanner=(()=>{
           const warn=st.visible?(r.quality.warn||tiltWarn(r)):(r.cutStreak>=4?'cutoff':tiltWarn(r)||(lost?'find':null));
           // A light tick the moment a page is found (Android; iPhone ignores vibration).
           if(st.visible&&r.status.state==='search'&&t-r.lastTick>1500){r.lastTick=t;navigator.vibrate?.(6)}
-          setStatus(r,{state:st.visible?(st.stable?'stable':'tracking'):'search',stableFor:st.stableFor,warn,auto:autoOn});
+          setStatus(r,{state:st.visible?(st.stable?'stable':'tracking'):'search',stableFor:st.stableFor,warn,auto:autoOn,conf:st.visible&&res.quad?Math.round(res.confidence*100):null});
           if(shoot)r.onAuto?.();
         }else setStatus(r,{state:cvState==='failed'?'manual':'loading',warn:tiltWarn(r)});
       }catch(e){if(r.alive)console.warn('Scanner frame',e.message)}
@@ -127,7 +141,7 @@ const Scanner=(()=>{
       const tgt=r.target&&r.region?screenQuad(r,r.target):null;
       if(tgt){
         const k=1-Math.exp(-dt/48); // same easing at any frame rate
-        r.shown=r.shown?r.shown.map((p,i)=>[p[0]+(tgt[i][0]-p[0])*k,p[1]+(tgt[i][1]-p[1])*k]):tgt;
+        r.shown=r.shown&&!r.manual?r.shown.map((p,i)=>[p[0]+(tgt[i][0]-p[0])*k,p[1]+(tgt[i][1]-p[1])*k]):tgt;
       }else r.shown=null;
       drawOverlay(r);
     };
@@ -150,9 +164,10 @@ const Scanner=(()=>{
   //   data-state: search | tracking | ready | warn | qr     data-page: "1" while an outline is shown
   function buildOverlay(r){
     const svg=r.overlay;if(!svg)return;
-    svg.innerHTML='<g class="scan-guide"><path class="scan-guide-under"/><path class="scan-guide-path"/></g><g class="scan-layer"><path class="scan-dim" fill-rule="evenodd"/><path class="scan-glow"/><path class="scan-quad"/><path class="scan-fold"/><path class="scan-brackets-under"/><path class="scan-brackets"/><path class="scan-progress" pathLength="100"/></g>';
+    svg.innerHTML='<g class="scan-guide"><path class="scan-guide-under"/><path class="scan-guide-path"/></g><g class="scan-layer"><path class="scan-dim" fill-rule="evenodd"/><path class="scan-glow"/><path class="scan-quad"/><path class="scan-fold"/><path class="scan-brackets-under"/><path class="scan-brackets"/><path class="scan-progress" pathLength="100"/></g><g class="scan-handles">'+[0,1,2,3].map(i=>`<circle class="scan-handle" data-i="${i}" r="11"/><circle class="scan-handle-hit" data-i="${i}" r="30"/>`).join('')+'</g>';
+    if(!svg._scanHandles){svg._scanHandles=true;svg.addEventListener('pointerdown',onHandleDown)}
     const q=s=>svg.querySelector(s);
-    r.el={guide:q('.scan-guide-path'),guideUnder:q('.scan-guide-under'),bracketsUnder:q('.scan-brackets-under'),dim:q('.scan-dim'),glow:q('.scan-glow'),quad:q('.scan-quad'),fold:q('.scan-fold'),brackets:q('.scan-brackets'),progress:q('.scan-progress')};
+    r.el={handles:[0,1,2,3].map(i=>[...svg.querySelectorAll(`[data-i="${i}"]`)]),guide:q('.scan-guide-path'),guideUnder:q('.scan-guide-under'),bracketsUnder:q('.scan-brackets-under'),dim:q('.scan-dim'),glow:q('.scan-glow'),quad:q('.scan-quad'),fold:q('.scan-fold'),brackets:q('.scan-brackets'),progress:q('.scan-progress')};
     svg.dataset.state='search';svg.dataset.page='';svg.dataset.mode=r.mode;
   }
   function visualState(r,hasPage){
@@ -174,6 +189,8 @@ const Scanner=(()=>{
     if(svg.dataset.state!==state)svg.dataset.state=state;
     const page=pts?'1':'';if(svg.dataset.page!==page)svg.dataset.page=page;
     if(!pts)return; // the last outline stays in place while it fades out
+    const manual=r.manual?'1':'';if(svg.dataset.manual!==manual)svg.dataset.manual=manual;
+    if(r.manual)pts.forEach(([x,y],i)=>{for(const c of el.handles[i]){c.setAttribute('cx',x.toFixed(1));c.setAttribute('cy',y.toFixed(1))}});
     const d=ScanCore.polyPath(pts);
     el.dim.setAttribute('d',`M0 0H${w}V${h}H0Z${d}`);
     el.glow.setAttribute('d',d);el.quad.setAttribute('d',d);el.progress.setAttribute('d',d);
@@ -212,7 +229,43 @@ const Scanner=(()=>{
   function pause(on){if(run)run.paused=on}
   function setTilt(t){if(run)run.tilt=t}
   // What the capture needs: the smoothed outline (frame-normalised) and the book fold.
-  const current=()=>run?{quad:run.target&&run.target.map(p=>p.slice()),gutter:run.gutter,region:run.region,quality:run.quality}:null;
+  const current=()=>run?{quad:run.target&&run.target.map(p=>p.slice()),gutter:run.gutter,region:run.region,quality:run.quality,manual:!!run.manual}:null;
+
+  // ---------- corners by hand ----------
+  // The fallback when the detector is unsure or finds nothing: four handles on the preview, dragged onto the
+  // corners of the board. The shutter then crops exactly there (no search, no auto-capture).
+  function setManual(on){
+    const r=run;if(!r||r.mode==='qr'||r.mode==='id')return false;
+    r.manual=!!on;
+    if(r.manual){
+      // Start from what was detected, else from a rectangle in the middle of the picture.
+      r.manualQuad=(r.target||[[.14,.2],[.86,.2],[.86,.78],[.14,.78]]).map(p=>p.slice());
+      r.target=r.manualQuad;r.raw=null;r.tracker.reset();r.auto.reset();
+      setStatus(r,{state:'tracking',manual:true,warn:null,auto:false});
+    }else{
+      r.manualQuad=null;r.target=null;r.shown=null;r.raw=null;
+      if(r.overlay)delete r.overlay.dataset.manual;
+      setStatus(r,{state:'search',warn:null});
+    }
+    return r.manual;
+  }
+  function onHandleDown(e){
+    const r=run,h=e.target.closest?.('.scan-handle-hit');
+    if(!r||!r.manual||!h)return;
+    const i=+h.dataset.i,box=r.overlay.getBoundingClientRect();
+    e.preventDefault();try{h.setPointerCapture(e.pointerId)}catch{}
+    navigator.vibrate?.(6);
+    const move=ev=>{
+      if(!run||run!==r||!r.manual)return;
+      const el=r.video.getBoundingClientRect(),z=r.getZoom();
+      const p=ScanCore.mapFromScreen([ev.clientX-box.left,ev.clientY-box.top],{videoW:r.video.videoWidth,videoH:r.video.videoHeight,elW:el.width,elH:el.height,zoom:z.css,crop:r.region});
+      const q=r.manualQuad.map(x=>x.slice());q[i]=[Math.min(1,Math.max(0,p[0])),Math.min(1,Math.max(0,p[1]))];
+      // Never a bow-tie: a corner dragged across the board is stopped.
+      if(ScanCore.isConvex(q.map(([x,y])=>[x,y*r.region.h/r.region.w]))){r.manualQuad=q;r.target=q}
+    };
+    const up=()=>{h.removeEventListener('pointermove',move);h.removeEventListener('pointerup',up);h.removeEventListener('pointercancel',up)};
+    h.addEventListener('pointermove',move);h.addEventListener('pointerup',up);h.addEventListener('pointercancel',up);
+  }
 
   // ---------- one-off detection and refinement on images ----------
 
@@ -234,8 +287,9 @@ const Scanner=(()=>{
 
   // Sub-pixel outline: the rough quad (frame-normalised) is searched again on the pixels, side by side.
   // Needs no OpenCV. Returns {quad, support} or null when the edges are not clear enough to trust.
-  async function refineImage(img,quad,{fixed}={}){
-    const r=await call('refine',{image:{data:img.data.buffer,width:img.width,height:img.height},quad,fixed},[img.data.buffer]);
+  async function refineImage(img,quad,{fixed,mode}={}){
+    const board=mode==='board';
+    const r=await call('refine',{image:{data:img.data.buffer,width:img.width,height:img.height},quad,fixed,mode,range:board ? .045 : undefined,minStrength:board ? 2.2 : undefined},[img.data.buffer]);
     return r.refined?{quad:r.quad,support:r.support}:null;
   }
   // Same on a stored photo, at most SCAN_STILL_SIDE px on the long side. Adds the photo's real size.
@@ -250,7 +304,7 @@ const Scanner=(()=>{
     }finally{bmp.close?.()}
   }
 
-  return{prepare,start,stop,pause,setTilt,current,snap,detectBlob,detectImage,refineImage,refineBlob,subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn)},get state(){return cvState},get progress(){return cvProgress}};
+  return{prepare,start,stop,pause,setTilt,setManual,current,snap,detectBlob,detectImage,refineImage,refineBlob,subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn)},get state(){return cvState},get progress(){return cvProgress}};
 })();
 
 // ---------- turning a capture into stored pages ----------
@@ -273,7 +327,7 @@ function rememberScanFilter(mode,filter){if(!SCAN_DEFAULT_FILTER[mode])return;st
 async function preciseScanEdit(row){
   if(!row?.blob||!row.scanQuad||row.edit?.mode!=='quad'||row.edit.refined)return null;
   try{
-    const r=await Scanner.refineBlob(row.blob,row.scanQuad);
+    const r=await Scanner.refineBlob(row.blob,row.scanQuad,{mode:row.scanMode});
     if(!r)return null;
     const q=row.scanHalf!=null?ScanCore.splitSpread(r.quad,row.scanGutter??.5)[row.scanHalf]:r.quad;
     return{...row.edit,quad:scanEdit(row.scanMode||'document',q,r.width,r.height,{refined:true}).quad,refined:true};

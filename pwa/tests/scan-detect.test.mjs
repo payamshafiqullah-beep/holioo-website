@@ -27,7 +27,21 @@ const maxErr=(a,b)=>Math.max(...a.map((p,i)=>Math.hypot(p[0]-b[i][0],p[1]-b[i][1
 for(const [name,scene,mode,tol] of [
   ['sheet on a desk','documentScene','document',.004],
   ['whiteboard seen from a seat, with glare','whiteboardScene','board',.006],
+  ['low-contrast framed classroom board','boardFrameOnlyScene','board',.018],
   ['blackboard','blackboardScene','board',.004],
+  // boards of every colour, wall, light and angle (frames are cropped at the board's edge or at the frame's)
+  ['black board on a black wall (16 grey levels)','blackOnBlackBoardScene','board',.02],
+  ['green chalkboard with a wooden frame','greenBoardScene','board',.02],
+  ['green board on a purple wall of the same brightness','greenBoardOnColoredWallScene','board',.006],
+  ['brown board on a brown wall','brownBoardScene','board',.006],
+  ['glossy board with window reflections','glossyBoardScene','board',.02],
+  ['board filling the picture (close-up)','closeUpBoardScene','board',.006],
+  ['the big board of two boards in the picture','multiBoardScene','board',.02],
+  ['board seen from the side (45°)','angledBoardScene','board',.02],
+  ['white board in a dark classroom','poorLightBoardScene','board',.006],
+  ['white board in the sun, with a hard window shadow across it','sunnyBoardScene','board',.02],
+  ['faint black board lit from one side','faintBlackBoardScene','board',.006],
+  ['board lit from one side (light 1.1 to 0.45)','gradientBoardScene','board',.006],
   ['open book (whole spread)','bookScene','book',.004],
   ['ID card','idCardScene','id',.004],
   // hard cases
@@ -52,6 +66,24 @@ for(const [name,scene,mode,tol] of [
     assert.equal(r.far,false);assert.equal(r.cutoff,false);
   });
 }
+
+test('confidence: a sure detection is high, a doubtful one is lower, nothing found is zero',async()=>{
+  const cv=await opencv();
+  const sure=ctx.scanDetect(cv,S.greenBoardScene().img,'board'),shaky=ctx.scanDetect(cv,S.faintBlackBoardScene().img,'board'),none=ctx.scanDetect(cv,S.makeImage(512,384,[120,120,120]),'board');
+  assert.ok(sure.confidence>=.9,`green board ${sure.confidence}`);
+  assert.ok(shaky.confidence<sure.confidence,`faint board ${shaky.confidence} below ${sure.confidence}`);
+  assert.equal(none.quad,null);assert.equal(none.confidence,0);
+});
+
+test('a model outline is only a candidate: a wrong one changes nothing, a right one is used',async()=>{
+  const cv=await opencv(),{img,quad}=S.blackboardScene();
+  const plain=ctx.scanDetect(cv,img,'board');
+  const wrong=ctx.scanDetect(cv,img,'board',{hint:[[.02,.02],[.3,.03],[.3,.3],[.02,.3]]});
+  assert.ok(maxErr(wrong.quad,plain.quad)<1e-6,'a hint on empty wall is dropped: same outline as without it');
+  const rough=quad.map(([x,y],i)=>[x+(i%2?.012:-.012),y+(i<2?-.012:.012)]);
+  const right=ctx.scanDetect(cv,img,'board',{hint:rough});
+  assert.ok(maxErr(right.quad,quad)<.004,'a rough but right hint ends on the real edges');
+});
 
 test('a sheet far away is still outlined, but flagged "too far" (never auto-captured)',async()=>{
   const cv=await opencv(),{img,quad}=S.farScene(),r=ctx.scanDetect(cv,img,'document');

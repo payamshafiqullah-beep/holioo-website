@@ -48,6 +48,21 @@
     return isConvex(sq)&&area(sq)>=minArea*aspect&&angles(sq).every(a=>a>=minAngle&&a<=180-minAngle);
   }
 
+  // How sure a detection is, 0..1 (the camera says so when it is under 80 %): real edges on every side, a
+  // clear step in brightness across them, an outline big enough to be the board, a plausible shape.
+  //   weak = support (0..1) of the weakest side that is inside the picture; through = sides whose edge goes on
+  //   past the corners (the outline may have stopped on a shadow); aspect = frame height/width.
+  function confidence({support=0,contrast=0,coverage=0,minArea=.1,quad=null,aspect=1,weak=1,through=0,cutoff=false,glare=false}={}){
+    const edge=Math.min(1,support/.85),step=Math.min(1,Math.abs(contrast)/30),size=Math.min(1,coverage/Math.max(1e-6,minArea));
+    let shape=1;
+    if(quad)shape=1-Math.min(1,Math.max(0,Math.max(...angles(quad.map(([x,y])=>[x,y*aspect])).map(a=>Math.abs(a-90)))-30)/40);
+    let c=(.5*edge+.2*step+.15*size+.15*shape)*(.6+.4*Math.min(1,weak/.4));
+    c*=1-.08*through;
+    if(cutoff)c*=.85;
+    if(glare)c*=.93;
+    return Math.max(0,Math.min(1,c));
+  }
+
   const maxCornerShift=(a,b)=>Math.max(...a.map((p,i)=>dist(p,b[i])));
 
   // Smooth, jitter-free quad that follows detections, plus "held still long enough" for auto-capture.
@@ -88,12 +103,14 @@
 
   // Frame quality from the worker's measures. Thresholds are tuned for 512 px analysis frames.
   // `ok` gates the auto-capture; `warn` is the hint shown to the person (a reflection is only a hint).
-  function judgeFrame({sharpness=0,brightness=128,far=false,cutoff=false,glare=false,support=1}={},mode='document'){
+  function judgeFrame({sharpness=0,brightness=128,far=false,cutoff=false,glare=false,support=1,confidence=null}={},mode='document'){
     if(brightness<55)return{ok:false,warn:'dark'};
     const minSharp=mode==='board'?35:60;
     if(sharpness<minSharp)return{ok:false,warn:'blur'};
     if(cutoff)return{ok:false,warn:'cutoff'};
     if(far)return{ok:false,warn:'far'};
+    // A board outline the detector is not sure of is shown, but never shot by itself (the shutter works).
+    if(mode==='board'&&confidence!=null&&confidence<.6)return{ok:false,warn:'lowconf'};
     if(support<.3)return{ok:false,warn:null}; // outline not really on edges: never shoot by itself
     if(glare)return{ok:true,warn:'glare'};
     return{ok:true,warn:null};
@@ -185,6 +202,14 @@
     });
   }
 
+  // Screen point → frame point: the inverse of mapToScreen (dragging a corner on the preview).
+  function mapFromScreen([x,y],{videoW,videoH,elW,elH,zoom=1,crop=null}){
+    const c=crop||{x:0,y:0,w:videoW,h:videoH};
+    const s=Math.max(elW/videoW,elH/videoH),ox=(elW-videoW*s)/2,oy=(elH-videoH*s)/2;
+    const sx=elW/2+(x-elW/2)/zoom,sy=elH/2+(y-elH/2)/zoom;
+    return[((sx-ox)/s-c.x)/c.w,((sy-oy)/s-c.y)/c.h];
+  }
+
   // Quad pulled toward its centre by a fraction of its size.
   function insetQuad(q,k){const o=orderQuad(q),cx=o.reduce((s,p)=>s+p[0],0)/4,cy=o.reduce((s,p)=>s+p[1],0)/4;return o.map(([x,y])=>[x+(cx-x)*k*2,y+(cy-y)*k*2])}
 
@@ -214,6 +239,6 @@
   // Quad corners as a closed SVG path.
   const polyPath=q=>`M${q.map(p=>`${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join('L')}Z`;
 
-  root.ScanCore={guideQuad,bracketPath,polyPath,insetQuad,orderQuad,area,isConvex,angles,quadValid,maxCornerShift,createTracker,judgeFrame,createAutoCapture,toEditQuad,fromEditQuad,fullQuad,splitSpread,findGutter,pageRatio,idCardLayout,tiltHint,mapToScreen};
+  root.ScanCore={guideQuad,bracketPath,polyPath,insetQuad,orderQuad,area,isConvex,angles,quadValid,confidence,maxCornerShift,createTracker,judgeFrame,createAutoCapture,toEditQuad,fromEditQuad,fullQuad,splitSpread,findGutter,pageRatio,mapFromScreen,idCardLayout,tiltHint,mapToScreen};
 })(typeof self!=='undefined'?self:typeof window!=='undefined'?window:globalThis);
 if(typeof module!=='undefined')module.exports=(typeof self!=='undefined'?self:globalThis).ScanCore;

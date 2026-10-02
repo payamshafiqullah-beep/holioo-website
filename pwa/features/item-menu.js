@@ -2,7 +2,9 @@
 // Long-press menu for every item that can be renamed / moved and deleted (courses, sections, séances,
 // photos, PDFs). Press ~450 ms: two round actions open above the finger, with the same ring and
 // liquid-glass lens as Quick Capture (ui/radial-menu.js, used as is). Slide and release on one to choose
-// it; lifting the finger anywhere else closes the menu. Moving more than 10 px before 450 ms is a scroll,
+// it. Lifting the finger without choosing while it is still over the menu (where it pressed — even with
+// a shaking hand —, between the actions) leaves the menu open: tap an action, or tap outside / × to close.
+// Lifting past the actions (a swipe away) closes it. Moving more than 10 px before 450 ms is a scroll,
 // not a press. The screen behind is blurred and dimmed; the pressed item stays sharp above it, a little
 // bigger. No tap action follows a long-press. Right-click opens the menu on desktop.
 //
@@ -14,25 +16,36 @@
 //     name             shown above the rings;  title: selector of the text edited by "Renommer" (default strong)
 //
 // The menu is one createRadialMenu on a hidden element. The long-press is detected on the item; at 450 ms
-// a pointerdown for the same finger is sent to that element and captures the pointer, so the radial menu
-// receives the rest of the gesture (slide, lift) exactly as it does from the Quick Capture button.
+// the menu opens with begin() and the same finger keeps driving it (move, lift) from the document, wherever
+// its events go (they stay on the pressed item) — no pointer capture needed, so it works the same on iOS.
 
 const ITEM_MENU={ms:450,slop:10,undoMs:5000};
-let itemMenuRadial=null,itemMenuCur=null,itemMenuSwallow=0,itemMenuDown=false,itemUndo=null;
+let itemMenuRadial=null,itemMenuCur=null,itemMenuSwallow=0,itemMenuHeld=null,itemUndo=null;   // itemMenuHeld: id of the finger holding the menu
 
 if(typeof window!=='undefined'&&window.addEventListener){
   // The click that follows a long-press (touch or mouse) must not open or select anything.
-  window.addEventListener('click',e=>{if(performance.now()<itemMenuSwallow){e.preventDefault();e.stopImmediatePropagation()}},true);
-  // While the finger is down on an open menu the page must not scroll under it.
-  document.addEventListener('touchmove',e=>{if(itemMenuDown&&e.cancelable)e.preventDefault()},{passive:false});
-  // Lifting the finger without choosing closes the menu (the radial menu would stay open for taps).
-  const end=()=>{
-    if(!itemMenuDown)return;
-    itemMenuDown=false;itemMenuSwallow=performance.now()+500;
-    setTimeout(()=>{if(itemMenuRadial?.isOpen())itemMenuRadial.close()},0);
-  };
-  document.addEventListener('pointerup',end,true);document.addEventListener('pointercancel',end,true);
-  document.addEventListener('touchend',end,true);document.addEventListener('touchcancel',end,true);
+  window.addEventListener('click',e=>{if(performance.now()<itemMenuSwallow&&!e.target.closest?.('[data-haptic]')){e.preventDefault();e.stopImmediatePropagation()}},true);
+  const held=e=>itemMenuHeld!==null&&e.pointerId===itemMenuHeld;
+  const letGo=()=>{itemMenuHeld=null;itemMenuSwallow=performance.now()+500};
+  // Slide: the lens follows. Lift: an action is chosen, or the menu stays open for taps / closes
+  // (ui/radial-menu.js decides by where the finger is). The system took the touch: open for taps.
+  document.addEventListener('pointermove',e=>{if(held(e))itemMenuRadial?.move(e.clientX,e.clientY)},true);
+  document.addEventListener('pointerup',e=>{if(held(e)){letGo();itemMenuRadial?.lift(e.clientX,e.clientY)}},true);
+  document.addEventListener('pointercancel',e=>{if(held(e)){letGo();itemMenuRadial?.interrupt()}},true);
+  // Another finger while the first one never reported its lift: the menu goes on with taps.
+  document.addEventListener('pointerdown',e=>{if(itemMenuHeld!==null&&!held(e)){letGo();itemMenuRadial?.interrupt()}},true);
+  // The same finger's touch events (iOS sends both): the page must not scroll under the menu, and a
+  // lift or cancel reported only here is not lost (the radial menu ignores whichever comes second).
+  document.addEventListener('touchmove',e=>{
+    if(itemMenuHeld===null)return;
+    if(e.cancelable)e.preventDefault();
+    const t=e.touches[0];if(t)itemMenuRadial?.move(t.clientX,t.clientY);
+  },{passive:false});
+  document.addEventListener('touchend',e=>{
+    if(itemMenuHeld===null||e.touches.length)return;
+    const t=e.changedTouches[0];letGo();if(t)itemMenuRadial?.lift(t.clientX,t.clientY);
+  },true);
+  document.addEventListener('touchcancel',()=>{if(itemMenuHeld!==null){letGo();itemMenuRadial?.interrupt()}},true);
   document.addEventListener('visibilitychange',()=>{if(document.hidden)itemUndoCommit()});
   window.addEventListener('pagehide',itemUndoCommit);
 }
@@ -49,7 +62,6 @@ function itemMenuGet(){
     onSelect:item=>{const c=itemMenuCur;itemMenuCur=null;c?.act(item.id)},
     label:'Actions',closeLabel:'Fermer',centerHtml:icon('x',{size:26,stroke:2.4})
   });
-  itemMenuRadial.proxy=proxy;
   return itemMenuRadial;
 }
 
@@ -63,13 +75,9 @@ function itemMenuOpen(el,o,at,pointer){
     else if(id==='move')o.move();
     else itemRename(el.querySelector(o.title||'strong'),o.name,v=>{o.rename(v);saveState();queueSync();render()},o.check);
   }};
-  if(pointer){
-    // The finger is down: hand it to the radial menu (slide-and-release).
-    radial.proxy.dispatchEvent(new PointerEvent('pointerdown',{pointerId:pointer.id,pointerType:pointer.type,isPrimary:true,button:0,buttons:1,clientX:at.x,clientY:at.y,bubbles:true,cancelable:true}));
-    itemMenuDown=true;
-    // Capture refused: leave the menu open for taps instead of one that nothing can close.
-    if(radial.isOpen()&&!radial.proxy.hasPointerCapture?.(pointer.id)){radial.close();radial.open()}
-  }else radial.open();
+  // The finger is down: it drives the menu (slide-and-release, see the document listeners above).
+  if(pointer){if(radial.begin(at.x,at.y,pointer.id))itemMenuHeld=pointer.id}
+  else radial.open();
   const overlay=document.querySelector('.radial');
   if(overlay){
     // Everything behind is blurred and dimmed; a copy of the pressed item sits above, sharp and a little bigger.

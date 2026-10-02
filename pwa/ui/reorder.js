@@ -19,7 +19,7 @@ function makeReorderable(host,{onChange,holdMs=320,itemSelector='[data-photo-id]
   })}
   if(withHandle)for(const el of items()){
     const handle=document.createElement('button');handle.type='button';handle.className='reorder-handle';handle.dataset.reorderHandle='';
-    handle.innerHTML='<span aria-hidden="true">⠿</span>';el.appendChild(handle);
+    handle.innerHTML='<span class="grip" aria-hidden="true"></span>';el.appendChild(handle);
   }
   renumber();
   function setVisibleOrder(ordered){

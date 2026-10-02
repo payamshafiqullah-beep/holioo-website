@@ -29,9 +29,10 @@ if(typeof window!=='undefined'&&window.addEventListener){
   const end=()=>{
     if(!itemMenuDown)return;
     itemMenuDown=false;itemMenuSwallow=performance.now()+500;
-    setTimeout(()=>{if(itemMenuRadial?.isOpen()&&itemMenuRadial.state().mode==='tap')itemMenuRadial.close()},0);
+    setTimeout(()=>{if(itemMenuRadial?.isOpen())itemMenuRadial.close()},0);
   };
   document.addEventListener('pointerup',end,true);document.addEventListener('pointercancel',end,true);
+  document.addEventListener('touchend',end,true);document.addEventListener('touchcancel',end,true);
   document.addEventListener('visibilitychange',()=>{if(document.hidden)itemUndoCommit()});
   window.addEventListener('pagehide',itemUndoCommit);
 }

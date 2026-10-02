@@ -163,15 +163,58 @@ function sendSyncSignal(fields){
 }
 function onSyncSignal(sig){
   if(sig.kind==='state'){clearTimeout(onSyncSignal.t);onSyncSignal.t=setTimeout(()=>syncStructure({push:false}).catch(e=>console.warn(e)),300)}
-  if(sig.kind==='photo'&&sig.refId&&sig.driveFileId){loadRemotePhotos().then(map=>{map[sig.refId]=sig.driveFileId;return saveRemotePhotos()})}
+  if(sig.kind==='photo'){const got=receiveRemotePhoto(sig).catch(e=>{console.warn('Live photo',e);return false});for(const fn of remoteSignalListeners)try{fn(sig,got)}catch(e){console.warn(e)}return}
   for(const fn of remoteSignalListeners)try{fn(sig)}catch(e){console.warn(e)}
 }
 function onRemoteSignal(fn){remoteSignalListeners.add(fn);return()=>remoteSignalListeners.delete(fn)}
-function startSyncSignals(){if(window.HoliooSignals&&!guestMode&&sb&&currentUser)window.HoliooSignals.start(sb,currentUser.id,onSyncSignal)}
+function startSyncSignals(){if(window.HoliooSignals&&!guestMode&&sb&&currentUser){window.HoliooSignals.start(sb,currentUser.id,onSyncSignal);updatePresence()}}
+// What this device tells the others (after every render): tablet / computer layout, on Live Capture, which séance.
+function updatePresence(){
+  if(!window.HoliooSignals)return;
+  const live=currentView==='live';
+  const p={desk:typeof isDesk==='function'&&isDesk(),live,sessionId:live&&typeof liveSessionId!=='undefined'?liveSessionId:null};
+  const key=JSON.stringify(p);if(key===updatePresence.key)return;
+  updatePresence.key=key;window.HoliooSignals.track(p);
+}
 function stopRemoteSync(){window.HoliooSignals?.stop();Drive.forgetToken?.();remotePendingDoc=null;remotePhotos=null}
 // Back on the app: look for changes made elsewhere (at most every 20 s).
 function pullStructureSoon(){
   if(Date.now()-(pullStructureSoon.at||0)<20000)return;
   pullStructureSoon.at=Date.now();
   syncStructure({push:false}).catch(e=>console.warn(e));
+}
+
+// ── Live Capture (pages/LiveCapturePage.js) ──
+// A tablet / computer on the Live screen says so through presence. While one does, each photo stored by the
+// camera here is sent to Drive at once (not when the camera is left) and signalled with its séance, so it
+// appears there within seconds. With nobody listening, the camera keeps its usual deferred sync.
+const isUuid=v=>typeof v==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+const liveListeners=()=>(window.HoliooSignals?.peers()||[]).filter(p=>p.live);
+let liveUploadChain=Promise.resolve();
+function onPhotoStoredForLive(id){
+  if(!remoteSyncReady()||!liveListeners().length)return null;
+  const job=liveUploadChain.then(async()=>{
+    const driveFileId=await Drive.pushPhoto({sb,user:currentUser,state,db:DB,id});
+    if(!driveFileId)return null;
+    const ctx=findSessionContext(liveSessionOf(id));
+    sendSyncSignal({kind:'photo',refId:isUuid(id)?id:null,sessionId:isUuid(ctx?.session.id)?ctx.session.id:null,driveFileId,rev:Date.now()});
+    // The séance may be new, and its photo list changed: the structure follows shortly.
+    clearTimeout(onPhotoStoredForLive.t);
+    onPhotoStoredForLive.t=setTimeout(()=>syncStructure({push:true}).catch(e=>console.warn('Live structure',e)),1500);
+    return driveFileId;
+  }).catch(e=>{console.warn('Live upload failed',e);return null});
+  liveUploadChain=job;
+  return job;
+}
+function liveSessionOf(photoId){
+  for(const c of state.courses)for(const s of c.sections)for(const q of s.sessions)if(q.photoIds.includes(photoId))return q.id;
+  return null;
+}
+// A photo signal from another device: its Drive file is remembered, a retake replaces the copy here.
+async function receiveRemotePhoto(sig){
+  if(!sig.refId||!sig.driveFileId)return false;
+  const map=await loadRemotePhotos();map[sig.refId]=sig.driveFileId;await saveRemotePhotos();
+  const row=await DB.get('photos',sig.refId).catch(()=>null);
+  if(row&&row.syncState==='synced'&&row.driveFileId===sig.driveFileId&&!row.edit&&Number(sig.rev)>Date.parse(row.syncedAt||0))await DB.del('photos',sig.refId);
+  return ensurePhotoLocal(sig.refId);
 }

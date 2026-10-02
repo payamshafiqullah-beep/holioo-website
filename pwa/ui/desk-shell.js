@@ -28,6 +28,7 @@ function DeskToolbar(){
       ${DESK_TOOLS.map(t=>`<button class="desk-tab" type="button" data-nav="${t.view}" data-desk-tab="${t.view}" title="${t.label}">${icon(t.iconName,{size:19})}<span>${t.label}</span></button>`).join('')}
     </nav>
     <div class="desk-toolbar-end">
+      <button class="desk-live${currentView==='live'?' active':''}" type="button" data-nav="live" title="Capture en direct : les photos du téléphone arrivent ici" ${currentView==='live'?'aria-current="page"':''}>${icon('radio',{size:19})}<span>Live</span></button>
       <button class="desk-capture" type="button" data-nav="capture" title="Prendre des photos" aria-label="Prendre des photos">${icon('camera',{size:19,stroke:2})}<span>Capture</span></button>
       ${tool('data-nav="inbox"',`Captures à trier${count?` : ${count}`:''}`,'inbox',count?`<b class="icon-btn-badge">${count>99?'99+':count}</b>`:'')}
       ${tool('data-nav="files"','Rechercher','search')}

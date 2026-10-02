@@ -48,6 +48,8 @@ const cameraQueue=(()=>{
         items.shift();
         failing=false;storageFull=false;
         try{it.onStored?.(it.id)}catch(e){console.warn(e)}
+        // A tablet on Live Capture: this photo goes to Drive now (features/remote-sync.js); otherwise nothing changes.
+        try{if(typeof onPhotoStoredForLive==='function')onPhotoStoredForLive(it.id)}catch(e){console.warn(e)}
         emit();
       }catch(e){
         it.tries++;

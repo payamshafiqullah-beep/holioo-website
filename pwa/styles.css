@@ -888,7 +888,6 @@ body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
 .reorder-handle{position:absolute;right:3px;bottom:3px;z-index:4;display:grid;place-items:center;width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.94);color:#333a60;box-shadow:0 2px 8px #0002;touch-action:none;cursor:grab;font-size:28px;line-height:1}
 
 .course-managed{position:relative;padding-bottom:52px}
-.course-managed .reorder-handle{right:12px;bottom:6px;background:var(--surface)}
 .reorder-handle:focus-visible{outline:3px solid var(--accent);outline-offset:-3px}
 .reorder-ghost .reorder-handle{visibility:hidden}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}

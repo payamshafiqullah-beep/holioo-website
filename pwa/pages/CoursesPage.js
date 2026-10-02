@@ -14,7 +14,7 @@ function renderCourses(){
   </section>`;
   bindCourseCards();
   const list=byId('courseList');
-  makeReorderable(list,{itemSelector:'[data-course]',idAttribute:'course',onChange:ids=>{
+  makeReorderable(list,{itemSelector:'[data-course]',idAttribute:'course',handle:false,onChange:ids=>{
     const courses=new Map(state.courses.map(c=>[c.id,c]));
     state.courses=ids.map(id=>courses.get(id)).filter(Boolean);
     saveState();queueSync();showToast('Ordre des cours enregistré');

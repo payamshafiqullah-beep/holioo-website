@@ -57,9 +57,9 @@ async function renderFiles(){
   for(const ref of recentPhotos){
     const url=await photoThumbUrl(ref.id);if(!url||!grid.isConnected)continue;
     const b=document.createElement('div');b.className='image-tile';b.dataset.photoId=ref.id;b.dataset.search=`${ref.session.title} ${ref.course.name}`.toLowerCase();
-    b.innerHTML=`<button class="image-open" aria-label="Ouvrir ${esc(ref.session.title)}"><img src="${url}" alt="${esc(ref.session.title)}" loading="lazy" decoding="async"></button><button class="image-delete" aria-label="Supprimer cette photo">${icon('trash',{size:20})}</button>`;
+    b.innerHTML=`<button class="image-open" aria-label="Ouvrir ${esc(ref.session.title)}"><img src="${url}" alt="${esc(ref.session.title)}" loading="lazy" decoding="async"></button>`;
     b.querySelector('.image-open').onclick=()=>openPhotoViewer(ref.session.photoIds,ref.session.photoIds.indexOf(ref.id),{title:ref.session.title,source:'session',sourceId:ref.session.id,editable:true,returnView:'files',courseId:ref.course.id,sectionId:ref.section.id,sessionId:ref.session.id});
-    b.querySelector('.image-delete').onclick=()=>confirmDeletePhoto(ref.id,()=>onFilesPhotoRemoved(ref.id));
+    attachItemMenu(b,photoMenu(ref.id,()=>onFilesPhotoRemoved(ref.id)));
     grid.appendChild(b);
   }
 
@@ -68,7 +68,7 @@ async function renderFiles(){
   // The recognised text of photos is searched too.
   byId('fileSearch')?.addEventListener('input',e=>{clearTimeout(renderFiles.t);renderFiles.t=setTimeout(()=>showOcrResults(e.target.value),250)});
   document.querySelectorAll('[data-file-open]').forEach(b=>b.onclick=()=>openPdfViewer(b.dataset.fileOpen,'files'));
-  document.querySelectorAll('[data-file-delete]').forEach(b=>b.onclick=()=>confirmDeletePdf(b.dataset.fileDelete,'files'));
+  document.querySelectorAll('.file-card').forEach(card=>{const meta=state.files.find(f=>f.id===card.querySelector('[data-file-open]')?.dataset.fileOpen);if(meta)attachItemMenu(card,pdfMenu(meta))});
   document.querySelectorAll('[data-file-menu]').forEach(b=>b.onclick=()=>openFileMenu(b.dataset.fileMenu));
   document.querySelectorAll('[data-session-open]').forEach(b=>b.onclick=()=>{const ctx=findSessionContext(b.dataset.sessionOpen);if(!ctx)return;currentCourseId=ctx.course.id;currentSectionId=ctx.section.id;currentSessionId=ctx.session.id;navigate('session')});
   byId('importFileAction').onclick=()=>byId('genericFileImport').click();
@@ -88,9 +88,8 @@ function onFilesPhotoRemoved(id){
 async function openFileMenu(fileId){
   const meta=state.files.find(f=>f.id===fileId),row=meta?await DB.get('files',fileId):null;
   if(!meta)return;
-  if(!row?.blob){confirmDeletePdf(fileId,'files');return}
+  if(!row?.blob){showToast('PDF absent de cet appareil : maintenez-le pour le supprimer');return}
   openActionSheet(meta.title,[
-    {label:'Supprimer le PDF',iconName:'trash',danger:true,onClick:()=>confirmDeletePdf(fileId,'files')},
     {label:'Ouvrir',iconName:'maximize',onClick:()=>openPdfViewer(fileId,'files')},
     {label:'Partager',iconName:'share',tone:'sky',onClick:()=>sharePdf(meta,row)},
     {label:'Publier dans la bibliothèque',iconName:'globe',tone:'mint',onClick:()=>publishPdfToLibrary(meta,row)},

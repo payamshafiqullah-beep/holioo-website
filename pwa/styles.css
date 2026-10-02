@@ -163,6 +163,9 @@ html.radial-lock,html.radial-lock body{overscroll-behavior:none;-webkit-user-sel
 .radial-item.lensed .radial-dot{transform:scale(1.2)}
 .radial-title{position:absolute;display:flex;flex-direction:column;align-items:center;gap:2px;width:max-content;max-width:min(88vw,360px);padding:10px 16px;border-radius:18px;background:rgba(255,255,255,.97);box-shadow:var(--shadow-md);text-align:center;pointer-events:none;transform:translate(-50%,-4px);opacity:0;transition:opacity .15s,transform .15s var(--ease)}
 .radial.open .radial-title{opacity:1;transform:translate(-50%,0)}
+.item-menu-proxy{position:fixed;left:-10px;top:-10px;width:2px;height:2px;opacity:0}
+[data-item-menu]{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+.inline-rename{position:fixed;z-index:120;box-sizing:border-box;padding:2px 8px;border:2px solid var(--accent);border-radius:10px;background:#fff;color:var(--ink);outline:none;box-shadow:var(--shadow-md)}
 .radial-title b{max-width:100%;overflow:hidden;font-size:15px;font-weight:800;letter-spacing:-.01em;white-space:nowrap;text-overflow:ellipsis}
 .radial-title span{font-size:12.5px;font-weight:600;color:var(--muted)}
 .radial.closing .radial-backdrop,.radial.closing .radial-title{opacity:0}

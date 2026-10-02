@@ -81,7 +81,7 @@ async function renderLibrary(){
   document.querySelectorAll('[data-libcourse-direct]').forEach(b=>b.onclick=()=>{currentLibrary={step:'sections',year:p.academicYear,course:b.dataset.libcourseDirect};render()});
   document.querySelectorAll('[data-file-open]').forEach(b=>b.onclick=()=>openPdfViewer(b.dataset.fileOpen,'library'));
   document.querySelectorAll('[data-file-menu]').forEach(b=>b.onclick=()=>openFileMenu(b.dataset.fileMenu));
-  document.querySelectorAll('[data-file-delete]').forEach(b=>b.onclick=()=>confirmDeletePdf(b.dataset.fileDelete,'library'));
+  document.querySelectorAll('.file-card').forEach(card=>{const meta=state.files.find(f=>f.id===card.querySelector('[data-file-open]')?.dataset.fileOpen);if(meta)attachItemMenu(card,pdfMenu(meta))});
   document.querySelectorAll('[data-note-open]').forEach(b=>b.onclick=()=>{const ctx=findSessionContext(b.dataset.noteOpen);if(!ctx)return;currentCourseId=ctx.course.id;currentSectionId=ctx.section.id;currentSessionId=ctx.session.id;navigate('session')});
   const all=[...materials,...state.favorites];
   document.querySelectorAll('[data-libitem-open]').forEach(b=>b.onclick=()=>{const item=all.find(x=>x.id===b.dataset.libitemOpen);if(item){currentLibrary={step:'item',year:item.academic_year,course:item.course,section:item.section,item,from:'years'};render()}});

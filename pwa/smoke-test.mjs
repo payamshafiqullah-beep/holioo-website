@@ -12,7 +12,7 @@ const pageFiles=[
 const uiFiles=['./ui/icons.js','./ui/components.js','./ui/reorder.js','./ui/shell.js','./ui/camera-picker.js','./ui/radial-menu.js','./ui/photo-editor.js'];
 const featureFiles=[
   './features/media-viewer.js','./features/course-actions.js','./features/image-pipeline.js','./features/photo-edits.js','./features/thumbs.js','./features/camera-i18n.js','./features/camera-destination.js',
-  './features/camera-queue.js','./features/scan-core.js','./features/scanner.js','./features/ocr.js','./features/text-actions.js','./features/capture-actions.js','./features/quick-capture.js',
+  './features/camera-queue.js','./features/scan-core.js','./features/scanner.js','./features/ocr.js','./features/text-actions.js','./features/capture-actions.js','./features/quick-capture.js','./features/item-menu.js',
   './features/pdf-actions.js','./features/community-actions.js'
 ];
 

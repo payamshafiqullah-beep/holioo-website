@@ -736,11 +736,11 @@ async function fillThumbs(containerId,ids,{selectable=false,split=false,viewerTi
     b.innerHTML=`<img src="${url}" alt="Photo ${i+1}" draggable="false" decoding="async"><span class="num">${i+1}</span>${!selectable?`<span class="thumb-status badge ${status.cls}">${status.label}</span>`:''}${selectable&&!split?`<span class="check">${selected?'✓':''}</span>`:''}${split?`<span class="group-tag">${selected?'LOT 1':'LOT 2'}</span>`:''}`;
     if(selectable)b.onclick=()=>{selected?currentBatch.selected.delete(id):currentBatch.selected.add(id);render()};
     else b.onclick=()=>openPhotoViewer(ids,Math.max(0,ids.indexOf(id)),{title:viewerTitle,source:'batch',sourceId:currentBatch?.id||null,editable:!selectable,returnView:currentView,courseId:currentCourseId,sectionId:currentSectionId,sessionId:currentSessionId});
-    if(!selectable){const del=document.createElement('button');del.className='image-delete capture-delete';del.setAttribute('aria-label','Supprimer cette photo');del.innerHTML=icon('trash',{size:20});del.onclick=e=>{e.stopPropagation();confirmDeletePhoto(id)};b.appendChild(del)}
+    if(!selectable)attachItemMenu(b,photoMenu(id));
     box.appendChild(b);
   }
   // `ids` is the batch's own array: reorder it in place so everything that uses the batch follows.
-  if(reorder)makeReorderable(box,{onChange:order=>{const rest=ids.filter(x=>!order.includes(x));ids.splice(0,ids.length,...order,...rest);const saved=state.inbox.find(b=>b.id===currentBatch?.id);if(saved)saved.photoIds=[...ids];saveState();queueSync();showToast('Ordre enregistré')}});
+  if(reorder)makeReorderable(box,{holdMs:selectable?undefined:6e5,onChange:order=>{const rest=ids.filter(x=>!order.includes(x));ids.splice(0,ids.length,...order,...rest);const saved=state.inbox.find(b=>b.id===currentBatch?.id);if(saved)saved.photoIds=[...ids];saveState();queueSync();showToast('Ordre enregistré')}});
 }
 
 // Photos leave Captures only once they are filed in a session: a batch opened from Captures

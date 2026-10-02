@@ -6,7 +6,7 @@ const CAMERA_STRINGS={
     close:'Fermer la caméra',
     flash:'Flash',flashOn:'Flash activé',flashOff:'Flash désactivé',flashNone:'Flash indisponible sur cette caméra',flashError:'Impossible d’activer le flash',
     switchCam:'Changer de caméra',shutter:'Prendre une photo',zoom:'Zoom',
-    chooseDest:'Choisir la destination',chooseDestHint:'Où ranger les photos ?',closeSheet:'Fermer',destAutoBadge:'automatique, selon l’emploi du temps',summaryTo:'Les photos iront dans',destLabel:'Destination : {dest}. Touchez pour changer',
+    chooseDest:'Choisir la destination',chooseDestHint:'Où ranger les photos ?',closeSheet:'Fermer',destAutoBadge:'automatique, selon l’emploi du temps',destLabel:'Destination : {dest}. Touchez pour changer',
     newSession:'Nouvelle séance',sessionN:'Séance {n}',newSessionN:'Nouvelle séance ({n})',
     chooseFirst:'Choisissez d’abord où ranger les photos',
     lastPhoto:'Dernière photo, {n} photo(s) dans cette capture. Touchez pour les revoir',
@@ -35,7 +35,7 @@ const CAMERA_STRINGS={
     insecure:'La caméra nécessite une connexion sécurisée (https).',
     notReady:'La caméra n’est pas prête',
     // Picker
-    pickerTitle:'Où ranger les photos ?',recent:'Récents',course:'Cours',section:'Section',session:'Séance',
+    pickerTitle:'Où ranger les photos ?',course:'Cours',section:'Section',session:'Séance',
     useDest:'Utiliser cette destination',cancel:'Annuler',noCourses:'Créez d’abord un cours dans l’onglet Cours.',
     photosCount:'{n} photo(s)',today:'aujourd’hui',
     timetable:'Emploi du temps',timetableHint:'Holioo choisit le bon cours automatiquement pendant vos heures de cours.',

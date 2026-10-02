@@ -12,14 +12,6 @@ async function renderFiles(){
   const recentSessions=state.courses.flatMap(c=>c.sections.flatMap(s=>s.sessions.map(q=>({c,s,q})))).sort((a,b)=>new Date(b.q.createdAt)-new Date(a.q.createdAt)).slice(0,3);
 
   const pdfCard=({meta,row},kind)=>FileCard({id:meta.id,iconName:'fileText',tone:'pink',title:meta.title,meta:`${fmtDate(meta.createdAt)} · ${meta.pages?plural(meta.pages,'page'):'PDF importé'}`,tag:row?.driveFileId?Tag('Drive','mint'):Tag('Local','neutral'),search:meta.title,kind});
-  const quick=[
-    {label:'Cours',iconName:'book',tone:'lavender',attrs:'data-nav="courses"'},
-    {label:'Captures',iconName:'camera',tone:'peach',attrs:'data-nav="inbox"'},
-    {label:'Exports PDF',iconName:'share',tone:'pink',attrs:'data-jump="exportsGroup"'},
-    {label:'Bibliothèque',iconName:'library',tone:'mint',attrs:'data-nav="library"'},
-    {label:'Archives',iconName:'archive',tone:'yellow',attrs:'id="archivesFolder"'}
-  ];
-
   app.innerHTML=`<section class="screen">
     ${PageHeader({title:'Fichiers',large:true})}
     ${SearchBar({id:'fileSearch',placeholder:'Rechercher un fichier...'})}
@@ -28,7 +20,6 @@ async function renderFiles(){
       <div class="storage-copy"><strong>${plural(state.files.length,'PDF')} · ${plural(photoRefs.length,'photo')}</strong><small>${usage?`${usage} · `:''}<span data-sync-text>${esc(syncIndicator.text)}</span></small></div>
       <button class="icon-btn" data-nav="sync" aria-label="Synchronisation">${icon('cloud',{size:20})}</button>
     </div>
-    <div class="quick-folders">${quick.map(q=>`<button class="quick-folder" ${q.attrs}>${IconBadge(q.iconName,q.tone,'md')}<span>${q.label}</span></button>`).join('')}</div>
     <div class="action-row">
       ${ActionButton({label:'Importer',id:'importFileAction',variant:'soft',iconName:'upload'})}
       ${ActionButton({label:'Scanner',variant:'capture',iconName:'scan',attrs:'data-nav="capture"'})}
@@ -65,10 +56,10 @@ async function renderFiles(){
   const grid=byId('filesImages'),recentPhotos=photoRefs;
   for(const ref of recentPhotos){
     const url=await photoThumbUrl(ref.id);if(!url||!grid.isConnected)continue;
-    const b=document.createElement('div');b.className='image-tile';b.dataset.search=`${ref.session.title} ${ref.course.name}`.toLowerCase();
+    const b=document.createElement('div');b.className='image-tile';b.dataset.photoId=ref.id;b.dataset.search=`${ref.session.title} ${ref.course.name}`.toLowerCase();
     b.innerHTML=`<button class="image-open" aria-label="Ouvrir ${esc(ref.session.title)}"><img src="${url}" alt="${esc(ref.session.title)}" loading="lazy" decoding="async"></button><button class="image-delete" aria-label="Supprimer cette photo">${icon('trash',{size:20})}</button>`;
-    b.querySelector('.image-open').onclick=()=>openPhotoViewer(ref.session.photoIds,ref.index,{title:ref.session.title,source:'session',sourceId:ref.session.id,editable:true,returnView:'files',courseId:ref.course.id,sectionId:ref.section.id,sessionId:ref.session.id});
-    b.querySelector('.image-delete').onclick=()=>confirmDeletePhoto(ref.id);
+    b.querySelector('.image-open').onclick=()=>openPhotoViewer(ref.session.photoIds,ref.session.photoIds.indexOf(ref.id),{title:ref.session.title,source:'session',sourceId:ref.session.id,editable:true,returnView:'files',courseId:ref.course.id,sectionId:ref.section.id,sessionId:ref.session.id});
+    b.querySelector('.image-delete').onclick=()=>confirmDeletePhoto(ref.id,()=>onFilesPhotoRemoved(ref.id));
     grid.appendChild(b);
   }
 
@@ -80,10 +71,18 @@ async function renderFiles(){
   document.querySelectorAll('[data-file-delete]').forEach(b=>b.onclick=()=>confirmDeletePdf(b.dataset.fileDelete,'files'));
   document.querySelectorAll('[data-file-menu]').forEach(b=>b.onclick=()=>openFileMenu(b.dataset.fileMenu));
   document.querySelectorAll('[data-session-open]').forEach(b=>b.onclick=()=>{const ctx=findSessionContext(b.dataset.sessionOpen);if(!ctx)return;currentCourseId=ctx.course.id;currentSectionId=ctx.section.id;currentSessionId=ctx.session.id;navigate('session')});
-  document.querySelectorAll('[data-jump]').forEach(b=>b.onclick=()=>{const g=byId(b.dataset.jump);if(g.hidden)showToast('Aucun PDF exporté vers Drive pour le moment');else g.scrollIntoView({behavior:'smooth',block:'start'})});
-  byId('archivesFolder').onclick=()=>{coursesFilter='done';navigate('courses')};
   byId('importFileAction').onclick=()=>byId('genericFileImport').click();
   byId('genericFileImport').onchange=importLocalFiles;
+}
+
+// A deleted photo leaves the grid in place: re-rendering the whole screen collapses the page and loses the scroll position.
+function onFilesPhotoRemoved(id){
+  const grid=byId('filesImages'),tile=currentView==='files'&&[...(grid?.children||[])].find(t=>t.dataset.photoId===id);
+  if(!tile)return render();
+  tile.remove();
+  const photos=state.courses.reduce((n,c)=>n+c.sections.reduce((m,s)=>m+s.sessions.reduce((k,q)=>k+q.photoIds.length,0),0),0);
+  const count=grid.closest('[data-filter-group]')?.querySelector('.section-title .count');if(count)count.textContent=photos;
+  const total=document.querySelector('.storage-copy strong');if(total)total.textContent=`${plural(state.files.length,'PDF')} · ${plural(photos,'photo')}`;
 }
 
 async function openFileMenu(fileId){

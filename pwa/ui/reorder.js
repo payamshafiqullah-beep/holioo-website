@@ -4,7 +4,8 @@
 const reorderControls=new Set();
 function destroyReorderables(){for(const control of [...reorderControls])control.destroy()}
 
-function makeReorderable(host,{onChange,holdMs=320,itemSelector='[data-photo-id]',idAttribute='photoId'}={}){
+// handle:false = no grip on the items: press and hold to lift, or Alt+arrow keys on a focused item.
+function makeReorderable(host,{onChange,holdMs=320,itemSelector='[data-photo-id]',idAttribute='photoId',handle:withHandle=true}={}){
   host._reorder?.destroy();
   let drag=null,frame=0,suppressUntil=0;
   const items=()=>[...host.children].filter(el=>el.matches(itemSelector));
@@ -16,7 +17,7 @@ function makeReorderable(host,{onChange,holdMs=320,itemSelector='[data-photo-id]
     const badge=el.querySelector('.num');if(badge)badge.textContent=String(i+1);
     const handle=el.querySelector('.reorder-handle');if(handle)handle.setAttribute('aria-label',`Déplacer l’élément ${i+1}. Utilisez les flèches du clavier ou faites glisser.`);
   })}
-  for(const el of items()){
+  if(withHandle)for(const el of items()){
     const handle=document.createElement('button');handle.type='button';handle.className='reorder-handle';handle.dataset.reorderHandle='';
     handle.innerHTML='<span aria-hidden="true">⠿</span>';el.appendChild(handle);
   }
@@ -113,7 +114,7 @@ function makeReorderable(host,{onChange,holdMs=320,itemSelector='[data-photo-id]
   function click(e){if(Date.now()<suppressUntil||e.target.closest('[data-reorder-handle]')){e.preventDefault();e.stopImmediatePropagation()}}
   function keydown(e){
     if(e.key==='Escape'&&drag){e.preventDefault();finish(true);return}
-    const handle=e.target.closest('[data-reorder-handle]');if(!handle)return;
+    const handle=e.target.closest('[data-reorder-handle]')||(!withHandle&&e.altKey&&e.target.matches(itemSelector)?e.target:null);if(!handle)return;
     const delta={ArrowLeft:-1,ArrowUp:-1,ArrowRight:1,ArrowDown:1}[e.key];if(!delta)return;
     e.preventDefault();e.stopPropagation();const card=handle.closest(itemSelector),ordered=visible(),from=ordered.indexOf(card),to=from+delta;
     if(to<0||to>=ordered.length)return;

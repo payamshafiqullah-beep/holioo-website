@@ -79,14 +79,5 @@ async function renderSession(){
   if(n)updateSessionOcrLabel(session);
   byId('publishSession')?.addEventListener('click',()=>publishSession(course,section,session));
   byId('renameSession')?.addEventListener('click',()=>openSheet({title:'Renommer la séance',body:Field({label:'Titre',id:'renameValue',value:session.title}),onConfirm:()=>{session.title=byId('renameValue').value.trim()||session.title;saveState();render();queueSync();return true}}));
-  byId('deleteSession')?.addEventListener('click',()=>confirmDeleteSession(course,section,session));
-}
-
-function confirmDeleteSession(course,section,session){
-  const n=session.photoIds.length;
-  const kept=n?` ${n>1?'Ses photos seront conservées':'Sa photo sera conservée'} dans « Captures à trier ».`:'';
-  const published=session.visibility==='public'?' La version publiée reste dans la bibliothèque : retirez-la depuis votre profil si besoin.':'';
-  openSheet({title:`Supprimer « ${session.title} » ?`,subtitle:`La séance et son carnet seront retirés de ${course.name} · ${section.name}.${kept}${published}`,confirmText:'Supprimer',confirmClass:'coral',onConfirm:()=>{
-    removeSession(session.id);sessionViewMode='gallery';saveState();queueSync();navigate('section');showToast('Séance supprimée');return true;
-  }});
+  byId('deleteSession')?.addEventListener('click',()=>confirmDeleteSession(course.id,section.id,session.id));
 }

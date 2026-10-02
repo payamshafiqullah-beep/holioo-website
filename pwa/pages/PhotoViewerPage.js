@@ -2,7 +2,7 @@
 async function renderPhotoViewer(){
   setChrome(true);
   const v=currentPhotoViewer;if(!v?.ids?.length){navigate(v?.returnView||'home');return}
-  const id=v.ids[v.index],row=await DB.get('photos',id);
+  const id=v.ids[v.index],row=await photoRow(id);
   if(!row?.blob){showToast('Photo introuvable');v.ids=v.ids.filter(x=>x!==id);v.index=Math.max(0,Math.min(v.index,v.ids.length-1));if(!v.ids.length){navigate(v.returnView||'home');return}return renderPhotoViewer()}
   revokeViewerUrl();viewerObjectUrl=URL.createObjectURL(photoBlob(row));
   const status=photoStatusLabel(row);

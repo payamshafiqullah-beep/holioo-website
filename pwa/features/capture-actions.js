@@ -728,7 +728,7 @@ function finishCapture(){
 async function fillThumbs(containerId,ids,{selectable=false,split=false,viewerTitle='Galerie',reorder=false}={}){
   const box=document.getElementById(containerId);if(!box)return;box.innerHTML='';
   for(let i=0;i<ids.length;i++){
-    const id=ids[i],row=await DB.get('photos',id);if(!row?.blob)continue;
+    const id=ids[i],row=await photoRow(id);if(!row?.blob)continue;
     const url=await photoThumbUrl(id);if(!url||!box.isConnected)continue;
     const selected=currentBatch?.selected?.has(id),status=photoStatusLabel(row),b=document.createElement('div');
     b.setAttribute('role','button');b.tabIndex=0;b.onkeydown=e=>{if(e.target===b&&(e.key==='Enter'||e.key===' ')){e.preventDefault();b.click()}};

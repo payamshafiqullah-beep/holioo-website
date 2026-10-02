@@ -3,17 +3,21 @@
 //   press the trigger → a ring of items opens around it;
 //   drag onto an item → it lights up; if it has children, a second ring opens further out in
 //   that direction (dragging back onto another item of the first ring switches the second ring);
-//   lift on a child → it is chosen. Lifting anywhere else (the trigger, between items, outside)
-//   cancels. Choosing happens only when the finger lifts, never on hover.
+//   lift on a child → it is chosen. Lifting while still over the menu (the finger never left the
+//   middle — a tap, a shaking hand —, between items, on an item with children) leaves it open for
+//   taps; lifting past the rings, or back on the middle after going out to them, cancels.
+//   Choosing happens only when the finger lifts, never on hover. A touch the system cancels
+//   (pointercancel / touchcancel) also leaves the menu open for taps.
 // The keyboard works too (accessibility): Enter opens, arrows move, Enter chooses, Escape closes.
 //
 // Reusable on any element:  createRadialMenu({trigger, items, onSelect})
+// A gesture can also start elsewhere (features/item-menu.js: a long-press on an item): begin(x, y, id),
+// then the same finger's move(x, y), lift(x, y) or interrupt().
 // Nothing here knows about courses or the camera (see features/quick-capture.js).
 // Geometry and hit testing are pure functions, tested in tests/radial-menu.test.mjs.
 // Angles are in degrees, 0 = right, 90 = straight up, counter-clockwise.
 
 const RADIAL={
-  drag:10,         // px the finger moves before a press is a drag (a tap leaves the menu open)
   size:56,minSize:44,gap:8,ringGap:14,
   margin:10,       // min distance between an item and the screen edge
   stepMax:40,      // widest spacing between two neighbours of the first ring
@@ -189,22 +193,37 @@ function radialVisualHaptic(kind,target){
   el.classList.add(cls);
   setTimeout(()=>el.classList.remove(cls),kind==='confirm'?220:160);
 }
+// iPhone / iPad: no vibration API, but Safari 18+ plays the system's light tick when a native switch
+// (<input type="checkbox" switch>) is toggled through its label. Older iOS: nothing (the visual pulse
+// still shows). The label is marked data-haptic so the "swallow the click after a gesture" guards let it through.
+function radialIosTick(){
+  if(typeof document==='undefined'||!radialTouchFeedback())return;
+  try{
+    const label=document.createElement('label');
+    label.dataset.haptic='';label.setAttribute('aria-hidden','true');label.style.display='none';
+    label.innerHTML='<input type="checkbox" switch tabindex="-1">';
+    document.head.appendChild(label);label.click();label.remove();
+  }catch{}
+}
 function radialHaptic(kind,target){
   const pattern=radialHaptics[kind];
   if(!pattern)return;
   if(typeof navigator!=='undefined'&&typeof navigator.vibrate==='function'){
     try{if(navigator.vibrate(pattern)!==false)return}catch{}   // Android only; iOS has no vibration API.
   }
+  radialIosTick();
   radialVisualHaptic(kind,target);
 }
 if(typeof window!=='undefined'&&window.addEventListener){
   window.addEventListener('click',e=>{
-    if(performance.now()<radialSwallowUntil){radialSwallowUntil=0;e.preventDefault();e.stopImmediatePropagation()}
+    if(performance.now()<radialSwallowUntil&&!e.target.closest?.('[data-haptic]')){radialSwallowUntil=0;e.preventDefault();e.stopImmediatePropagation()}
   },true);
   // The trigger left the page (the screen was redrawn) while the finger was down: cancel.
   document.addEventListener('lostpointercapture',e=>{
     if(radialPress&&e.pointerId===radialPress.id&&!radialPress.trigger.isConnected)radialPress.cancel();
   });
+  // The app goes to the background (a call, the home screen): no menu is left waiting for a tap.
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)radialCloseAll()});
 }
 function radialCloseAll(){for(const m of[...radialOpen])m.close()}
 
@@ -227,7 +246,7 @@ function createRadialMenu(o){
   const reduced=()=>!!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   const enabled=()=>!o.isEnabled||o.isEnabled();
   let st=null;         // the open menu
-  let press=null;      // the finger (or mouse button) currently down on the trigger: {id, x, y}
+  let press=null;      // the finger (or mouse button) driving the open menu: {id, out}
   const api={};
 
   function viewport(){
@@ -422,6 +441,7 @@ function createRadialMenu(o){
   }
   function trackHit(x,y){
     const h=radialHit({x,y},st.o,st.fit,st.ring2,st.parent);
+    if(press&&!h?.center)press.out=true;   // the finger went out to the rings (a shaking hand stays in the middle)
     // Passing over another course while its neighbour's sections are open: switch only if the
     // finger stays there a moment (it may just be on its way to a far section).
     if(h?.tentative){
@@ -437,14 +457,22 @@ function createRadialMenu(o){
     else setHot(null);
   }
   // The finger lifts: the item the lens sits on is chosen (a section, or an item without
-  // children); anywhere else cancels.
-  function release(x,y){
+  // children). Not on one: `keep` → the menu stays open for taps, else it is cancelled.
+  function release(x,y,keep=false){
     if(!st)return;
     lensPoint(x,y);
     const t=st.lens.snap;
     if(t?.ring===2){choose(st.children[t.i],st.items[st.parent]);return}
     if(t?.ring===1&&!st.items[t.i].children){choose(st.items[t.i],null);return}
+    if(keep){toTapMode();return}
     close();
+  }
+  // Still over the menu: on the rings (between items, on an item with children), not past them and
+  // not on the middle.
+  function overRings(x,y){
+    if(radialHit({x,y},st.o,st.fit,st.ring2,st.parent)?.center)return false;
+    const f=st.fit;
+    return Math.hypot(x-st.o.x,y-st.o.y)<=(st.ring2?f.r2:f.r1)+f.size/2+RADIAL.ringGap;
   }
   // Tap mode: the same, except that a course opens its sections (next tap: the section).
   function pick(x,y){
@@ -453,7 +481,8 @@ function createRadialMenu(o){
     if(t?.ring===1&&st.items[t.i].children){openChildren(t.i);setHot({ring:1,index:t.i});lensHide();return}
     release(x,y);
   }
-  // A tap on the trigger (the finger did not move): the menu stays open, choose with taps.
+  // Lifted over the menu without choosing (a tap on the trigger, a shaking hand, between items) or the
+  // system took the touch: the menu stays open, choose with taps.
   function toTapMode(){st.mode='tap';st.el.dataset.mode='tap';lensHide();setHot(null)}
 
   // ─── Selection lens: a small round liquid glass under the finger ───
@@ -549,37 +578,47 @@ function createRadialMenu(o){
     }
   }
 
+  // ─── The finger: from the trigger's own events, or from begin() (a gesture started elsewhere) ───
+  // Down: the first ring opens at once.
+  function fingerDown(id,x,y){
+    if(st)close();
+    if(!open('gesture'))return false;
+    press={id,out:false};
+    track(x,y);
+    return true;
+  }
+  function fingerMove(x,y){if(press)track(x,y)}
+  // Up: choose right here — so a camera opened by onSelect counts as a user action. Not on an item:
+  // the menu stays open for taps while the finger is still over it (it never left the middle, or it is
+  // on the rings); past the rings, or back on the middle after going out to them, cancels.
+  function fingerUp(x,y){
+    if(!press)return;
+    const out=press.out;press=null;
+    if(!st)return;
+    release(x,y,!out||overRings(x,y));
+  }
+  // The system took the touch (iOS gesture, scroll): where the finger is is unknown — stay open for taps.
+  function interrupt(){if(press){press=null;if(st)toTapMode()}}
+  function cancel(){if(press){press=null;close()}}
+
   // ─── The trigger: one continuous gesture ───
   trigger.classList.add('radial-trigger');
   trigger.setAttribute('aria-haspopup','menu');
   trigger.setAttribute('aria-expanded','false');
-  // Finger down: the first ring opens at once, and every move / the lift keeps coming here.
+  // Finger down on the trigger: every move / the lift keeps coming here.
   trigger.addEventListener('pointerdown',e=>{
     if(!enabled()||!e.isPrimary||(e.pointerType==='mouse'&&e.button!==0))return;
     e.preventDefault();
-    if(st)close();
     try{trigger.setPointerCapture(e.pointerId)}catch{}
-    if(!open('gesture'))return;
-    press={id:e.pointerId,x:e.clientX,y:e.clientY,sx:e.clientX,sy:e.clientY,moved:false};
-    radialPress={id:e.pointerId,trigger,cancel};
-    track(e.clientX,e.clientY);
+    if(fingerDown(e.pointerId,e.clientX,e.clientY))radialPress={id:e.pointerId,trigger,cancel};
   });
-  trigger.addEventListener('pointermove',e=>{
-    if(!press||e.pointerId!==press.id)return;
-    press.x=e.clientX;press.y=e.clientY;
-    if(Math.hypot(press.x-press.sx,press.y-press.sy)>RADIAL.drag)press.moved=true;
-    track(e.clientX,e.clientY);
-  });
-  // Finger up: choose or cancel, right here — so a camera opened by onSelect counts as a user action.
+  trigger.addEventListener('pointermove',e=>{if(press&&e.pointerId===press.id)fingerMove(e.clientX,e.clientY)});
   trigger.addEventListener('pointerup',e=>{
     if(!press||e.pointerId!==press.id)return;
-    const tap=!press.moved;press=null;
     if(e.pointerType!=='touch')radialSwallowUntil=performance.now()+350;   // the mouse's click that follows
-    if(tap&&st){toTapMode();return}
-    release(e.clientX,e.clientY);
+    fingerUp(e.clientX,e.clientY);
   });
-  function cancel(){if(press){press=null;close()}}
-  trigger.addEventListener('pointercancel',e=>{if(press&&e.pointerId===press.id)cancel()});
+  trigger.addEventListener('pointercancel',e=>{if(press&&e.pointerId===press.id)interrupt()});
 
   // iOS protections: no scroll, bounce, text selection, callout or delayed click from this touch.
   // The same touch also drives the menu, in case a browser sends fewer pointer events.
@@ -590,14 +629,13 @@ function createRadialMenu(o){
   },{passive:false});
   trigger.addEventListener('touchmove',e=>{
     if(e.cancelable&&(press||st))e.preventDefault();
-    const t=e.touches[0];if(press&&t){press.x=t.clientX;press.y=t.clientY;if(Math.hypot(press.x-press.sx,press.y-press.sy)>RADIAL.drag)press.moved=true;track(t.clientX,t.clientY)}
+    const t=e.touches[0];if(t)fingerMove(t.clientX,t.clientY);
   },{passive:false});
   trigger.addEventListener('touchend',e=>{
     if(e.cancelable&&enabled())e.preventDefault();
-    const t=e.changedTouches[0];
-    if(press&&t){const tap=!press.moved;press=null;if(tap&&st)toTapMode();else release(t.clientX,t.clientY)}
+    const t=e.changedTouches[0];if(t)fingerUp(t.clientX,t.clientY);
   },{passive:false});
-  trigger.addEventListener('touchcancel',cancel);
+  trigger.addEventListener('touchcancel',interrupt);
   trigger.addEventListener('contextmenu',e=>{if(enabled())e.preventDefault()});
   trigger.addEventListener('selectstart',e=>{if(enabled())e.preventDefault()});
 
@@ -616,6 +654,9 @@ function createRadialMenu(o){
     open:()=>open('keys',{keyboard:true}),
     close,
     isOpen:()=>!!st,
+    // A finger already down elsewhere opens the menu here; the caller sends that finger's moves and lift.
+    begin:(x,y,id)=>fingerDown(id,x,y),
+    move:fingerMove,lift:fingerUp,interrupt,
     state:()=>st&&{mode:st.mode,parent:st.parent,hot:st.hot,fit:st.fit,ring2:st.ring2,origin:st.o,items:st.items.map(i=>i.id),children:st.children.map(i=>i.id)}
   });
   return api;

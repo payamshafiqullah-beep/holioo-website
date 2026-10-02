@@ -28,17 +28,16 @@ async function renderSession(){
   const ctx=findSessionContext();if(!ctx){navigate('courses');return}
   const{course,section,session}=ctx,n=session.photoIds.length,pub=session.visibility==='public';
   const active=sessionViewMode==='notebook'?'notebook':'gallery';
-  const actions=`<div class="button-stack">
-        ${n||active==='notebook'?ActionButton({label:'Créer un PDF',id:'buildPdf',iconName:'fileText'}):''}
+  const actions=n||active==='notebook'?`<div class="button-stack">
+        ${ActionButton({label:'Créer un PDF',id:'buildPdf',iconName:'fileText'})}
         ${n?`${ActionButton({label:pub?'Publiée dans la bibliothèque':'Publier dans la bibliothèque',id:'publishSession',variant:pub?'soft':'ghost',iconName:pub?'checkCircle':'globe'})}
         ${ActionButton({label:'Reconnaître le texte',id:'ocrSession',variant:'ghost',iconName:'scan'})}
         ${ActionButton({label:'Exporter les images',id:'exportImages',variant:'ghost',iconName:'share'})}`:''}
         ${ActionButton({label:'Renommer la séance',id:'renameSession',variant:'ghost',iconName:'pencil'})}
-        ${ActionButton({label:'Supprimer la séance',id:'deleteSession',variant:'ghost-danger',iconName:'trash'})}
-      </div>`;
+      </div>`:'';
   const galleryView=n?`${SectionTitle('Galerie',{action:'Plein écran',id:'openFirstPhoto'})}
       <div class="thumbs" id="sessionThumbs"></div>
-      <p class="reorder-hint">${icon('more',{size:14})}Maintenez une photo ou faites glisser sa poignée pour changer l’ordre.</p>`
+      <p class="reorder-hint">${icon('more',{size:14})}Faites glisser la poignée pour changer l’ordre. Maintenez une photo pour la déplacer ou la supprimer.</p>`
     :EmptyState({iconName:'camera',title:'Aucune photo',text:'Cette séance ne contient pas encore de photos.'});
   const notebookView=active!=='notebook'?'':`${SectionTitle('Carnet',{action:'+ Page blanche',id:'addBlankPage'})}
       <div class="session-notebook-help">${icon('pencil',{size:15})}<span>Écrivez au stylet. Le doigt sert à faire défiler la page.</span></div>
@@ -79,5 +78,4 @@ async function renderSession(){
   if(n)updateSessionOcrLabel(session);
   byId('publishSession')?.addEventListener('click',()=>publishSession(course,section,session));
   byId('renameSession')?.addEventListener('click',()=>openSheet({title:'Renommer la séance',body:Field({label:'Titre',id:'renameValue',value:session.title}),onConfirm:()=>{session.title=byId('renameValue').value.trim()||session.title;saveState();render();queueSync();return true}}));
-  byId('deleteSession')?.addEventListener('click',()=>confirmDeleteSession(course.id,section.id,session.id));
 }

@@ -24,7 +24,7 @@ If only one screen changes, edit that page file first. Do not rewrite unrelated 
 
 Shared behavior that several screens use lives in `pwa/features/`:
 
-- `course-actions.js` — photo reorder, move, delete, session gallery helpers. Course and section names must be unique (`courseNameProblem`, `sectionNameProblem`): they are Drive folder names. Rename: Cours → Renommer le cours, Section → Renommer la section, Séance → Renommer la séance. Deleting a section or a séance (trash in the lists, or Supprimer la section / Supprimer la séance on its own screen): `confirmDeleteSection` / `confirmDeleteSession` in `pages/CoursesPage.js`
+- `course-actions.js` — photo reorder, move, delete, session gallery helpers
 - `capture-actions.js` — camera, gallery import, batch helpers (`removeFromInbox`: photos leave Captures only once filed)
 - `camera-destination.js`, `camera-queue.js`, `camera-i18n.js` — camera destination logic, background save queue, camera texts
 - `../ui/camera-picker.js` + the chip in `pages/CapturePage.js` — where the photos go. The chip (top of the camera) has two lines: the course (colour badge, clock badge when chosen by the timetable) and "section · session" (`cameraDestinationParts`: "CM 1", not "CM · CM 1"). The sheet it opens is built once and only its content is replaced on each choice (no replayed entrance, scroll and focus kept): header with timetable + close, a live summary of where the photos will go, recent destinations as horizontal cards, course chips, section segments, session list, fixed buttons. Closes with the close button, Annuler, a tap on the dimmed preview, Escape or a drag down on the header; the camera controls behind are `inert` while it is open and the focus returns to the chip. Tests: `tests/camera-picker.test.mjs`

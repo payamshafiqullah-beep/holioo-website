@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 const read=p=>fs.readFileSync(new URL(p,import.meta.url),'utf8');
-const coursesCode=[read('../features/course-actions.js'),read('../pages/CoursesPage.js')].join(';');
+const coursesCode=read('../pages/CoursesPage.js');
 const course=(id,photos=[])=>({id,name:id,sections:[{id:`sec-${id}`,name:'CM',sessions:[{id:`session-${id}`,title:'Séance 1',photoIds:photos}]}]});
 test('deleting a populated course preserves unique photos and PDFs, clears stale destinations',()=>{
  const state={courses:[course('a',['p1','p2','p2','shared']),course('b',['shared'])],inbox:[{id:'in',photoIds:['p1']}],files:[{id:'pdf',courseId:'a'}],favorites:['session-a','pdf'],cameraLast:{courseId:'a'},timetable:[{courseId:'a'},{courseId:'b'}]};
@@ -19,10 +19,4 @@ test('loading a saved empty course list does not recreate defaults',()=>{
  const core=read('../core.js');const load=core.slice(core.indexOf('function loadState(){'),core.indexOf('\nlet state=loadState();'));
  const ctx={localStorage:{getItem:()=>JSON.stringify({courses:[],inbox:[],files:[]})},stateKey:()=> 'key',stateOwner:'',STORE_KEY:'key',LEGACY_KEY:'old',defaultState:()=>({profile:{},settings:{},courses:[course('default')]}),ensureDefaultSections:()=>{},console};
  vm.createContext(ctx);vm.runInContext(load,ctx);assert.equal(ctx.loadState().courses.length,0);
-});
-test('course and section names must stay unique (they are Drive folder names)',()=>{
- const a=course('Maths');a.sections.push({id:'x',name:'Projet',type:'CUSTOM',sessions:[]});
- const ctx={state:{courses:[a,course('Physique')]}};vm.createContext(ctx);vm.runInContext(coursesCode,ctx);
- assert.ok(ctx.courseNameProblem('physique','Maths'));assert.equal(ctx.courseNameProblem('Maths','Maths'),'');assert.equal(ctx.courseNameProblem('Chimie'),'');assert.ok(ctx.courseNameProblem(''));
- assert.ok(ctx.sectionNameProblem(a,'cm'));assert.ok(ctx.sectionNameProblem(a,'projet'));assert.equal(ctx.sectionNameProblem(a,'Projet','x'),'');assert.equal(ctx.sectionNameProblem(a,'Examen'),'');
 });

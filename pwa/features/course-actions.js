@@ -5,14 +5,14 @@ async function fillSessionThumbs(session){
   const ctx=findSessionContext(session.id);
   for(let i=0;i<session.photoIds.length;i++){
     const id=session.photoIds[i],row=await DB.get('photos',id);if(!row?.blob)continue;const url=await photoThumbUrl(id);if(!url||!box.isConnected)continue;const status=photoStatusLabel(row),d=document.createElement('div');d.className='thumb gallery-thumb';d.dataset.photoId=id;
-    d.innerHTML=`<img src="${url}" alt="Photo ${i+1}" draggable="false" decoding="async"><span class="num">${i+1}</span><span class="thumb-status badge ${status.cls}">${status.label}</span><div class="thumb-actions"><button data-del="${id}" aria-label="Supprimer cette photo">${icon('trash',{size:20})}</button></div>`;
+    d.innerHTML=`<img src="${url}" alt="Photo ${i+1}" draggable="false" decoding="async"><span class="num">${i+1}</span><span class="thumb-status badge ${status.cls}">${status.label}</span>`;
     d.onclick=()=>openPhotoViewer(session.photoIds,Math.max(0,session.photoIds.indexOf(id)),{title:session.title,source:'session',sourceId:session.id,editable:true,returnView:'session',courseId:ctx?.course.id,currentSectionId:ctx?.section.id,sectionId:ctx?.section.id,sessionId:session.id});
+    attachItemMenu(d,photoMenu(id));
     box.appendChild(d);
   }
   box.querySelectorAll('[data-move]').forEach(b=>b.onclick=e=>{e.stopPropagation();movePhotoToSession(session,b.dataset.move)});
-  box.querySelectorAll('[data-del]').forEach(b=>b.onclick=e=>{e.stopPropagation();deleteSessionPhoto(session,b.dataset.del)});
   // Photos missing on this device keep their place at the end of the order.
-  makeReorderable(box,{onChange:ids=>{session.photoIds=[...ids,...session.photoIds.filter(x=>!ids.includes(x))];saveState();queueSync();showToast('Ordre enregistré')}});
+  makeReorderable(box,{holdMs:6e5,onChange:ids=>{session.photoIds=[...ids,...session.photoIds.filter(x=>!ids.includes(x))];saveState();queueSync();showToast('Ordre enregistré')}});
 }
 
 function movePhotoToSession(sourceSession,photoId){
@@ -21,18 +21,3 @@ function movePhotoToSession(sourceSession,photoId){
   openSheet({title:'Déplacer la photo',subtitle:'Choisissez la séance de destination.',body:`<div class="field"><label>Destination</label><select id="moveTarget">${targets.map(t=>`<option value="${t.session.id}">${esc(t.course.name)} • ${esc(t.section.name)} • ${esc(t.session.title)}</option>`).join('')}</select></div>`,confirmText:'Déplacer',confirmClass:'purple',onConfirm:()=>{const id=byId('moveTarget').value,target=targets.find(t=>t.session.id===id);if(!target)return false;sourceSession.photoIds=sourceSession.photoIds.filter(x=>x!==photoId);target.session.photoIds.push(photoId);saveState();queueSync();render();showToast('Photo déplacée');return true}})
 }
 
-
-function deleteSessionPhoto(session,id){confirmDeletePhoto(id)}
-
-
-// Section and course names are Drive folder names too: two with the same name would share one folder.
-function sectionNameProblem(course,name,except=null){
-  if(!name)return'Entrez un nom de section';
-  if(course.sections.some(s=>s.id!==except&&s.name.toLowerCase()===name.toLowerCase()))return'Une section porte déjà ce nom';
-  return'';
-}
-function courseNameProblem(name,except=null){
-  if(!name)return'Entrez un nom de cours';
-  if(state.courses.some(c=>c.id!==except&&c.name.toLowerCase()===name.toLowerCase()))return'Un cours porte déjà ce nom';
-  return'';
-}

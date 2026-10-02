@@ -78,12 +78,16 @@ function viewerMoveCurrent(){
 async function removeLocalPhoto(id){
   await DB.del('photos',id);
   await DB.del('kv',`ocr:${id}`).catch(()=>{});
+  detachPhoto(id);
+  saveState();queueSync();
+}
+// Takes the photo out of every séance and batch (its bytes stay: the long-press menu can still undo).
+function detachPhoto(id){
   for(const c of state.courses)for(const section of c.sections)for(const session of section.sessions)session.photoIds=session.photoIds.filter(x=>x!==id);
   for(const batch of state.inbox)batch.photoIds=batch.photoIds.filter(x=>x!==id);
   state.inbox=state.inbox.filter(batch=>batch.photoIds.length);
   const cleanBatch=batch=>{if(!batch)return;batch.photoIds=batch.photoIds.filter(x=>x!==id);batch.selected?.delete(id);for(const child of batch.splitQueue||[])cleanBatch(child)};
   cleanBatch(currentBatch);cleanBatch(state.captureDraft);
-  saveState();queueSync();
 }
 function confirmDeletePhoto(id,after=()=>render()){
   let busy=false;

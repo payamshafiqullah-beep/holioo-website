@@ -7,14 +7,14 @@ function renderCourses(){
     ${PageHeader({title:'Mes cours',large:true})}
     ${SearchBar({id:'courseSearch',placeholder:'Rechercher un cours...'})}
     ${FilterChips('courseFilters',[{value:'all',label:'Tous'},{value:'active',label:'Actifs'},{value:'review',label:'À revoir'},{value:'done',label:'Terminés'}],coursesFilter)}
-    <p class="reorder-hint">Maintenez un cours puis faites-le glisser pour changer son ordre.</p>
+    <p class="reorder-hint">Maintenez un cours pour le renommer ou le supprimer.</p>
     <div class="card-stack" id="courseList">${state.courses.map((c,i)=>CourseCard(c,i,true)).join('')}</div>
     <div id="courseEmpty" hidden>${EmptyState({iconName:'search',title:'Aucun cours ici',text:'Essayez un autre filtre ou une autre recherche.'})}</div>
     ${ActionButton({label:'Ajouter un cours',id:'addCourse',variant:'soft',iconName:'plus'})}
   </section>`;
   bindCourseCards();
   const list=byId('courseList');
-  makeReorderable(list,{itemSelector:'[data-course]',idAttribute:'course',handle:false,onChange:ids=>{
+  makeReorderable(list,{itemSelector:'[data-course]',idAttribute:'course',handle:false,holdMs:6e5,onChange:ids=>{
     const courses=new Map(state.courses.map(c=>[c.id,c]));
     state.courses=ids.map(id=>courses.get(id)).filter(Boolean);
     saveState();queueSync();showToast('Ordre des cours enregistré');
@@ -22,9 +22,7 @@ function renderCourses(){
   list.querySelectorAll('[data-course]').forEach(card=>card.onkeydown=e=>{
     if(e.target===card&&(e.key==='Enter'||e.key===' ')){e.preventDefault();card.click()}
   });
-  list.querySelectorAll('[data-delete-course]').forEach(button=>button.onclick=e=>{
-    e.stopPropagation();confirmDeleteCourse(button.dataset.deleteCourse);
-  });
+  list.querySelectorAll('[data-course]').forEach(card=>{const c=state.courses.find(x=>x.id===card.dataset.course);if(c)attachItemMenu(card,courseMenu(c))});
   bindListFilter({searchId:'courseSearch',chipsId:'courseFilters',scope:'#courseList',onChange:({kind,shown})=>{coursesFilter=kind;byId('courseEmpty').hidden=!!shown}});
   byId('addCourse').onclick=openNewCourseSheet;
 }
@@ -34,15 +32,6 @@ function openNewCourseSheet(){
   openSheet({title:'Nouveau cours',subtitle:'Les sections CM, TD et TP sont créées automatiquement.',body:Field({label:'Nom du cours',id:'newCourseName',placeholder:'Ex. Traitement du signal'}),onConfirm:()=>{const name=byId('newCourseName').value.trim();if(!name){showToast('Entrez un nom de cours');return false}const colors=['#5B67F1','#8C5CF5','#FF8A4C','#29ADB5'];state.courses.push(sampleCourse(name,colors[state.courses.length%colors.length]));saveState();render();queueSync();return true}});
 }
 
-
-function confirmDeleteCourse(id){
-  const course=state.courses.find(c=>c.id===id);if(!course)return;
-  openSheet({title:`Supprimer « ${course.name} » ?`,subtitle:'Le cours et ses séances seront retirés. Ses photos seront conservées dans « Captures à trier » et les PDF resteront dans vos fichiers.',confirmText:'Supprimer',confirmClass:'coral',onConfirm:()=>{
-    const sessionIds=course.sections.flatMap(s=>s.sessions.map(q=>q.id));
-    removeCourse(id);saveState();queueSync();render();showToast('Cours supprimé');
-    purgeSessionInk(sessionIds).catch(console.warn);return true;
-  }});
-}
 
 function removeCourse(id){
   const course=state.courses.find(c=>c.id===id);if(!course)return;
@@ -89,32 +78,4 @@ function removeSection(course,section){
   if(Array.isArray(state.timetable))state.timetable=state.timetable.filter(t=>t.sectionId!==section.id);
   if(currentSectionId===section.id){currentSectionId=null;currentSessionId=null}
   return sessionIds;
-}
-
-const keptNote=photos=>photos?`Les photos (${photos}) seront conservées dans « Captures à trier ». Les PDF déjà créés restent dans Fichiers.`:'Les PDF déjà créés restent dans Fichiers.';
-
-async function confirmDeleteSession(courseId,sectionId,sessionId){
-  const course=state.courses.find(c=>c.id===courseId),section=course?.sections.find(s=>s.id===sectionId),session=section?.sessions.find(q=>q.id===sessionId);
-  if(!session)return;
-  const photos=new Set(session.photoIds||[]).size,ink=await sessionHasNotebookInk(session);
-  openSheet({title:`Supprimer « ${session.title} » ?`,subtitle:`${keptNote(photos)}${ink?' Les notes manuscrites de cette séance seront supprimées.':''}`,confirmText:'Supprimer',confirmClass:'coral',onConfirm:()=>{
-    removeSessions(course,section,[session]);saveState();queueSync();
-    if(currentView==='session'){sessionViewMode='gallery';navigate('section')}else render();   // from the séance itself: back to its section
-    showToast('Séance supprimée');
-    purgeSessionInk([session.id]).catch(console.warn);return true;
-  }});
-}
-
-async function confirmDeleteSection(courseId,sectionId){
-  const course=state.courses.find(c=>c.id===courseId),section=course?.sections.find(s=>s.id===sectionId);
-  if(!section)return;
-  const photos=new Set(section.sessions.flatMap(q=>q.photoIds||[])).size;
-  const ink=(await Promise.all(section.sessions.map(q=>sessionHasNotebookInk(q)))).some(Boolean);
-  const content=section.sessions.length?`Cette section contient ${plural(section.sessions.length,'séance')} et ${plural(photos,'photo')}. `:'Cette section est vide. ';
-  openSheet({title:`Supprimer la section « ${section.name} » ?`,subtitle:`${content}${keptNote(photos)}${ink?' Les notes manuscrites de ses séances seront supprimées.':''}`,confirmText:'Supprimer',confirmClass:'coral',onConfirm:()=>{
-    const sessionIds=removeSection(course,section);saveState();queueSync();
-    if(currentView==='section')navigate('course');else render();   // from the section itself: back to its course
-    showToast('Section supprimée');
-    purgeSessionInk(sessionIds).catch(console.warn);return true;
-  }});
 }

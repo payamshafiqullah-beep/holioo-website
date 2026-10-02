@@ -5,7 +5,8 @@
 // Stamps: saveState() compares the state with the last saved one (syncStamp). A course / section / séance /
 // batch whose own fields or child list changed gets `updatedAt` (ms); the order of courses and of Captures
 // batches is stamped in state.sync.coursesAt / inboxAt; an id gone from the state gets a tombstone in
-// state.sync.deleted. Old states without stamps count as 0, so the other side wins until something is edited.
+// state.sync.deleted; an id that comes back (Annuler) gets state.sync.revived, which beats an older tombstone on
+// every device. Old states without stamps count as 0, so the other side wins until something is edited.
 // Merge (syncMerge): entities matched by id; own fields from the newer side; a child that sits under two
 // different parents goes where the newer parent put it; child order from the newer parent, plus what only
 // the other side has; tombstones always win.
@@ -46,10 +47,11 @@ function syncFlatten(src){
 function syncStamp(state,prev,t=Date.now()){
   const sync=state.sync=state.sync&&typeof state.sync==='object'?state.sync:{};
   sync.deleted=sync.deleted&&typeof sync.deleted==='object'?sync.deleted:{};
+  sync.revived=sync.revived&&typeof sync.revived==='object'?sync.revived:{};
   const cur=syncFlatten(state);let changed=false;
   if(prev){
     for(const[id,e]of cur.ents){
-      if(sync.deleted[id]){delete sync.deleted[id];changed=true}   // brought back (Annuler)
+      if(sync.deleted[id]){delete sync.deleted[id];sync.revived[id]=t;changed=true}   // brought back (Annuler)
       if(e.kind==='photo')continue;
       const p=prev.ents.get(id);
       if(!p||p.own!==e.own){e.obj.updatedAt=t;changed=true}
@@ -63,15 +65,15 @@ function syncStamp(state,prev,t=Date.now()){
     }
     for(const id of prev.ents.keys())if(!cur.ents.has(id)){sync.deleted[id]=t;changed=true}
   }
-  for(const[id,ts]of Object.entries(sync.deleted))if(!(t-ts<SYNC_TOMBSTONE_MS))delete sync.deleted[id];
+  for(const box of[sync.deleted,sync.revived])for(const[id,ts]of Object.entries(box))if(!(t-ts<SYNC_TOMBSTONE_MS))delete box[id];
   return{flat:cur,changed};
 }
 
 // The part of the state shared between devices (written to Drive as state.json), in a stable form.
 function syncSharedPart(src){
   const s=src?.sync||{};
-  const deleted={};for(const k of Object.keys(s.deleted||{}).sort())deleted[k]=s.deleted[k];
-  return{courses:src?.courses||[],inbox:src?.inbox||[],sync:{coursesAt:s.coursesAt||0,inboxAt:s.inboxAt||0,deleted}};
+  const sorted=o=>{const out={};for(const k of Object.keys(o||{}).sort())out[k]=o[k];return out};
+  return{courses:src?.courses||[],inbox:src?.inbox||[],sync:{coursesAt:s.coursesAt||0,inboxAt:s.inboxAt||0,deleted:sorted(s.deleted),revived:sorted(s.revived)}};
 }
 
 // On a device's first merge, its untouched starter courses (no séance) that the account already has by
@@ -89,6 +91,9 @@ function syncMerge(localSrc,remoteSrc,{firstJoin=false}={}){
   const L=syncFlatten(local),R=syncFlatten(remote);
   const deleted={...local.sync.deleted};
   for(const[id,ts]of Object.entries(remote.sync.deleted))deleted[id]=Math.max(deleted[id]||0,ts);
+  const revived={...local.sync.revived};
+  for(const[id,ts]of Object.entries(remote.sync.revived))revived[id]=Math.max(revived[id]||0,ts);
+  for(const[id,ts]of Object.entries(revived))if(deleted[id]&&deleted[id]<=ts)delete deleted[id];
   const listStamp=(F,src,key)=>key.startsWith('root:')?(src.sync[`${key.slice(5)}At`]||0):(F.ents.get(key)?.obj.updatedAt||0);
 
   const picked=new Map();
@@ -114,7 +119,7 @@ function syncMerge(localSrc,remoteSrc,{firstJoin=false}={}){
     if(ch)obj[ch[0]]=(children.get(id)||[]).map(build);
     return obj;
   };
-  const out={sync:{coursesAt:Math.max(local.sync.coursesAt,remote.sync.coursesAt),inboxAt:Math.max(local.sync.inboxAt,remote.sync.inboxAt),deleted}};
+  const out={sync:{coursesAt:Math.max(local.sync.coursesAt,remote.sync.coursesAt),inboxAt:Math.max(local.sync.inboxAt,remote.sync.inboxAt),deleted,revived}};
   for(const root of Object.keys(SYNC_ROOTS))out[root]=(children.get(`root:${root}`)||[]).map(build);
   return JSON.parse(JSON.stringify(out));
 }

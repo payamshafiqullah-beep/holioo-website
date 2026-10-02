@@ -115,3 +115,15 @@ test('undo: an id that comes back loses its tombstone',()=>{
   session(a.state,'s1').photoIds=keep;save(a,11);
   assert.equal(a.state.sync.deleted.p2,undefined);
 });
+
+test('undo after the deletion already reached the other device: the photo comes back there too',()=>{
+  const{a,b,save}=devices();
+  const keep=[...session(a.state,'s1').photoIds];
+  session(a.state,'s1').photoIds=['p1'];save(a,10);
+  b.state=syncMerge(b.state,a.state);b.flat=null;                  // the deletion reached b
+  assert.deepEqual(plain(session(b.state,'s1').photoIds),['p1']);
+  session(a.state,'s1').photoIds=keep;save(a,12);                  // Annuler on a
+  const m=syncMerge(b.state,a.state);
+  assert.deepEqual(plain(session(m,'s1').photoIds),['p1','p2']);
+  assert.equal(m.sync.deleted.p2,undefined);
+});

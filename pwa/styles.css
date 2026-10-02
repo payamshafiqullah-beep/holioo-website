@@ -82,13 +82,22 @@ a{color:inherit}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
 /* ---------- Bottom navigation ---------- */
+/* No shaking while the page scrolls on iPhone: centered on whole pixels (left/right insets instead of
+   translateX(-50%), which put it on half pixels), on its own layer, and the blurred glass is a layer
+   behind it with exactly the bar's shape (the capture button sticking out above is not inside it).
+   Equal columns whatever the labels: the capture button no longer shifts when a label turns bold. */
 .bottom-nav{
-  position:fixed;z-index:40;left:50%;transform:translateX(-50%);
+  position:fixed;z-index:40;left:max(20px,calc(50% - 240px));right:max(20px,calc(50% - 240px));
+  transform:translateZ(0);-webkit-backface-visibility:hidden;backface-visibility:hidden;isolation:isolate;
   bottom:var(--nav-bottom);
-  width:min(90%,480px);height:var(--nav-h);
-  display:grid;grid-template-columns:repeat(5,1fr);align-items:end;
+  height:var(--nav-h);
+  display:grid;grid-template-columns:repeat(5,minmax(0,1fr));align-items:end;
   padding:0 var(--s2) 10px;
   border-radius:var(--r-nav);
+  border:1px solid transparent;
+}
+.bottom-nav::before{
+  content:"";position:absolute;z-index:-1;inset:-1px;border-radius:inherit;
   background:rgba(255,255,255,.82);
   backdrop-filter:blur(22px) saturate(1.6);-webkit-backdrop-filter:blur(22px) saturate(1.6);
   border:1px solid rgba(255,255,255,.9);
@@ -726,7 +735,8 @@ html.radial-lock,html.radial-lock body{overscroll-behavior:none;-webkit-user-sel
   .hero-art,.qc-trigger{width:150px}
   /* Left navigation rail; the bottom bar stays on phones. */
   :root{--rail-w:96px}
-  .bottom-nav{left:0;top:0;bottom:0;transform:none;width:var(--rail-w);height:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:calc(var(--s4) + env(safe-area-inset-top)) var(--s2) calc(var(--s4) + env(safe-area-inset-bottom));border-radius:0;border-width:0 1px 0 0;border-color:var(--line);background:rgba(255,255,255,.94);box-shadow:none}
+  .bottom-nav{left:0;right:auto;top:0;bottom:0;transform:none;width:var(--rail-w);height:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:calc(var(--s4) + env(safe-area-inset-top)) var(--s2) calc(var(--s4) + env(safe-area-inset-bottom));border-radius:0;border-width:0 1px 0 0;border-color:var(--line);background:rgba(255,255,255,.94);box-shadow:none}
+  .bottom-nav::before{display:none}
   .nav-item{flex:none;width:100%;height:auto;min-height:64px;justify-content:center;gap:4px;padding:8px 0}
   .capture-orb{margin-top:0;width:56px;height:56px}
   .main{width:auto;max-width:none;margin:0 0 0 var(--rail-w);padding-bottom:calc(var(--s6) + env(safe-area-inset-bottom))}

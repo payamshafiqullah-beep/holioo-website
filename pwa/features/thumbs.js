@@ -32,7 +32,10 @@ async function makeThumb(blob){
 
 // Object URL of a photo's preview, made and stored the first time it is needed.
 async function photoThumbUrl(id){
-  const row=await DB.get('photos',id);if(!row?.blob)return null;
+  let row=await DB.get('photos',id);
+  // Taken on another device of the account: fetched from Drive the first time it is shown.
+  if(!row?.blob&&typeof ensurePhotoLocal==='function'&&await ensurePhotoLocal(id))row=await DB.get('photos',id);
+  if(!row?.blob)return null;
   if(row.thumb)return thumbUrl(row.thumb);
   const src=row.rendered||row.blob;
   try{

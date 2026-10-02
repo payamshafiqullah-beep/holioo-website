@@ -48,9 +48,16 @@ function loadState(){
   }catch(e){console.warn(e);return defaultState()}
 }
 let state=loadState();
-function saveState(){
+// What the last save looked like, to stamp what changed for the other devices (features/state-merge.js).
+let syncBaseline=null;
+// {remote:true}: the change came from another device (features/remote-sync.js), nothing to stamp or send back.
+function saveState({remote=false}={}){
+  let changed=false;
+  try{if(remote)syncBaseline=syncFlatten(state);else{const r=syncStamp(state,syncBaseline);syncBaseline=r.flat;changed=r.changed}}catch(e){console.warn(e)}
   try{localStorage.setItem(stateKey(),JSON.stringify(state))}
   catch(e){console.warn(e);if(!saveState.warned){saveState.warned=true;showToast('Stockage plein : libérez de l’espace sur l’appareil');setTimeout(()=>saveState.warned=false,10000)}}
+  // The camera sends its photos once it is left (capture-actions.js); everything else goes to Drive soon.
+  if(changed&&currentUser&&!guestMode&&!['capture','scanReview'].includes(currentView))queueSync('state');
 }
 function switchStateOwner(uid){
   if(uid===stateOwner)return;
@@ -59,7 +66,7 @@ function switchStateOwner(uid){
   if(guestData)localStorage.setItem(`${STORE_KEY}:${uid}`,guestData);
   guestMode=uid===GUEST;
   stateOwner=uid;if(uid)localStorage.setItem('holioo_last_uid',uid);else localStorage.removeItem('holioo_last_uid');
-  state=loadState();saveState();
+  state=loadState();syncBaseline=null;saveState();
   if(uid){localStorage.removeItem(STORE_KEY);localStorage.removeItem(LEGACY_KEY)}
 }
 // CM / TD / TP are created once per course (defaultSectionsSeeded); after that a deleted section is not brought back.
@@ -109,6 +116,7 @@ function startGoogleLogin({consent=false}={}){
 function enterGuestMode(){switchStateOwner(GUEST);navigate('home')}
 
 async function signOut(){
+  if(typeof stopRemoteSync==='function')stopRemoteSync();
   try{await sb?.auth.signOut()}catch{}
   currentUser=null;cloudReady=false;currentRole='user';driveStatus={connected:false,email:null};
   switchStateOwner('');navigate('login');
@@ -129,6 +137,7 @@ async function bootstrapCloud(){
     else{const hid=`h${currentUser.id.replace(/-/g,'').slice(0,10)}`;state.profile.holiooId=hid;saveState();await sb.from('profiles').insert({...profilePayload(),holioo_id:hid})}
     if(accountBlocked)return;
     try{driveStatus=await Drive.status(sb,currentUser.id)}catch{driveStatus={connected:false,email:null}}
+    if(typeof startSyncSignals==='function')startSyncSignals();
     libraryChannel??=sb.channel('public-materials-live').on('postgres_changes',{event:'*',schema:'public',table:'public_materials'},()=>{if(currentView==='library')render()}).subscribe();
     await refreshSyncIndicator();if(driveStatus.connected&&state.settings.autoDriveSync)queueSync('bootstrap');
   }catch(e){console.error(e);cloudReady=false;showToast('Mode local actif — synchronisation plus tard');await refreshSyncIndicator()}
@@ -146,16 +155,21 @@ async function refreshSyncIndicator(){
 }
 function queueSync(reason='auto'){clearTimeout(queueSync.t);queueSync.t=setTimeout(()=>runDriveSync(reason),600)}
 async function runDriveSync(reason='manual'){
-  if(syncBusy||!navigator.onLine||!sb||!currentUser)return;
+  // A change made during a sync is sent by a second run right after it.
+  if(syncBusy){if(navigator.onLine)runDriveSync.again=reason;return}
+  if(!navigator.onLine||!sb||!currentUser)return;
   // "Synchroniser automatiquement" off: only an explicit tap syncs.
   if(reason!=='manual'&&!state.settings.autoDriveSync)return;
   syncBusy=true;await refreshSyncIndicator();
   try{
     driveStatus=await Drive.status(sb,currentUser.id);if(!driveStatus.connected){if(reason==='manual')showToast('Connectez Google Drive d’abord');return}
+    // What the other devices changed comes first, so files land in the folders they have now.
+    if(typeof syncStructure==='function')await syncStructure({push:false}).catch(e=>console.warn('Structure pull',e));
     const result=await Drive.syncAll({sb,user:currentUser,state,db:DB,documents:driveDocuments(),onProgress:({checked,total})=>{syncIndicator={cls:'pending',text:`Synchronisation… ${checked}/${total}`};applyChromeStatus()}});
+    if(typeof syncStructure==='function')await syncStructure({push:true}).catch(e=>console.warn('Structure push',e));
     if(result.failed){console.warn('Drive sync:',result.lastError);showToast(`${result.failed} élément(s) non synchronisé(s) — nouvel essai plus tard`)}
     else if(reason==='manual'||result.synced)showToast(result.synced?`${result.synced} élément(s) synchronisé(s)`:'Tout est déjà synchronisé');
-  }catch(e){console.error(e);syncIndicator={cls:'error',text:'Erreur de synchronisation'};applyChromeStatus();if(e?.code==='DRIVE_FULL')showToast('Google Drive est plein : libérez de l’espace pour continuer la sauvegarde');else if(reason==='manual')showToast(`Sync impossible : ${e.message||e}`)}finally{syncBusy=false;await refreshSyncIndicator();if(currentView==='sync')render()}
+  }catch(e){console.error(e);syncIndicator={cls:'error',text:'Erreur de synchronisation'};applyChromeStatus();if(e?.code==='DRIVE_FULL')showToast('Google Drive est plein : libérez de l’espace pour continuer la sauvegarde');else if(reason==='manual')showToast(`Sync impossible : ${e.message||e}`)}finally{syncBusy=false;await refreshSyncIndicator();if(currentView==='sync')render();const again=runDriveSync.again;runDriveSync.again=null;if(again)queueSync(again==='manual'?'auto':again)}
 }
 
 function bindCourseCards(){document.querySelectorAll('[data-course]').forEach(b=>b.onclick=()=>{currentCourseId=b.dataset.course;navigate('course')})}

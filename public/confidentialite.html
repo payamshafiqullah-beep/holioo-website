@@ -17,7 +17,7 @@
 
       <main class="doc">
         <h1>Politique de confidentialité</h1>
-        <p class="updated">Dernière mise à jour : 29 septembre 2026</p>
+        <p class="updated">Dernière mise à jour : 2 octobre 2026</p>
 
         <div class="card">
           <p><strong>En bref :</strong> vos photos et PDF sont d’abord enregistrés sur votre appareil. Si vous connectez Google Drive, Holioo n’accède qu’aux fichiers qu’il crée lui-même dans votre Drive. Nous ne vendons aucune donnée et n’affichons aucune publicité.</p>
@@ -33,6 +33,7 @@
           <li><strong>Contenus de cours</strong> : vos photos, séances et PDF sont enregistrés localement sur votre appareil (stockage du navigateur). Ils ne quittent votre appareil que si vous les synchronisez avec votre Google Drive ou si vous choisissez de publier une séance.</li>
           <li><strong>Matériel publié</strong> : si vous publiez volontairement une séance dans la bibliothèque académique, ses photos et son titre deviennent visibles par les autres étudiants de la même formation.</li>
           <li><strong>Données techniques</strong> : un identifiant d’appareil et des journaux techniques minimaux, nécessaires au fonctionnement et à la sécurité du service.</li>
+          <li><strong>Signaux de synchronisation entre vos appareils</strong> : quand un appareil a enregistré un changement dans votre Google Drive, il envoie un court signal à vos autres appareils connectés au même compte (identifiant de l’appareil, type de changement, identifiants techniques du fichier, de la photo ou de la séance, date). Ces signaux ne contiennent ni photo, ni texte, ni nom de cours, ne sont lisibles que par votre compte et sont effacés après un jour.</li>
         </ul>
 
         <h2>3. Google Drive et données Google</h2>
@@ -48,8 +49,8 @@
         <h2>4. Où sont stockées les données</h2>
         <ul>
           <li>Sur votre appareil : photos, séances et PDF.</li>
-          <li>Chez notre hébergeur de base de données <a href="https://supabase.com" target="_blank" rel="noopener">Supabase</a> : compte, profil, matériel publié et état de la connexion Drive.</li>
-          <li>Dans votre propre Google Drive : les fichiers que vous synchronisez.</li>
+          <li>Chez notre hébergeur de base de données <a href="https://supabase.com" target="_blank" rel="noopener">Supabase</a> : compte, profil, matériel publié, état de la connexion Drive et signaux de synchronisation (uniquement des identifiants techniques, conservés un jour).</li>
+          <li>Dans votre propre Google Drive : les fichiers que vous synchronisez, ainsi que l’organisation de vos cours (fichier <code>Holioo/.holioo/state.json</code>) qui permet à vos autres appareils de retrouver les mêmes cours.</li>
           <li>Le site est servi par GitHub Pages. Les polices et certaines bibliothèques sont chargées depuis Google Fonts, jsDelivr et cdnjs.</li>
         </ul>
 

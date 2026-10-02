@@ -46,7 +46,7 @@ Shared behavior that several screens use lives in `pwa/features/`:
 ## Services and app shell
 
 - `db.js` — IndexedDB local-first binary storage
-- `drive.js` — per-user Google Drive sync
+- `drive.js` — per-user Google Drive sync: photos and PDFs one file each, plus documents of several files given by the app (`documents` in `syncAll` / `pendingCount`): the session notebooks (`notebookDriveDocuments` in `features/notebook-ink.js`) go to the session folder as one image per written page (`Carnet-01.jpg`…) and `Carnet.json` (the strokes). What was sent is kept in IndexedDB `kv` `drive:ink:<session id>`; a page is replaced in place only when what it shows changed, moved when a name changes, sent to the Drive trash when it is gone. Leaving the session screen or the app (`flushNotebook`) saves the last strokes and asks for a sync. Tests: `tests/drive-sync.test.mjs`
 - `core.js` — shared state, Supabase bootstrap, navigation helpers, sync queue
 - `app.js` — route dispatcher and lifecycle listeners only
 - `styles.css` — shared visual tokens and shared component styling

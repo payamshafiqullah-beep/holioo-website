@@ -857,6 +857,8 @@ body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
 .course-managed{cursor:pointer}
 .course-managed[hidden]{display:none}
 .course-delete{display:grid;place-items:center;flex:none;width:44px;height:44px;border-radius:12px;color:var(--muted);background:transparent}
+.managed-row{display:flex;align-items:center;gap:var(--s2)}
+.managed-row>.list-card{flex:1;min-width:0}
 .course-delete:hover,.course-delete:focus-visible{background:#ffe9ed;color:#b4233a}
 .course-managed:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .reorder-grid > [data-course]{touch-action:pan-y;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}

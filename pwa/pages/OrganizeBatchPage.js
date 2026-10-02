@@ -3,6 +3,7 @@ async function renderOrganize(){
   if(!currentBatch){navigate('home');return}
   let c=getCourse();if(!c){c=state.courses[0];currentCourseId=c.id}
   ensureDefaultSections(c);
+  if(!c.sections.length){currentCourseId=c.id;showToast('Ce cours n’a plus de section : ajoutez-en une d’abord');navigate('course');return}
   let s=getSection(c);if(!s){s=c.sections.find(x=>x.name==='TD')||c.sections[0];currentSectionId=s.id}
   const next=(s.sessions.at(-1)?.number||0)+1,n=currentBatch.photoIds.length;
   app.innerHTML=`<section class="screen">

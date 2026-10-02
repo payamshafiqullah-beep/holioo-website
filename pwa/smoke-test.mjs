@@ -4,16 +4,16 @@ const read=p=>fs.readFileSync(new URL(p,import.meta.url),'utf8');
 
 const pageFiles=[
   './pages/LoginPage.js','./pages/AdminPage.js','./pages/AcademicSetupPage.js','./pages/HomePage.js','./pages/CoursesPage.js',
-  './pages/CourseDetailPage.js','./pages/SectionPage.js','./pages/SessionPage.js','./pages/CapturePage.js','./pages/ScanReviewPage.js',
+  './pages/CourseDetailPage.js','./pages/SectionPage.js','./pages/SessionPage.js','./pages/SessionDeskPage.js','./pages/CapturePage.js','./pages/ScanReviewPage.js',
   './pages/CaptureCompletePage.js','./pages/SplitBatchPage.js','./pages/OrganizeBatchPage.js','./pages/InboxPage.js',
   './pages/PhotoViewerPage.js','./pages/PdfBuilderPage.js','./pages/PdfViewerPage.js','./pages/FilesPage.js',
   './pages/AcademicLibraryPage.js','./pages/ProfilePage.js','./pages/SyncPage.js'
 ];
-const uiFiles=['./ui/icons.js','./ui/components.js','./ui/reorder.js','./ui/shell.js','./ui/camera-picker.js','./ui/radial-menu.js','./ui/photo-editor.js'];
+const uiFiles=['./ui/icons.js','./ui/components.js','./ui/reorder.js','./ui/shell.js','./ui/desk-shell.js','./ui/camera-picker.js','./ui/radial-menu.js','./ui/photo-editor.js'];
 const featureFiles=[
   './features/media-viewer.js','./features/course-actions.js','./features/image-pipeline.js','./features/photo-edits.js','./features/thumbs.js','./features/camera-i18n.js','./features/camera-destination.js',
   './features/camera-queue.js','./features/scan-core.js','./features/scanner.js','./features/ocr.js','./features/text-actions.js','./features/capture-actions.js','./features/quick-capture.js','./features/item-menu.js',
-  './features/pdf-actions.js','./features/community-actions.js','./features/state-merge.js','./features/remote-sync.js'
+  './features/pdf-actions.js','./features/community-actions.js','./features/state-merge.js','./features/remote-sync.js','./features/notes.js'
 ];
 
 const app=[
@@ -28,7 +28,7 @@ const drive=read('./drive.js');
 const html=read('./index.html');
 const sw=read('./sw.js');
 const manifest=JSON.parse(read('./manifest.webmanifest'));
-if(!html.includes('20261002-device-sync-v1'))throw new Error('Asset cache-bust version missing');
+if(!html.includes('20261003-desk-layout-v1'))throw new Error('Asset cache-bust version missing');
 
 const required=[
   'Diviser le lot','Organiser les photos','Captures à trier','Section personnalisée','Nouvelle séance',
@@ -79,6 +79,13 @@ for(const s of ['syncStructure','applyPendingRemote','ensurePhotoLocal','syncSta
 for(const s of ['readState','writeState','downloadFile','forgetToken'])if(!drive.includes(s))throw new Error(`Drive state sync missing: ${s}`);
 if(html.indexOf('features/state-merge.js')>html.indexOf('src="./core.js'))throw new Error('state-merge.js must load before core.js (saveState stamps from the first save)');
 if(/from\('sync_signals'\)\.insert\(\{[^}]*(title|name|text|blob)/.test(read('./sync-signals.js')))throw new Error('Sync signals must carry ids only');
+// Tablet / computer layout: built only at ≥768px, phones keep their own DOM; typed notes beside the photos.
+{const desk=read('./ui/desk-shell.js'),css=read('./styles.css');
+if(!desk.includes("matchMedia('(min-width:768px)')"))throw new Error('Desk layout must start at 768px');
+if(/bottomNav\.innerHTML|NAV_ITEMS\s*=/.test(desk))throw new Error('The desk layout must not touch the phone navigation');
+for(const s of ['renderSessionDesk','bindNoteField','notesDriveDocuments','pullSessionNotes','syncDesk'])if(!app.includes(s))throw new Error(`Desk / notes missing: ${s}`);
+const deskCss=css.slice(css.indexOf('TABLET & COMPUTER'));
+if(!deskCss||/@media\s*\((?!min-width:768px)/.test(deskCss.replace(/@media \(prefers-reduced-motion:reduce\)/g,'')))throw new Error('Desk styles must stay under @media (min-width:768px)');}
 console.log(`Holioo modular smoke test: PASS (${pageFiles.length} page files)`);
 
 for(const s of ['HOLIOO UI v2','--bg:#F7F7FB','--accent:#5B67F1','.bottom-nav','.capture-orb','.shutter','.cam-dest','.cam-sheet'])if(!read('./styles.css').includes(s))throw new Error(`UI v2 style missing: ${s}`);

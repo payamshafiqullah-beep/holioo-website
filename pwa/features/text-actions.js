@@ -47,8 +47,13 @@ async function showOcrResults(q){
     let ctx=null;for(const c of state.courses)for(const s of c.sections)for(const q2 of s.sessions)if(q2.photoIds.includes(r.photoId))ctx={course:c,section:s,session:q2};
     if(ctx)items.push({...r,ctx});
   }
-  box.hidden=!items.length;
-  box.innerHTML=items.length?`${SectionTitle('Dans le texte de vos photos',{count:items.length})}<div class="list-stack">${items.map((r,i)=>ListCard({iconName:'fileText',tone:'sky',title:r.ctx.session.title,meta:`${r.ctx.course.name} · ${r.ctx.section.name} — ${r.snippet}`,attrs:`data-ocr-hit="${i}"`})).join('')}</div>`:'';
+  // Typed notes (features/notes.js) match too.
+  const notes=typeof searchNotes==='function'?await searchNotes(q):[];
+  if(byId('fileSearch')?.value!==q)return;
+  box.hidden=!items.length&&!notes.length;
+  box.innerHTML=(items.length?`${SectionTitle('Dans le texte de vos photos',{count:items.length})}<div class="list-stack">${items.map((r,i)=>ListCard({iconName:'fileText',tone:'sky',title:r.ctx.session.title,meta:`${r.ctx.course.name} · ${r.ctx.section.name} — ${r.snippet}`,attrs:`data-ocr-hit="${i}"`})).join('')}</div>`:'')
+    +(notes.length?`${SectionTitle('Dans vos notes',{count:notes.length})}<div class="list-stack">${notes.map((r,i)=>ListCard({iconName:'note',tone:'lavender',title:r.session.title,meta:`${r.course.name} · ${r.section.name} — ${r.excerpt}`,attrs:`data-note-hit="${i}"`})).join('')}</div>`:'');
+  box.querySelectorAll('[data-note-hit]').forEach(b=>b.onclick=()=>{const r=notes[+b.dataset.noteHit];navigate('session',{courseId:r.course.id,sectionId:r.section.id,sessionId:r.session.id})});
   box.querySelectorAll('[data-ocr-hit]').forEach(b=>b.onclick=()=>{const r=items[+b.dataset.ocrHit],s=r.ctx.session;
     openPhotoViewer(s.photoIds,Math.max(0,s.photoIds.indexOf(r.photoId)),{title:s.title,source:'session',sourceId:s.id,editable:true,returnView:'files',courseId:r.ctx.course.id,sectionId:r.ctx.section.id,sessionId:s.id})});
 }

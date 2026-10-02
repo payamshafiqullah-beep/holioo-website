@@ -12,13 +12,16 @@ function revokeViewerUrl(){
   if(viewerObjectUrl){try{URL.revokeObjectURL(viewerObjectUrl)}catch{}viewerObjectUrl=null}
 }
 
+// "À SYNC" only when a Google Drive is connected: without one (guest mode, Drive not connected) nothing is
+// waiting, the photo simply lives on this device.
 function photoStatusLabel(row){
-  if(row?.driveNeedsUpdate)return{label:navigator.onLine?'À SYNC':'LOCAL',cls:navigator.onLine?'orange':'gray'};
+  const waiting=navigator.onLine&&!guestMode&&!!driveStatus?.connected;
+  if(row?.driveNeedsUpdate)return{label:waiting?'À SYNC':'LOCAL',cls:waiting?'orange':'gray'};
   if(row?.driveFileId)return{label:'DRIVE',cls:'green'};
   if(row?.syncState==='drive_full')return{label:'DRIVE PLEIN',cls:'coral'};
   if(row?.syncState==='error')return{label:'ERREUR',cls:'coral'};
   if(row?.syncState==='synced')return{label:'SYNC',cls:'green'};
-  if(row?.syncState==='pending')return{label:navigator.onLine?'À SYNC':'LOCAL',cls:navigator.onLine?'orange':'gray'};
+  if(row?.syncState==='pending')return{label:waiting?'À SYNC':'LOCAL',cls:waiting?'orange':'gray'};
   return{label:'LOCAL',cls:'gray'};
 }
 

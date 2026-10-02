@@ -31,7 +31,7 @@ function renderProfile(){
       </div>
     </details>
     <div class="list-stack">
-      <label class="list-card static toggle-row">${IconBadge('pencil','mint','md')}<span class="list-card-copy"><strong>Dessiner avec le doigt</strong><small>Désactivé par défaut pour éviter les marques avec la main.</small></span><input type="checkbox" id="pDrawFinger" class="switch" ${state.settings.drawWithFinger?'checked':''}></label>
+      ${notebookCanEdit()?`<label class="list-card static toggle-row">${IconBadge('pencil','mint','md')}<span class="list-card-copy"><strong>Dessiner avec le doigt</strong><small>Désactivé par défaut pour éviter les marques avec la main.</small></span><input type="checkbox" id="pDrawFinger" class="switch" ${state.settings.drawWithFinger?'checked':''}></label>`:''}
       ${ListCard({iconName:'cloud',tone:'sky',title:'Google Drive & synchronisation',attrs:'data-nav="sync"'})}
       ${ListCard({iconName:'search',tone:'mint',title:'Rechercher un Holioo ID',attrs:'id="searchId"'})}
       ${currentRole==='admin'?ListCard({iconName:'users',tone:'lavender',title:'Administration des utilisateurs',attrs:'data-nav="admin"'}):''}

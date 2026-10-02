@@ -54,7 +54,7 @@ function itemMenuOpen(el,o,at,pointer){
   itemMenuCur={name:o.name,at,items:[lead,del].map(a=>({...a,short:'',aria:a.label})),act:id=>{
     if(id==='delete')itemDelete(o.remove);
     else if(id==='move')o.move();
-    else itemRename(el.querySelector(o.title||'strong'),o.name,v=>{o.rename(v);saveState();queueSync();render()});
+    else itemRename(el.querySelector(o.title||'strong'),o.name,v=>{o.rename(v);saveState();queueSync();render()},o.check);
   }};
   if(pointer){
     // The finger is down: hand it to the radial menu (slide-and-release).
@@ -93,7 +93,8 @@ function attachItemMenu(el,o){
 
 // ─── Rename, in place ───
 // An input laid over the text (the text may sit inside a button, where an input cannot live).
-function itemRename(textEl,current,save){
+// `check(name)` → a message when the name can't be used (already taken): Enter keeps editing, leaving cancels.
+function itemRename(textEl,current,save,check=null){
   if(!textEl)return;
   const input=document.createElement('input'),cs=getComputedStyle(textEl);
   input.className='inline-rename';input.value=current||'';input.maxLength=80;input.enterKeyHint='done';input.setAttribute('aria-label','Nouveau nom');
@@ -103,17 +104,19 @@ function itemRename(textEl,current,save){
     Object.assign(input.style,{left:`${left}px`,top:`${r.top-5}px`,width:`${Math.min(Math.max(r.width+16,160),window.innerWidth-left-8)}px`,height:`${r.height+10}px`});
   };
   let done=false;
-  const finish=ok=>{
+  const finish=(ok,leaving=false)=>{
     if(done)return;
     const v=input.value.trim();
     if(ok&&!v){showToast('Le nom ne peut pas être vide');input.focus();return}
+    const problem=ok&&v!==current&&check?check(v):'';
+    if(problem){showToast(problem);if(!leaving){input.focus();return}ok=false}
     done=true;
     window.removeEventListener('scroll',place,true);window.removeEventListener('resize',place);window.visualViewport?.removeEventListener('resize',place);
     input.remove();textEl.style.visibility='';
     if(ok&&v!==current)save(v);
   };
   input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();finish(true)}else if(e.key==='Escape'){e.preventDefault();finish(false)}});
-  input.addEventListener('blur',()=>finish(!!input.value.trim()));
+  input.addEventListener('blur',()=>finish(!!input.value.trim(),true));
   input.addEventListener('click',e=>e.stopPropagation());
   place();textEl.style.visibility='hidden';document.body.appendChild(input);
   window.addEventListener('scroll',place,true);window.addEventListener('resize',place);window.visualViewport?.addEventListener('resize',place);
@@ -162,21 +165,21 @@ function itemPhotoSnapshot(){
 
 // ─── What each kind of item offers (the delete is the app's own: removeCourse, removeSection, …) ───
 function courseMenu(course){
-  return{name:course.name,title:'.course-card-copy strong',rename:v=>{course.name=v},remove:()=>{
+  return{name:course.name,title:'.course-card-copy strong',rename:v=>{course.name=v},check:v=>courseNameProblem(v,course.id),remove:()=>{
     const restore=itemSnapshot(),ids=course.sections.flatMap(s=>s.sessions.map(q=>q.id));
     removeCourse(course.id);saveState();queueSync();render();
     return{undo:()=>{restore();saveState();render()},commit:()=>purgeSessionInk(ids)};
   }};
 }
 function sectionMenu(course,section){
-  return{name:section.name,rename:v=>{section.name=v},remove:()=>{
+  return{name:section.name,rename:v=>{section.name=v},check:v=>sectionNameProblem(course,v,section.id),remove:()=>{
     const restore=itemSnapshot(),ids=removeSection(course,section);
     saveState();queueSync();render();
     return{undo:()=>{restore();saveState();render()},commit:()=>purgeSessionInk(ids)};
   }};
 }
 function sessionMenu(course,section,session){
-  return{name:session.title,rename:v=>{session.title=v},remove:()=>{
+  return{name:session.title,rename:v=>{session.title=v},check:v=>sessionTitleProblem(section,v,session.id),remove:()=>{
     const restore=itemSnapshot();
     removeSessions(course,section,[session]);saveState();queueSync();render();
     return{undo:()=>{restore();saveState();render()},commit:()=>purgeSessionInk([session.id])};

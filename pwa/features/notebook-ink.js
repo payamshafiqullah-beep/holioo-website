@@ -17,8 +17,11 @@ const inkKey=sessionId=>`ink:${sessionId}`;
 const visibleInkBlocks=doc=>(doc.blocks||[]).filter(b=>!b.deleted);
 const visibleInkStrokes=doc=>(doc.strokes||[]).filter(s=>!s.deleted);
 
-// Keep in sync with the 720px notebook/shell media queries in styles.css.
+// Layout only (narrow / wide page): keep in sync with the 720px notebook/shell media queries in styles.css.
 const NOTEBOOK_BREAKPOINT=720;
+// Writing depends on the device, not on the window: a tablet or a computer (shortest side of its screen at least
+// 600 px) writes even in a narrow window (iPad Split View); a phone never does, even turned sideways.
+const NOTEBOOK_WRITE_MIN_SIDE=600;
 const notebookHistory=new Map();
 const notebookHistoryFor=id=>{let h=notebookHistory.get(id);if(!h)notebookHistory.set(id,h={undo:[],redo:[]});return h};
 // A page is an A4 sheet whatever the screen, so strokes (stored 0..1) land in the same place on every device.
@@ -37,8 +40,7 @@ function applyFrameVars(el,f){
   el.style.setProperty('--fx',f.x);el.style.setProperty('--fy',f.y);el.style.setProperty('--fw',f.w);el.style.setProperty('--fr',frameRatio(f));
 }
 const phoneQuery=()=>matchMedia(`(max-width: ${NOTEBOOK_BREAKPOINT-1}px)`);
-function isPhoneNotebook(){return phoneQuery().matches}
-function notebookCanEdit(){return !isPhoneNotebook()}
+function notebookCanEdit(){return Math.min(screen.width,screen.height)>=NOTEBOOK_WRITE_MIN_SIDE}
 function normalizePoint(x,y,rect){return[Math.max(0,Math.min(1,x/rect.width)),Math.max(0,Math.min(1,y/rect.height))]}
 function strokeColor(tool){return INK_TOOLS[tool]?.color||INK_TOOLS['pen-black'].color}
 function strokeSize(tool){return INK_TOOLS[tool]?.size||INK_TOOLS['pen-black'].size}

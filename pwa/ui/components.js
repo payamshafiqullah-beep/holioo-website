@@ -63,7 +63,7 @@ function AvatarButton(){
 
 function NotificationButton(){
   const count=state.inbox.reduce((a,b)=>a+b.photoIds.length,0);
-  return`<button class="icon-btn" data-nav="inbox" aria-label="Captures à organiser${count?` : ${count}`:''}">${icon('bell',{size:21})}${count?`<b class="icon-btn-badge" data-inbox-badge>${count>99?'99+':count}</b>`:''}</button>`;
+  return`<button class="icon-btn" data-nav="inbox" aria-label="Captures à trier${count?` : ${count}`:''}">${icon('inbox',{size:21})}${count?`<b class="icon-btn-badge" data-inbox-badge>${count>99?'99+':count}</b>`:''}</button>`;
 }
 
 /* ---------- Page structure ---------- */

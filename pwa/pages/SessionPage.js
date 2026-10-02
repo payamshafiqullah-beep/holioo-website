@@ -1,5 +1,5 @@
 // Séance — galerie de photos, PDF, publication.
-let sessionViewMode='gallery';
+// Galerie or Carnet: the last choice is kept on this device (state.settings.sessionView).
 function sessionViewToggle(active){
   return `<div class="session-view-toggle" id="sessionViewToggle" role="tablist" aria-label="Mode d’affichage">
     <button class="view-toggle-btn ${active==='gallery'?'active':''}" type="button" data-session-view="gallery" role="tab" aria-selected="${active==='gallery'}">${icon('image',{size:16})}<span>Galerie</span></button>
@@ -27,7 +27,7 @@ function notebookToolbar(){
 async function renderSession(){
   const ctx=findSessionContext();if(!ctx){navigate('courses');return}
   const{course,section,session}=ctx,n=session.photoIds.length,pub=session.visibility==='public';
-  const active=sessionViewMode==='notebook'?'notebook':'gallery';
+  const active=state.settings?.sessionView==='notebook'?'notebook':'gallery',canWrite=active==='notebook'&&notebookCanEdit();
   const actions=n||active==='notebook'?`<div class="button-stack">
         ${ActionButton({label:'Créer un PDF',id:'buildPdf',iconName:'fileText'})}
         ${n?`${ActionButton({label:pub?'Publiée dans la bibliothèque':'Publier dans la bibliothèque',id:'publishSession',variant:pub?'soft':'ghost',iconName:pub?'checkCircle':'globe'})}
@@ -40,9 +40,9 @@ async function renderSession(){
       <p class="reorder-hint">${icon('more',{size:14})}Faites glisser la poignée pour changer l’ordre. Maintenez une photo pour la déplacer ou la supprimer.</p>`
     :EmptyState({iconName:'camera',title:'Aucune photo',text:'Cette séance ne contient pas encore de photos.'});
   const notebookView=active!=='notebook'?'':`${SectionTitle('Carnet',{action:'+ Page blanche',id:'addBlankPage'})}
-      <div class="session-notebook-help">${icon('pencil',{size:15})}<span>Écrivez au stylet. Le doigt sert à faire défiler la page.</span></div>
+      ${canWrite?`<div class="session-notebook-help">${icon('pencil',{size:15})}<span>${state.settings.drawWithFinger?'Écrivez au stylet ou au doigt.':'Écrivez au stylet. Le doigt sert à faire défiler la page.'}</span></div>`:''}
       <div class="notebook" id="sessionNotebook"></div>
-      ${notebookToolbar()}`;
+      ${canWrite?notebookToolbar():''}`;
   app.innerHTML=`<section class="screen${active==='notebook'?' screen-wide':''}">
     ${PageHeader({back:true,title:`${course.name} · ${section.name}`})}
     ${PageIntro({eyebrow:'SÉANCE',title:session.title,subtitle:`${plural(n,'photo')} · ${fmtDate(session.createdAt)}`})}
@@ -55,8 +55,8 @@ async function renderSession(){
   byId('backBtn').onclick=()=>navigate('section');
   byId('sessionViewToggle')?.addEventListener('click',async e=>{
     const next=e.target.closest('[data-session-view]')?.dataset.sessionView;
-    if(!next||next===sessionViewMode)return;
-    sessionViewMode=next;
+    if(!next||next===active)return;
+    state.settings.sessionView=next;saveState();
     await render();
   });
   if(active==='gallery'&&n){
@@ -77,5 +77,5 @@ async function renderSession(){
   byId('exportImages')?.addEventListener('click',()=>exportSessionImages(course,section,session));
   if(n)updateSessionOcrLabel(session);
   byId('publishSession')?.addEventListener('click',()=>publishSession(course,section,session));
-  byId('renameSession')?.addEventListener('click',()=>openSheet({title:'Renommer la séance',body:Field({label:'Titre',id:'renameValue',value:session.title}),onConfirm:()=>{session.title=byId('renameValue').value.trim()||session.title;saveState();render();queueSync();return true}}));
+  byId('renameSession')?.addEventListener('click',()=>openSheet({title:'Renommer la séance',body:Field({label:'Titre',id:'renameValue',value:session.title}),onConfirm:()=>{const title=byId('renameValue').value.trim()||session.title;if(title!==session.title){const problem=sessionTitleProblem(section,title,session.id);if(problem){showToast(problem);return false}}session.title=title;saveState();render();queueSync();return true}}));
 }

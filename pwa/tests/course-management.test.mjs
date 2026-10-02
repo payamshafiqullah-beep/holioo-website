@@ -20,3 +20,11 @@ test('loading a saved empty course list does not recreate defaults',()=>{
  const ctx={localStorage:{getItem:()=>JSON.stringify({courses:[],inbox:[],files:[]})},stateKey:()=> 'key',stateOwner:'',STORE_KEY:'key',LEGACY_KEY:'old',defaultState:()=>({profile:{},settings:{},courses:[course('default')]}),ensureDefaultSections:()=>{},console};
  vm.createContext(ctx);vm.runInContext(load,ctx);assert.equal(ctx.loadState().courses.length,0);
 });
+test('course, section and séance names must stay unique (they are Drive folder names)',()=>{
+ const a=course('Maths');a.sections.push({id:'x',name:'Projet',type:'CUSTOM',sessions:[{id:'q1',title:'Projet 1'},{id:'q2',title:'Révisions'}]});
+ const ctx={state:{courses:[a,course('Physique')]}};vm.createContext(ctx);vm.runInContext(read('../features/course-actions.js'),ctx);
+ assert.ok(ctx.courseNameProblem(' physique ','Maths'));assert.equal(ctx.courseNameProblem('Maths','Maths'),'');assert.equal(ctx.courseNameProblem('Chimie'),'');assert.ok(ctx.courseNameProblem(''));
+ assert.ok(ctx.sectionNameProblem(a,'cm'));assert.ok(ctx.sectionNameProblem(a,'projet'));assert.equal(ctx.sectionNameProblem(a,'Projet','x'),'');assert.equal(ctx.sectionNameProblem(a,'Examen'),'');
+ const p=a.sections.find(s=>s.id==='x');
+ assert.ok(ctx.sessionTitleProblem(p,'révisions'));assert.equal(ctx.sessionTitleProblem(p,'Révisions','q2'),'');assert.equal(ctx.sessionTitleProblem(p,'Projet 2'),'');
+});

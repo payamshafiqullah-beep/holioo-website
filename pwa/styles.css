@@ -211,7 +211,8 @@ html.radial-lock,html.radial-lock body{overscroll-behavior:none;-webkit-user-sel
 .section-title-row{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);margin-top:var(--s1)}
 .section-title{margin:0;font-size:18px;font-weight:700;letter-spacing:-.03em}
 .section-title .count{display:inline-grid;place-items:center;min-width:24px;height:22px;padding:0 7px;margin-left:4px;border-radius:11px;background:var(--accent-soft);color:var(--accent);font-size:12px;vertical-align:2px}
-.link-btn{font-size:14px;font-weight:600;color:var(--accent);padding:6px 2px}
+/* Text buttons: 44 px to tap (recommended size) while taking no more room than the text. */
+.link-btn{display:inline-flex;align-items:center;min-height:44px;margin:-6px -4px;padding:0 6px;font-size:14px;font-weight:600;color:var(--accent)}
 
 /* ---------- Search & chips ---------- */
 .search-bar{display:flex;align-items:center;gap:var(--s3);height:46px;padding:0 var(--s4);border-radius:var(--r-btn);background:var(--surface);box-shadow:var(--shadow-sm);color:var(--muted)}
@@ -388,7 +389,7 @@ html.radial-lock,html.radial-lock body{overscroll-behavior:none;-webkit-user-sel
 /* ---------- Login & admin ---------- */
 .google-btn{background:var(--surface);color:var(--ink);box-shadow:var(--shadow-sm),inset 0 0 0 1.5px var(--line)}
 .legal-links{margin:var(--s2) 0 0;text-align:center;font-size:13px;color:var(--muted);line-height:1.5}
-.legal-links a{color:var(--muted)}
+.legal-links a{display:inline-flex;align-items:center;min-height:44px;padding:0 6px;color:var(--muted)}
 .admin-avatar{display:grid;place-items:center;flex:none;width:48px;height:48px;border-radius:50%;object-fit:cover;background:var(--lavender);color:var(--lavender-fg);font-weight:700}
 
 /* ---------- Onboarding ---------- */
@@ -468,9 +469,9 @@ html.radial-lock,html.radial-lock body{overscroll-behavior:none;-webkit-user-sel
 }
 @media (max-width:719px){
   .notebook{margin-left:calc(var(--s3)*-1);margin-right:calc(var(--s3)*-1)}
-  .session-notebook-help{display:none}
   .notebook-block{border-left:0;border-right:0}
-  .ink-toolbar{display:none}
+  .ink-toolbar{overflow-x:auto;scrollbar-width:none;justify-content:flex-start}   /* tablet in a narrow window */
+  .ink-toolbar::-webkit-scrollbar{display:none}
 }
 
 .badge{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:11px;font-size:10px;font-weight:700;letter-spacing:.02em;background:#F0F1F6;color:var(--muted)}
@@ -734,7 +735,9 @@ html.radial-lock,html.radial-lock body{overscroll-behavior:none;-webkit-user-sel
   .category-grid{gap:var(--s2)}
   .category-card{padding:var(--s3) 10px}
   .hero-art,.qc-trigger{width:92px}
-  .nav-item small{font-size:10px}
+  /* First iPhone SE (320 px): wider bar and tighter letters so "Bibliothèque" doesn't touch its neighbours. */
+  .bottom-nav{left:10px;right:10px;padding-left:2px;padding-right:2px}
+  .nav-item small{font-size:10px;letter-spacing:-.03em}
 }
 
 /* ---------- Collapsible card (Profil > Informations académiques) ---------- */
@@ -994,5 +997,5 @@ body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
 .ocr-text{width:100%;min-height:200px;padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--bg);color:var(--ink);font:14px/1.5 inherit;resize:vertical}
 .ocr-results{margin-bottom:var(--s4)}
 .field-note{margin:6px 0 0;font-size:13px;line-height:1.45;color:var(--muted)}
-.field-note .link-btn{padding:0;color:var(--accent);font-weight:700}
+.field-note .link-btn{display:flex;margin:0 0 -6px -6px;color:var(--accent);font-weight:700}   /* own line under the note */
 @media (prefers-reduced-motion:reduce){.focus-ring.go,.srv-filter-name.show,.scan-quad,.scan-guide,.scan-overlay[data-page=""] .scan-guide,.scan-overlay[data-state="warn"] .scan-quad,.cam-notice.scan-hint::before{animation:none;transition:none}}

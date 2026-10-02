@@ -1,7 +1,7 @@
 // Synchronisation — Google Drive et installation de l'app.
 async function renderSync(){
   setChrome(false);
-  let pending=0;try{pending=await Drive.pendingCount(state,DB)}catch{}
+  let pending=0;try{pending=await Drive.pendingCount(state,DB,driveDocuments())}catch{}
   const connected=!!driveStatus.connected;
   app.innerHTML=`<section class="screen">
     ${PageHeader({back:true,title:'Profil',actions:false})}

@@ -89,28 +89,11 @@
     return map;
   }
 
-  // Puts one local item in its Drive folder. Returns null when Drive is already up to date.
-  // A photo already in Drive is moved/renamed (or its content replaced after an edit), never uploaded twice.
-  async function pushItem(ctx,row,blob,names,filename){
+  // Runs one Drive step; retried once after a stale folder id (404) or an expired access token (401).
+  async function retrying(ctx,fn){
     for(let attempt=0;;attempt++){
-      try{
-        const parentId=await ensurePath(ctx.token,names);
-        const placed=row.driveFileId&&row.driveParentId===parentId&&row.driveName===filename;
-        if(placed&&!row.driveNeedsUpdate)return null;
-        let info=null;
-        if(row.driveFileId){
-          try{info=await fileInfo(ctx.token,row.driveFileId)}catch(e){if(e.status!==404)throw e}
-        }
-        let remote;
-        if(info&&!info.trashed){
-          remote=placed?info:await moveFile(ctx.token,row.driveFileId,parentId,filename,info);
-          if(row.driveNeedsUpdate)remote=await updateContent(ctx.token,row.driveFileId,blob);
-        }else{
-          // Never uploaded, or deleted from Drive since: Drive keeps a copy of everything in Holioo.
-          remote=await uploadBlob(ctx.token,blob,filename,parentId);
-        }
-        return{remote,parentId};
-      }catch(e){
+      try{return await fn()}
+      catch(e){
         if(attempt>0)throw e;
         // A folder deleted in Drive leaves a stale id in the cache: forget the cache and retry once.
         if(e.status===404){clearCache();continue}
@@ -119,6 +102,64 @@
         throw e;
       }
     }
+  }
+  const blobOf=b=>typeof b==='function'?b():b;   // made only when it is really sent
+
+  // Puts one local item in its Drive folder. Returns null when Drive is already up to date.
+  // A photo already in Drive is moved/renamed (or its content replaced after an edit), never uploaded twice.
+  async function pushItem(ctx,row,blob,names,filename){
+    return retrying(ctx,async()=>{
+      const parentId=await ensurePath(ctx.token,names);
+      const placed=row.driveFileId&&row.driveParentId===parentId&&row.driveName===filename;
+      if(placed&&!row.driveNeedsUpdate)return null;
+      let info=null;
+      if(row.driveFileId){
+        try{info=await fileInfo(ctx.token,row.driveFileId)}catch(e){if(e.status!==404)throw e}
+      }
+      let remote;
+      if(info&&!info.trashed){
+        remote=placed?info:await moveFile(ctx.token,row.driveFileId,parentId,filename,info);
+        if(row.driveNeedsUpdate)remote=await updateContent(ctx.token,row.driveFileId,await blobOf(blob));
+      }else{
+        // Never uploaded, or deleted from Drive since: Drive keeps a copy of everything in Holioo.
+        remote=await uploadBlob(ctx.token,await blobOf(blob),filename,parentId);
+      }
+      return{remote,parentId};
+    });
+  }
+  async function trashFile(ctx,fileId){
+    try{await retrying(ctx,()=>driveFetch(ctx.token,`${API}/files/${encodeURIComponent(fileId)}?fields=id`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({trashed:true})}))}
+    catch(e){if(e.status!==404)throw e}
+  }
+
+  // Documents made of several files in one folder (a session's notebook: one image per written page + its data),
+  // given by the app as {id, version, empty, folder:[course, section, session], parts()}; parts() → [{name, sig, blob}].
+  // What was sent is remembered in kv `drive:<id>`: a file is replaced in place only when its sig changed, moved
+  // when the folder was renamed, and sent to the Drive trash when the document no longer has it.
+  const docMetaKey=d=>`drive:${d.id}`;
+  const docPath=(rootYear,d)=>['Holioo',rootYear,...d.folder];
+  const docNeedsSync=(d,meta,path)=>meta?meta.version!==d.version||meta.path!==path:!d.empty;
+  async function docMeta(db,d){try{return(await db.get('kv',docMetaKey(d)))?.meta||null}catch{return null}}
+  async function pushDocument(ctx,db,d,names,meta){
+    const parts=await d.parts(),old=meta?.files||{},files={};
+    if(!parts.length&&!Object.keys(old).length){await db.put('kv',{key:docMetaKey(d),meta:{version:d.version,path:names.join('/'),files}});return false}
+    const parentId=parts.length?await retrying(ctx,()=>ensurePath(ctx.token,names)):null;   // nothing left to send: only the trash
+    let changed=false,done=false;
+    try{
+      for(const part of parts){
+        const prev=old[part.name];
+        if(prev&&prev.sig===part.sig&&prev.parentId===parentId){files[part.name]=prev;continue}
+        const res=await pushItem(ctx,{driveFileId:prev?.id,driveParentId:prev?.parentId,driveName:part.name,driveNeedsUpdate:!!prev&&prev.sig!==part.sig},part.blob,names,part.name);
+        files[part.name]={id:res?res.remote.id:prev.id,parentId:res?res.parentId:parentId,sig:part.sig};changed=true;
+      }
+      for(const[name,file]of Object.entries(old))if(!files[name]){await trashFile(ctx,file.id);changed=true}
+      done=true;
+    }finally{
+      // Files already sent are remembered even after a failure, so they are never uploaded twice.
+      const meta2=done?{version:d.version,path:names.join('/'),files}:{version:meta?.version??null,path:meta?.path??null,files:{...old,...files}};
+      await db.put('kv',{key:docMetaKey(d),meta:meta2}).catch(()=>{});
+    }
+    return changed;
   }
 
   // Result written back into the latest version of the row (the user may have edited it meanwhile).
@@ -133,15 +174,16 @@
   // Errors that would fail the same way for every other item: stop and report.
   const fatal=e=>e?.code==='DRIVE_FULL'||e?.code==='RATE_LIMIT'||e?.status===401||e?.status===403;
 
-  async function syncAll({sb,user,state,db,onProgress}){
+  async function syncAll({sb,user,state,db,onProgress,documents=null}){
     if(!navigator.onLine||!sb||!user)return {synced:0,pending:0,skipped:true};
-    const st=await status(sb,user.id);if(!st.connected)return {synced:0,pending:await pendingCount(state,db),connected:false};
+    const st=await status(sb,user.id);if(!st.connected)return {synced:0,pending:await pendingCount(state,db,documents),connected:false};
     useFolderCache(user.id);
     const ctx={sb,token:await accessToken(sb)};
     const rootYear=state.profile?.academicYear||'Année universitaire';
     const contexts=photoContexts(state);
     const files=(state.files||[]);
-    const total=contexts.size+files.length;
+    const docs=documents?await documents(state):[];
+    const total=contexts.size+files.length+docs.length;
     let synced=0,failed=0,checked=0,lastError=null;
     const step=()=>{checked++;onProgress?.({checked,total,synced})};
 
@@ -175,12 +217,27 @@
       }
       step();
     }
-    return {synced,failed,lastError,pending:await pendingCount(state,db),connected:true,email:st.email};
+    for(const d of docs){
+      const names=docPath(rootYear,d),meta=await docMeta(db,d);
+      if(docNeedsSync(d,meta,names.join('/'))){
+        try{if(await pushDocument(ctx,db,d,names,meta))synced++}
+        catch(e){
+          failed++;lastError=e;
+          if(fatal(e))throw e;
+        }
+      }
+      step();
+    }
+    return {synced,failed,lastError,pending:await pendingCount(state,db,documents),connected:true,email:st.email};
   }
-  async function pendingCount(state,db){
+  async function pendingCount(state,db,documents=null){
     let n=0;
     for(const id of photoContexts(state).keys()){const p=await db.get('photos',id);if(p?.blob&&(!p.driveFileId||p.driveNeedsUpdate))n++}
     for(const f of state.files||[]){const row=await db.get('files',f.id);if(row?.blob&&!row.driveFileId)n++}
+    if(documents){
+      const rootYear=state.profile?.academicYear||'Année universitaire';
+      for(const d of await documents(state))if(docNeedsSync(d,await docMeta(db,d),docPath(rootYear,d).join('/')))n++;
+    }
     return n;
   }
   window.HoliooDrive={status,connect,disconnect,accessToken,ensureFolder,ensurePath,uploadBlob,moveFile,updateContent,syncAll,pendingCount,safeName};

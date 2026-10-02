@@ -162,3 +162,41 @@ test('corner brackets: one L at every corner, along the two sides, never longer 
   assert.ok(!/NaN|Infinity/.test(tiny));
   assert.equal(C.polyPath(q),'M100.0 100.0L300.0 100.0L300.0 400.0L100.0 400.0Z');
 });
+
+test('corners by hand start on screen, whatever part of the video the phone shows (video is "cover")',()=>{
+  // A 16:9 frame on a portrait phone: only the middle ~26 % of its width is visible.
+  const view={videoW:1280,videoH:720,elW:375,elH:812,zoom:1,crop:{x:0,y:0,w:1280,h:720}};
+  const old=C.mapToScreen([[.14,.2],[.86,.2],[.86,.78],[.14,.78]],view);
+  assert.ok(old.some(([x])=>x<0||x>375),'the old default (frame points .14/.86) was off screen: x '+old.map(p=>Math.round(p[0])));
+  const box=C.freeBox(375,812),lim={box:{x0:14,x1:361,y0:62,y1:530},avoid:[{x0:283,x1:367,y0:60,y1:204}]};
+  for(const mode of['board','document','book']){
+    const guide=C.guideQuad(mode,375,812).map(p=>C.placePoint(p,lim));
+    for(const[x,y]of guide){
+      assert.ok(x>=lim.box.x0&&x<=lim.box.x1&&y>=lim.box.y0&&y<=lim.box.y1,`${mode}: ${x},${y} inside the limits`);
+      assert.ok(!(x>283&&x<367&&y>60&&y<204),`${mode}: ${x},${y} not under the Auto / Coins buttons`);
+      const f=C.mapFromScreen([x,y],view),back=C.mapToScreen([f],view)[0];
+      assert.ok(Math.abs(back[0]-x)<1e-6&&Math.abs(back[1]-y)<1e-6,'frame point maps back to the same screen point');
+    }
+  }
+  assert.ok(box.y0>0&&box.y1>box.y0);
+});
+
+test('a corner is kept inside the limits and pushed out from under a button',()=>{
+  const lim={box:{x0:10,x1:360,y0:60,y1:530},avoid:[{x0:280,x1:370,y0:60,y1:200}]};
+  assert.deepEqual(plain(C.placePoint([-300,135],lim)),[10,135],'off the left edge');
+  assert.deepEqual(plain(C.placePoint([700,700],lim)),[360,530],'off the bottom right');
+  const [x,y]=C.placePoint([330,120],lim);
+  assert.ok(!(x>280&&x<370&&y>60&&y<200),`under a button: moved to ${x},${y}`);
+  assert.deepEqual(plain(C.placePoint(C.placePoint([330,120],lim),lim)),plain(C.placePoint([330,120],lim)),'placing twice changes nothing');
+  assert.deepEqual(plain(C.placePoint([100,300],lim)),[100,300],'a free point does not move');
+});
+
+test('a placed quad is refused when it is a bow-tie, tiny, or had to be squeezed in from far off screen',()=>{
+  const lim={box:{x0:10,x1:360,y0:60,y1:530},avoid:[]};
+  const ok=[[60,120],[300,110],[310,400],[50,410]];
+  assert.deepEqual(plain(C.placeQuad(ok,lim)),ok);
+  assert.equal(C.placeQuad([[60,120],[300,400],[310,110],[50,410]],lim),null,'bow-tie');
+  assert.equal(C.placeQuad([[100,100],[110,100],[110,110],[100,110]],lim),null,'tiny');
+  assert.equal(C.placeQuad([[-300,120],[300,110],[310,400],[-290,410]],lim,{maxShift:28}),null,'mostly off screen');
+  assert.ok(C.placeQuad([[-300,120],[300,110],[310,400],[-290,410]],lim),'without a limit it is squeezed in');
+});

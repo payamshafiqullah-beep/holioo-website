@@ -213,12 +213,45 @@
   // Quad pulled toward its centre by a fraction of its size.
   function insetQuad(q,k){const o=orderQuad(q),cx=o.reduce((s,p)=>s+p[0],0)/4,cy=o.reduce((s,p)=>s+p[1],0)/4;return o.map(([x,y])=>[x+(cx-x)*k*2,y+(cy-y)*k*2])}
 
+  // The part of the preview the controls leave free (screen px): below the top bar, above the shutter; in a
+  // landscape phone, left of the control column. Same rule as the CSS.
+  function freeBox(w,h){
+    const column=w>h&&h<=520;
+    return column?{x0:16,x1:w-224,y0:56,y1:h-16}:{x0:w*.07,x1:w*.93,y0:96,y1:h-250};
+  }
+
+  // A point kept inside `box`, and out of every rectangle in `avoid` (buttons): pushed out through the nearest
+  // edge that stays inside the box. All in screen px.
+  function placePoint([x,y],{box,avoid=[]}){
+    const cl=(v,a,b)=>Math.min(Math.max(v,a),Math.max(a,b));
+    x=cl(x,box.x0,box.x1);y=cl(y,box.y0,box.y1);
+    for(const r of avoid){
+      if(!(x>r.x0&&x<r.x1&&y>r.y0&&y<r.y1))continue;
+      const moves=[[x-r.x0,[r.x0,y]],[r.x1-x,[r.x1,y]],[y-r.y0,[x,r.y0]],[r.y1-y,[x,r.y1]]]
+        .map(([d,p])=>[d,[cl(p[0],box.x0,box.x1),cl(p[1],box.y0,box.y1)]])
+        .filter(([,p])=>!(p[0]>r.x0&&p[0]<r.x1&&p[1]>r.y0&&p[1]<r.y1))
+        .sort((a,b)=>a[0]-b[0]);
+      if(moves.length){[x,y]=moves[0][1]}
+    }
+    return[x,y];
+  }
+
+  // A quad (screen px) brought inside the limits, or null when that leaves nothing usable: not convex, a side
+  // shorter than `minSide`, or a corner that had to move more than `maxShift` px (an outline mostly off screen
+  // squeezed into the edge is no help: the caller then starts from the framing guide).
+  function placeQuad(q,limits,{minSide=40,maxShift=Infinity}={}){
+    const p=q.map(pt=>placePoint(pt,limits));
+    if(p.some((pt,i)=>dist(pt,q[i])>maxShift)||!isConvex(p))return null;
+    for(let i=0;i<4;i++)if(dist(p[i],p[(i+1)%4])<minSide)return null;
+    return p;
+  }
+
   // Framing guide shown while no page is found: a rectangle (screen px, TL TR BR BL) with the shape
   // the mode expects, centred in the part of the preview the controls leave free (below the top bar and
   // above the shutter; in a landscape phone, left of the control column — same rule as the CSS).
   function guideQuad(mode,w,h){
-    const land=w>h,column=land&&h<=520,ar={document:land?Math.SQRT2:1/Math.SQRT2,board:1.6,book:1.4,id:85.6/54,qr:1}[mode]||1/Math.SQRT2;
-    const box=column?{x0:16,x1:w-224,y0:56,y1:h-16}:{x0:w*.07,x1:w*.93,y0:96,y1:h-250};
+    const land=w>h,ar={document:land?Math.SQRT2:1/Math.SQRT2,board:1.6,book:1.4,id:85.6/54,qr:1}[mode]||1/Math.SQRT2;
+    const box=freeBox(w,h);
     const k=mode==='qr'?.72:1,aw=Math.max(80,box.x1-box.x0)*k,ah=Math.max(80,box.y1-box.y0)*k;
     let gw=aw,gh=gw/ar;if(gh>ah){gh=ah;gw=gh*ar}
     const cx=(box.x0+box.x1)/2,cy=(box.y0+box.y1)/2;
@@ -239,6 +272,6 @@
   // Quad corners as a closed SVG path.
   const polyPath=q=>`M${q.map(p=>`${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join('L')}Z`;
 
-  root.ScanCore={guideQuad,bracketPath,polyPath,insetQuad,orderQuad,area,isConvex,angles,quadValid,confidence,maxCornerShift,createTracker,judgeFrame,createAutoCapture,toEditQuad,fromEditQuad,fullQuad,splitSpread,findGutter,pageRatio,mapFromScreen,idCardLayout,tiltHint,mapToScreen};
+  root.ScanCore={guideQuad,bracketPath,polyPath,insetQuad,orderQuad,area,isConvex,angles,quadValid,confidence,maxCornerShift,createTracker,judgeFrame,createAutoCapture,toEditQuad,fromEditQuad,fullQuad,splitSpread,findGutter,pageRatio,mapFromScreen,freeBox,placePoint,placeQuad,idCardLayout,tiltHint,mapToScreen};
 })(typeof self!=='undefined'?self:typeof window!=='undefined'?window:globalThis);
 if(typeof module!=='undefined')module.exports=(typeof self!=='undefined'?self:globalThis).ScanCore;

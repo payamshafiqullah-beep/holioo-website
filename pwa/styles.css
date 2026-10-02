@@ -943,7 +943,8 @@ body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
 .scan-overlay[data-state="warn"]{--scan:#FFB454;--scan-fill:rgba(255,180,84,.07)}
 .scan-handles{display:none}
 .scan-overlay[data-manual="1"] .scan-handles{display:block}
-.scan-overlay[data-manual="1"] .scan-glow,.scan-overlay[data-manual="1"] .scan-progress{display:none}
+.scan-overlay[data-manual="1"] .scan-glow,.scan-overlay[data-manual="1"] .scan-progress,.scan-overlay[data-manual="1"] .scan-dim{display:none}
+.scan-overlay[data-manual="1"]{z-index:6}
 .scan-handle{fill:var(--scan);stroke:#fff;stroke-width:2.5;filter:drop-shadow(0 1px 4px rgba(0,0,0,.45));pointer-events:none}
 .scan-handle-hit{fill:transparent;pointer-events:all;touch-action:none;cursor:grab}
 .scan-overlay[data-state="qr"]{--scan:#8AB4FF;--scan-fill:rgba(138,180,255,.14)}

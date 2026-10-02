@@ -496,7 +496,7 @@ function toggleScanCorners(){
   const b=byId('scanCornersBtn'),on=Scanner.setManual(!b?.classList.contains('on'));
   b?.classList.toggle('on',on);b?.setAttribute('aria-pressed',String(on));
   b?.setAttribute('aria-label',camT('scanCornersLabel',{state:on?camT('on'):camT('off')}));
-  if(on)showToast(camT('cornersHint'));
+  if(on)showToast(camT('cornersToast'));
 }
 function toggleScanAuto(){state.scanAuto=state.scanAuto===false;saveState();renderScanTools();showToast(camT('scanAutoLabel',{state:state.scanAuto?camT('on'):camT('off')}))}
 function toggleCameraGrid(){
@@ -508,6 +508,7 @@ function toggleCameraGrid(){
 // One short line above the preview: what to do, or what is wrong.
 function renderScanHint(s){
   const el=byId('scanHint');if(!el)return;
+  byId('scanCornersBtn')?.classList.toggle('on',!!s?.manual);byId('scanCornersBtn')?.setAttribute('aria-pressed',String(!!s?.manual));   // stays in step with the scanner (a restart ends the hand mode)
   if(!s||camMode==='photo'){el.classList.add('hidden');return}
   let text='',warn=false;
   const search={document:'searchDocument',board:'searchBoard',book:'searchBook',id:camIdFront?'searchIdBack':'searchId',qr:'qrAim'}[camMode];

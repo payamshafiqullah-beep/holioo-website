@@ -138,7 +138,8 @@ const Scanner=(()=>{
     const paint=now=>{
       if(!r.alive)return;r.raf=requestAnimationFrame(paint);
       const dt=Math.min(80,now-(r.lastPaint||now));r.lastPaint=now;
-      const tgt=r.target&&r.region?screenQuad(r,r.target):null;
+      if(r.manual&&r.region&&r.w){if(r.manualInit)initManual(r);else if(r.manualQuad)keepManualReachable(r)}
+      const tgt=r.target&&r.region&&!(r.manual&&r.manualInit)?screenQuad(r,r.target):null;
       if(tgt){
         const k=1-Math.exp(-dt/48); // same easing at any frame rate
         r.shown=r.shown&&!r.manual?r.shown.map((p,i)=>[p[0]+(tgt[i][0]-p[0])*k,p[1]+(tgt[i][1]-p[1])*k]):tgt;
@@ -165,7 +166,7 @@ const Scanner=(()=>{
   function buildOverlay(r){
     const svg=r.overlay;if(!svg)return;
     svg.innerHTML='<g class="scan-guide"><path class="scan-guide-under"/><path class="scan-guide-path"/></g><g class="scan-layer"><path class="scan-dim" fill-rule="evenodd"/><path class="scan-glow"/><path class="scan-quad"/><path class="scan-fold"/><path class="scan-brackets-under"/><path class="scan-brackets"/><path class="scan-progress" pathLength="100"/></g><g class="scan-handles">'+[0,1,2,3].map(i=>`<circle class="scan-handle" data-i="${i}" r="11"/><circle class="scan-handle-hit" data-i="${i}" r="30"/>`).join('')+'</g>';
-    if(!svg._scanHandles){svg._scanHandles=true;svg.addEventListener('pointerdown',onHandleDown)}
+    if(!svg._scanHandles){svg._scanHandles=true;svg.addEventListener('pointerdown',onHandleDown);svg.addEventListener('click',e=>{if(e.target.closest?.('.scan-handle-hit'))e.stopPropagation()})}
     const q=s=>svg.querySelector(s);
     r.el={handles:[0,1,2,3].map(i=>[...svg.querySelectorAll(`[data-i="${i}"]`)]),guide:q('.scan-guide-path'),guideUnder:q('.scan-guide-under'),bracketsUnder:q('.scan-brackets-under'),dim:q('.scan-dim'),glow:q('.scan-glow'),quad:q('.scan-quad'),fold:q('.scan-fold'),brackets:q('.scan-brackets'),progress:q('.scan-progress')};
     svg.dataset.state='search';svg.dataset.page='';svg.dataset.mode=r.mode;
@@ -234,16 +235,43 @@ const Scanner=(()=>{
   // ---------- corners by hand ----------
   // The fallback when the detector is unsure or finds nothing: four handles on the preview, dragged onto the
   // corners of the board. The shutter then crops exactly there (no search, no auto-capture).
+  // The handles live where a finger can reach them: below the top bar, above the zoom / modes / shutter, and
+  // never under the tool buttons (Auto, Coins). The video is shown "cover", so a frame point is often outside
+  // the screen: everything is placed in screen pixels first, then turned into frame points.
+  function manualLimits(r){
+    const o=r.overlay.getBoundingClientRect(),rel=el=>{const b=el.getBoundingClientRect();return{x0:b.left-o.left,x1:b.right-o.left,y0:b.top-o.top,y1:b.bottom-o.top}};
+    const pad=(b,k)=>({x0:b.x0-k,x1:b.x1+k,y0:b.y0-k,y1:b.y1+k});
+    const top=document.querySelector('.camera-top'),bottom=document.querySelector('.camera-bottom'),tools=document.getElementById('scanTools');
+    const box={x0:14,x1:o.width-14,y0:56,y1:o.height-14},avoid=[];
+    if(top)box.y0=Math.max(box.y0,rel(top).y1+6);
+    if(bottom){const b=rel(bottom);if(b.y0>o.height*.45)box.y1=Math.min(box.y1,b.y0-10);else avoid.push(pad(b,8))}   // landscape: a column on the side
+    if(tools&&!tools.classList.contains('hidden'))avoid.push(pad(rel(tools),8));
+    return{box,avoid};
+  }
+  function toFrame(r,p){
+    const el=r.video.getBoundingClientRect(),z=r.getZoom();
+    return ScanCore.mapFromScreen(p,{videoW:r.video.videoWidth,videoH:r.video.videoHeight,elW:el.width,elH:el.height,zoom:z.css,crop:r.region});
+  }
+  // First placement: the last outline when it fits on screen, else the framing guide.
+  function initManual(r){
+    const lim=manualLimits(r);
+    const raw=ScanCore.guideQuad(r.mode,r.w,r.h),guide=ScanCore.placeQuad(raw,lim,{minSide:1})||raw.map(p=>ScanCore.placePoint(p,lim));
+    const seen=r.target?ScanCore.placeQuad(screenQuad(r,r.target),lim,{maxShift:28}):null;
+    r.manualQuad=(seen||guide).map(p=>toFrame(r,p));r.target=r.manualQuad;r.shown=null;r.manualInit=false;
+  }
+  // Every frame: a handle the geometry has pushed out of reach (zoom, rotation, the bars moving) comes back.
+  function keepManualReachable(r){
+    const lim=manualLimits(r),cur=screenQuad(r,r.manualQuad),fit=cur.map(p=>ScanCore.placePoint(p,lim));
+    if(fit.some((p,i)=>Math.hypot(p[0]-cur[i][0],p[1]-cur[i][1])>.5)&&ScanCore.isConvex(fit)){r.manualQuad=fit.map(p=>toFrame(r,p));r.target=r.manualQuad}
+  }
   function setManual(on){
     const r=run;if(!r||r.mode==='qr'||r.mode==='id')return false;
     r.manual=!!on;
     if(r.manual){
-      // Start from what was detected, else from a rectangle in the middle of the picture.
-      r.manualQuad=(r.target||[[.14,.2],[.86,.2],[.86,.78],[.14,.78]]).map(p=>p.slice());
-      r.target=r.manualQuad;r.raw=null;r.tracker.reset();r.auto.reset();
+      r.manualInit=true;r.raw=null;r.tracker.reset();r.auto.reset();   // placed on the next frame, when the screen size is known
       setStatus(r,{state:'tracking',manual:true,warn:null,auto:false});
     }else{
-      r.manualQuad=null;r.target=null;r.shown=null;r.raw=null;
+      r.manualQuad=null;r.manualInit=false;r.target=null;r.shown=null;r.raw=null;
       if(r.overlay)delete r.overlay.dataset.manual;
       setStatus(r,{state:'search',warn:null});
     }
@@ -251,17 +279,16 @@ const Scanner=(()=>{
   }
   function onHandleDown(e){
     const r=run,h=e.target.closest?.('.scan-handle-hit');
-    if(!r||!r.manual||!h)return;
+    if(!r||!r.manual||r.manualInit||!h)return;
     const i=+h.dataset.i,box=r.overlay.getBoundingClientRect();
-    e.preventDefault();try{h.setPointerCapture(e.pointerId)}catch{}
+    e.preventDefault();e.stopPropagation();try{h.setPointerCapture(e.pointerId)}catch{}
     navigator.vibrate?.(6);
     const move=ev=>{
       if(!run||run!==r||!r.manual)return;
-      const el=r.video.getBoundingClientRect(),z=r.getZoom();
-      const p=ScanCore.mapFromScreen([ev.clientX-box.left,ev.clientY-box.top],{videoW:r.video.videoWidth,videoH:r.video.videoHeight,elW:el.width,elH:el.height,zoom:z.css,crop:r.region});
-      const q=r.manualQuad.map(x=>x.slice());q[i]=[Math.min(1,Math.max(0,p[0])),Math.min(1,Math.max(0,p[1]))];
-      // Never a bow-tie: a corner dragged across the board is stopped.
-      if(ScanCore.isConvex(q.map(([x,y])=>[x,y*r.region.h/r.region.w]))){r.manualQuad=q;r.target=q}
+      const q=screenQuad(r,r.manualQuad);
+      q[i]=ScanCore.placePoint([ev.clientX-box.left,ev.clientY-box.top],manualLimits(r));
+      // Never a bow-tie, never two corners on top of each other: the corner stops where the shape would break.
+      if(ScanCore.isConvex(q)&&q.every((p,k)=>Math.hypot(p[0]-q[(k+1)%4][0],p[1]-q[(k+1)%4][1])>=24)){r.manualQuad=q.map(p=>toFrame(r,p));r.target=r.manualQuad}
     };
     const up=()=>{h.removeEventListener('pointermove',move);h.removeEventListener('pointerup',up);h.removeEventListener('pointercancel',up)};
     h.addEventListener('pointermove',move);h.addEventListener('pointerup',up);h.addEventListener('pointercancel',up);

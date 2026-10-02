@@ -46,7 +46,7 @@ const CAMERA_STRINGS={
     // Scanner
     modes:'Mode de capture',mode_photo:'Photo',mode_document:'Document',mode_board:'Tableau',mode_book:'Livre',mode_id:'Carte',mode_qr:'QR',
     grid:'Grille',scanAuto:'Auto',scanManual:'Manuel',scanAutoLabel:'Capture automatique : {state}',on:'activée',off:'désactivée',
-    scanCorners:'Coins',scanCornersLabel:'Placer les 4 coins à la main : {state}',cornersHint:'Faites glisser les 4 points sur les coins du tableau, puis touchez le déclencheur',
+    scanCorners:'Coins',scanCornersLabel:'Placer les 4 coins à la main : {state}',cornersHint:'Placez les 4 coins',cornersToast:'Faites glisser les 4 points sur les coins du tableau, puis touchez le déclencheur',
     warnLowConf:'Détection incertaine ({p} %) — touchez « Coins » pour placer les 4 coins',confLow:'Fiabilité {p} % — vérifiez le cadre',
     scanLoading:'Préparation du scanner… {p} %',scanFailed:'Détection indisponible — cadrez la page, vous pourrez ajuster les coins ensuite',
     searchDocument:'Cadrez la page',searchBoard:'Cadrez tout le tableau',searchBook:'Cadrez les deux pages du livre',searchId:'Cadrez le recto de la carte',searchIdBack:'Retournez la carte : cadrez le verso',

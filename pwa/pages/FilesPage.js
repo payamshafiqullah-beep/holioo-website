@@ -41,8 +41,8 @@ async function renderFiles(){
         <div class="list-stack">${rows.map(r=>pdfCard(r,'pdf')).join('')}</div>
       </div>
       <div data-filter-group>
-        ${SectionTitle('Images',{count:photoRefs.length})}
-        <div class="image-grid" id="filesImages"></div>
+        <div class="section-title-row"><h2 class="section-title files-image-heading">${icon('image',{size:18})}<span>Images</span> <span class="count">${photoRefs.length}</span></h2></div>
+        <div class="files-image-groups" id="filesImages"></div>
       </div>
       <div data-filter-group id="exportsGroup">
         ${SectionTitle('Exports',{count:synced.length})}
@@ -53,14 +53,24 @@ async function renderFiles(){
   </section>`;
 
   // Images are loaded after the layout so the screen appears instantly.
-  const grid=byId('filesImages'),recentPhotos=photoRefs;
+  const grid=byId('filesImages'),recentPhotos=photoRefs,groups=new Map();
+  const imageGroup=ref=>{
+    let g=groups.get(ref.session.id);if(g)return g;
+    const title=`${ref.course.name} · ${ref.section.name} · ${ref.session.title}`;
+    g=document.createElement('section');
+    g.className='files-image-session';
+    g.dataset.sessionId=ref.session.id;
+    g.dataset.search=`${ref.course.name} ${ref.section.name} ${ref.section.type||''} ${ref.session.title}`.toLowerCase();
+    g.innerHTML=`<div class="files-image-session-head"><span class="files-image-session-title" title="${esc(title)}">${esc(title)}</span><small>${plural(ref.session.photoIds.length,'photo')}</small></div><div class="image-grid"></div>`;
+    grid.appendChild(g);groups.set(ref.session.id,g);return g;
+  };
   for(const ref of recentPhotos){
     const url=await photoThumbUrl(ref.id);if(!url||!grid.isConnected)continue;
-    const b=document.createElement('div');b.className='image-tile';b.dataset.photoId=ref.id;b.dataset.search=`${ref.session.title} ${ref.course.name}`.toLowerCase();
+    const b=document.createElement('div');b.className='image-tile';b.dataset.photoId=ref.id;b.dataset.search=`${ref.session.title} ${ref.course.name} ${ref.section.name} ${ref.section.type||''}`.toLowerCase();
     b.innerHTML=`<button class="image-open" aria-label="Ouvrir ${esc(ref.session.title)}"><img src="${url}" alt="${esc(ref.session.title)}" loading="lazy" decoding="async"></button>`;
     b.querySelector('.image-open').onclick=()=>openPhotoViewer(ref.session.photoIds,ref.session.photoIds.indexOf(ref.id),{title:ref.session.title,source:'session',sourceId:ref.session.id,editable:true,returnView:'files',courseId:ref.course.id,sectionId:ref.section.id,sessionId:ref.session.id});
     attachItemMenu(b,photoMenu(ref.id,()=>onFilesPhotoRemoved(ref.id)));
-    grid.appendChild(b);
+    imageGroup(ref).querySelector('.image-grid').appendChild(b);
   }
 
   bindCourseCards();
@@ -77,9 +87,15 @@ async function renderFiles(){
 
 // A deleted photo leaves the grid in place: re-rendering the whole screen collapses the page and loses the scroll position.
 function onFilesPhotoRemoved(id){
-  const grid=byId('filesImages'),tile=currentView==='files'&&[...(grid?.children||[])].find(t=>t.dataset.photoId===id);
+  const grid=byId('filesImages'),tile=currentView==='files'&&[...(grid?.querySelectorAll('.image-tile')||[])].find(t=>t.dataset.photoId===id);
   if(!tile)return render();
+  const group=tile.closest('.files-image-session');
   tile.remove();
+  if(group){
+    const left=group.querySelectorAll('.image-tile').length,badge=group.querySelector('.files-image-session-head small');
+    if(badge)badge.textContent=plural(left,'photo');
+    if(!left)group.remove();
+  }
   const photos=state.courses.reduce((n,c)=>n+c.sections.reduce((m,s)=>m+s.sessions.reduce((k,q)=>k+q.photoIds.length,0),0),0);
   const count=grid.closest('[data-filter-group]')?.querySelector('.section-title .count');if(count)count.textContent=photos;
   const total=document.querySelector('.storage-copy strong');if(total)total.textContent=`${plural(state.files.length,'PDF')} · ${plural(photos,'photo')}`;

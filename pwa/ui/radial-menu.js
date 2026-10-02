@@ -174,6 +174,29 @@ const radialOpen=new Set();     // menus open right now (closed when the screen 
 let radialSwallowUntil=0;       // the click a mouse sends after a gesture that was already handled
 let radialSafe=null;
 let radialPress=null;           // the trigger a finger is down on: {id, trigger, cancel}
+const radialHaptics={open:55,hover:18,confirm:[35,35,70]};
+function radialTouchFeedback(){
+  if(typeof window==='undefined')return false;
+  const coarse=window.matchMedia?.('(pointer: coarse)').matches;
+  const points=typeof navigator!=='undefined'&&(navigator.maxTouchPoints||0)>0;
+  return !!(coarse||points||('ontouchstart'in window));
+}
+function radialVisualHaptic(kind,target){
+  if(typeof document==='undefined'||!radialTouchFeedback())return;
+  const el=target?.isConnected?target:document.documentElement,cls=`radial-haptic-${kind}`;
+  el.classList.remove(cls);
+  void el.offsetWidth;
+  el.classList.add(cls);
+  setTimeout(()=>el.classList.remove(cls),kind==='confirm'?220:160);
+}
+function radialHaptic(kind,target){
+  const pattern=radialHaptics[kind];
+  if(!pattern)return;
+  if(typeof navigator!=='undefined'&&typeof navigator.vibrate==='function'){
+    try{if(navigator.vibrate(pattern)!==false)return}catch{}   // Android only; iOS has no vibration API.
+  }
+  radialVisualHaptic(kind,target);
+}
 if(typeof window!=='undefined'&&window.addEventListener){
   window.addEventListener('click',e=>{
     if(performance.now()<radialSwallowUntil){radialSwallowUntil=0;e.preventDefault();e.stopImmediatePropagation()}
@@ -275,6 +298,7 @@ function createRadialMenu(o){
     describe(null,null);
     window.addEventListener('resize',onResize);
     radialOpen.add(api);
+    if(mode==='gesture')radialHaptic('open',el);
     if(keyboard)focusItem(1,0);
     return true;
   }
@@ -323,6 +347,7 @@ function createRadialMenu(o){
   function choose(item,parent){
     const s=teardown();if(!s)return;
     s.el.remove();
+    radialHaptic('confirm',document.documentElement);
     o.onSelect(item,parent,{mode:s.mode});
   }
   // Rotation or a new window width: the rings no longer match the screen. (Height alone changes
@@ -383,7 +408,7 @@ function createRadialMenu(o){
     st.hot=h;
     if(h?.ring)nodeAt(h.ring,h.index)?.classList.add('hot');
     st.el.classList.toggle('center-hot',!!h?.center);
-    if(st.mode==='gesture'&&h?.ring&&'vibrate'in navigator)try{navigator.vibrate(8)}catch{}   // Android only; iOS has no vibration API
+    if(st.mode==='gesture'&&h?.ring)radialHaptic('hover',nodeAt(h.ring,h.index));
     if(h?.ring===2)describe(st.children[h.index],st.items[st.parent]);
     else if(h?.ring===1)describe(st.items[h.index],null);
     else describe(st.parent>=0&&!h?.center?st.items[st.parent]:null,null,!!h?.center);

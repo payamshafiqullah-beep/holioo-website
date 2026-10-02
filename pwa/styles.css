@@ -150,6 +150,9 @@ html.radial-lock,html.radial-lock body{overscroll-behavior:none;-webkit-user-sel
 .radial.open .radial-item{transform:translate(-50%,-50%) translate(var(--dx),var(--dy));opacity:1}
 .radial.open .radial-item.hot{transform:translate(-50%,-50%) translate(var(--dx),var(--dy)) scale(1.2);z-index:2}
 .radial-item.hot,.radial-item.parent{background:var(--c);color:var(--fg);box-shadow:0 10px 26px rgba(29,33,64,.28),inset 0 0 0 3px rgba(255,255,255,.55)}
+.radial.radial-haptic-open .radial-center,.radial.radial-haptic-open .radial-item{animation:radialHapticOpen .16s var(--ease)}
+.radial-item.radial-haptic-hover{animation:radialHapticHover .13s var(--ease)}
+html.radial-haptic-confirm body{animation:radialHapticConfirm .2s var(--ease)}
 .radial.open .radial-item.pre,.radial-item.pre{transform:translate(-50%,-50%) translate(var(--px),var(--py)) scale(.35);opacity:0}
 .radial.closing .radial-item{transform:translate(-50%,-50%) scale(.35);opacity:0}
 .radial-dot{max-width:88%;overflow:hidden;font-size:calc(var(--s,56px)*var(--k,.3));font-weight:800;line-height:1.25;letter-spacing:-.02em;white-space:nowrap;text-overflow:clip}
@@ -173,6 +176,9 @@ html.radial-lock,html.radial-lock body{overscroll-behavior:none;-webkit-user-sel
 .radial-title b{max-width:100%;overflow:hidden;font-size:15px;font-weight:800;letter-spacing:-.01em;white-space:nowrap;text-overflow:ellipsis}
 .radial-title span{font-size:12.5px;font-weight:600;color:var(--muted)}
 .radial.closing .radial-backdrop,.radial.closing .radial-title{opacity:0}
+@keyframes radialHapticOpen{0%,100%{filter:brightness(1)}45%{filter:brightness(1.18) saturate(1.08)}}
+@keyframes radialHapticHover{0%,100%{filter:brightness(1)}45%{filter:brightness(1.28) saturate(1.12)}}
+@keyframes radialHapticConfirm{0%,100%{filter:brightness(1)}35%{filter:brightness(1.06) saturate(1.04)}}
 
 .qc-bubble{position:fixed;z-index:95;width:max-content;max-width:min(300px,calc(100vw - 32px));padding:12px 16px;border-radius:16px;background:var(--ink);color:#fff;font-size:14px;font-weight:600;line-height:1.35;text-align:center;box-shadow:var(--shadow-lg);transform:translateX(-50%);animation:qc-pop .2s var(--ease)}
 .qc-bubble::after{content:"";position:absolute;left:calc(50% + var(--ax,0px));bottom:-6px;width:12px;height:12px;margin-left:-6px;border-radius:2px;background:var(--ink);transform:rotate(45deg)}
@@ -343,6 +349,13 @@ html.radial-lock,html.radial-lock body{overscroll-behavior:none;-webkit-user-sel
 .folder-card .ico{margin-bottom:var(--s3)}
 .folder-card strong{color:var(--ink);font-size:15px;font-weight:700;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .folder-card small{color:#6C7190;font-size:12px}
+.files-image-heading{display:flex;align-items:center;gap:6px;letter-spacing:0}
+.files-image-heading .ico{flex:none;color:var(--accent)}
+.files-image-groups{display:flex;flex-direction:column;gap:var(--s3);min-width:0}
+.files-image-session{display:flex;flex-direction:column;gap:var(--s2);min-width:0}
+.files-image-session-head{display:flex;align-items:center;gap:8px;min-width:0;color:#34384F;font-size:12px;font-weight:700;line-height:1.25}
+.files-image-session-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.files-image-session-head small{flex:none;color:#6C7190;font-size:11px;font-weight:700;white-space:nowrap}
 .image-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s2)}
 .image-grid:empty{display:none}
 .image-tile{aspect-ratio:1;border-radius:16px;overflow:hidden;background:#E6E7EF}

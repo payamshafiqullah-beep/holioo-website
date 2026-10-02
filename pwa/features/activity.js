@@ -4,8 +4,10 @@
 // version are sent, while the app is open and visible; no content, no location.
 const ACTIVITY_BEAT_MS=4*60*1000;       // heartbeat while the app is open (the server counts "online" as seen in the last 10 minutes)
 const ACTIVITY_REOPEN_MS=30*60*1000;    // away longer than this: the next ping counts as a new launch
+const ACTIVITY_RETRY_MS=60*60*1000;     // the server answered with an error (e.g. its tables are missing): wait before trying again
 const ACTIVITY_VERSION=(document.currentScript?.src.match(/[?&]v=([^&]+)/)||[])[1]||'';
 let activityLastPing=0;
+let activityPausedUntil=0;
 
 function activityDeviceId(){
   let id='';
@@ -28,10 +30,14 @@ function activityPlatform(){
 async function activityTick(){
   if(!(currentUser||guestMode)||document.visibilityState!=='visible'||!navigator.onLine)return;
   const now=Date.now();
+  if(now<activityPausedUntil)return;
   if(activityLastPing&&now-activityLastPing<ACTIVITY_BEAT_MS)return;
   const event=!activityLastPing||now-activityLastPing>ACTIVITY_REOPEN_MS?'open':'beat';
   activityLastPing=now;
-  try{await sb.functions.invoke('app-ping',{body:{deviceId:activityDeviceId(),event,platform:activityPlatform(),version:ACTIVITY_VERSION}})}catch{}
+  try{
+    const{error}=await sb.functions.invoke('app-ping',{body:{deviceId:activityDeviceId(),event,platform:activityPlatform(),version:ACTIVITY_VERSION}});
+    if(error)activityPausedUntil=Date.now()+ACTIVITY_RETRY_MS;
+  }catch{activityPausedUntil=Date.now()+ACTIVITY_RETRY_MS}
 }
 
 setTimeout(activityTick,3000);

@@ -23,3 +23,48 @@ function movePhotoToSession(sourceSession,photoId){
 
 
 function deleteSessionPhoto(session,id){confirmDeletePhoto(id)}
+
+// Sessions that are removed (with their course, their section or alone): their photos that no other
+// session or Captures batch uses go back to « Captures à trier », one batch per session, so nothing is lost.
+function keepPhotosOfRemovedSessions(course,removed){
+  const gone=new Set(removed.map(s=>s.id));
+  const assigned=new Set(state.inbox.flatMap(b=>b.photoIds||[]));
+  for(const c of state.courses)for(const section of c.sections)for(const session of section.sessions)if(!gone.has(session.id))for(const photoId of session.photoIds||[])assigned.add(photoId);
+  for(const session of removed){
+    const photoIds=[...new Set(session.photoIds||[])].filter(photoId=>!assigned.has(photoId));
+    photoIds.forEach(photoId=>assigned.add(photoId));
+    if(photoIds.length)state.inbox.push({id:uid(),title:`${course.name} · ${session.title}`,photoIds,createdAt:session.createdAt||now()});
+  }
+}
+
+function removeSession(sessionId){
+  const ctx=findSessionContext(sessionId);if(!ctx)return;
+  keepPhotosOfRemovedSessions(ctx.course,[ctx.session]);
+  ctx.section.sessions=ctx.section.sessions.filter(s=>s.id!==sessionId);
+  if(currentSessionId===sessionId)currentSessionId=null;
+  purgeSessionInk([sessionId]).catch(console.warn);
+}
+
+// Only custom sections: CM / TD / TP are part of every course and come back by name (ensureDefaultSections).
+function removeSection(course,sectionId){
+  const section=course.sections.find(s=>s.id===sectionId);if(!section||section.type!=='CUSTOM')return;
+  const sessionIds=section.sessions.map(s=>s.id);
+  keepPhotosOfRemovedSessions(course,section.sessions);
+  course.sections=course.sections.filter(s=>s.id!==sectionId);
+  if(Array.isArray(state.timetable))state.timetable=state.timetable.filter(t=>t.sectionId!==sectionId);
+  if(currentSectionId===sectionId){currentSectionId=null;currentSessionId=null}
+  purgeSessionInk(sessionIds).catch(console.warn);
+}
+
+// Section and course names are Drive folder names too: two with the same name would share one folder.
+function sectionNameProblem(course,name,except=null){
+  if(!name)return'Entrez un nom de section';
+  if(['CM','TD','TP'].includes(name.toUpperCase()))return'CM, TD et TP existent déjà dans chaque cours';
+  if(course.sections.some(s=>s.id!==except&&s.name.toLowerCase()===name.toLowerCase()))return'Une section porte déjà ce nom';
+  return'';
+}
+function courseNameProblem(name,except=null){
+  if(!name)return'Entrez un nom de cours';
+  if(state.courses.some(c=>c.id!==except&&c.name.toLowerCase()===name.toLowerCase()))return'Un cours porte déjà ce nom';
+  return'';
+}

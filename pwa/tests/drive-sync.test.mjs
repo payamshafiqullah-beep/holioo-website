@@ -40,7 +40,7 @@ function fakeDrive(){
       const add=u.searchParams.get('addParents');if(add&&!alive(add))return notFound(add);
       const rm=(u.searchParams.get('removeParents')||'').split(',').filter(Boolean);
       f.parents=[...f.parents.filter(p=>!rm.includes(p)),...(add&&!f.parents.includes(add)?[add]:[])];
-      const body=JSON.parse(opts.body||'{}');if(body.name)f.name=body.name;
+      const body=JSON.parse(opts.body||'{}');if(body.name)f.name=body.name;if(body.trashed)f.trashed=true;
       return json(200,f);
     }
     throw new Error(`Unexpected ${method} ${url}`);
@@ -51,10 +51,10 @@ function fakeDrive(){
 }
 
 function fakeDb(){
-  const stores={photos:new Map(),files:new Map()};
+  const stores={photos:new Map(),files:new Map(),kv:new Map()};
   return{stores,
-    get:async(s,k)=>stores[s].get(k)&&{...stores[s].get(k)},
-    put:async(s,v)=>{stores[s].set(v.id,{...v});return v},
+    get:async(s,k)=>stores[s].get(k)&&structuredClone(stores[s].get(k)),
+    put:async(s,v)=>{stores[s].set(v.id??v.key,structuredClone(v));return v},
     all:async s=>[...stores[s].values()].map(v=>({...v})),
     patch:async(s,k,ch)=>{const r=stores[s].get(k);if(!r)return null;const next={...r,...(typeof ch==='function'?ch(r):ch)};stores[s].set(k,next);return next}};
 }
@@ -153,4 +153,54 @@ test('pending count includes edited photos waiting for Drive',async()=>{
   assert.equal(await t.D.pendingCount(t.state,t.db),0);
   await t.db.patch('photos',t.ids[0],{driveNeedsUpdate:true});
   assert.equal(await t.D.pendingCount(t.state,t.db),1);
+});
+
+// ── Notebooks: several files per session (one image per written page + Carnet.json) ──
+function notebook(t){
+  const nb={version:1,empty:false,pages:[['Carnet-01.jpg','a'],['Carnet-02.jpg','b']],data:'d1',built:0,failOn:null};
+  nb.documents=async st=>[{id:'ink:s1',version:nb.version,empty:nb.empty,folder:[st.courses[0].name,'CM',t.session.title],
+    parts:async()=>{nb.built++;return[...nb.pages,['Carnet.json',nb.data]].map(([name,sig])=>({name,sig,blob:()=>new Blob([name+sig],{type:'image/jpeg'})}))}}];
+  nb.sync=()=>t.D.syncAll({sb,user:{id:'u1'},state:t.state,db:t.db,documents:nb.documents});
+  nb.pending=()=>t.D.pendingCount(t.state,t.db,nb.documents);
+  nb.live=()=>[...t.drive.files.values()].filter(f=>!f.folder&&!f.trashed&&f.name.startsWith('Carnet'));
+  nb.names=()=>nb.live().map(f=>`${t.drive.files.get(f.parents[0]).name}/${f.name}`).sort();
+  nb.uploads=()=>t.drive.calls.filter(c=>c==='POST /upload/drive/v3/files').length;
+  return nb;
+}
+test('notebook: pages and data go to the session folder once; unchanged pages are never sent again',async()=>{
+  const t=setup(0),nb=notebook(t);
+  assert.equal(await nb.pending(),1);
+  let r=await nb.sync();
+  assert.deepEqual(nb.names(),['CM 1/Carnet-01.jpg','CM 1/Carnet-02.jpg','CM 1/Carnet.json']);assert.equal(r.synced,1);
+  assert.equal(await nb.pending(),0);
+  r=await nb.sync();assert.equal(nb.built,1,'unchanged notebook: pages not even drawn');assert.equal(r.synced,0);
+  // New strokes on page 2: only page 2 and the data are replaced, in the same files.
+  nb.version=2;nb.pages[1][1]='b2';nb.data='d2';
+  assert.equal(await nb.pending(),1);
+  const uploads=nb.uploads();r=await nb.sync();
+  assert.equal(nb.uploads(),uploads,'no new file');assert.equal(r.synced,1);
+  const byName=Object.fromEntries(nb.live().map(f=>[f.name,f]));
+  assert.equal(byName['Carnet-01.jpg'].updated,undefined);assert.equal(byName['Carnet-02.jpg'].updated,1);assert.equal(byName['Carnet.json'].updated,1);
+  // Saved again without any visible change: nothing sent.
+  nb.version=3;r=await nb.sync();assert.equal(r.synced,0);assert.equal(await nb.pending(),0);
+});
+test('notebook: a renamed session moves its files; a page that is gone goes to the Drive trash',async()=>{
+  const t=setup(0),nb=notebook(t);await nb.sync();
+  t.session.title='CM 1 — Intégrales';nb.pages.pop();nb.version=2;
+  const uploads=nb.uploads();await nb.sync();
+  assert.equal(nb.uploads(),uploads);
+  assert.deepEqual(nb.names(),['CM 1 — Intégrales/Carnet-01.jpg','CM 1 — Intégrales/Carnet.json']);
+  assert.equal([...t.drive.files.values()].filter(f=>f.trashed).map(f=>f.name).join(),'Carnet-02.jpg');
+});
+test('notebook: a failure midway never leads to a second copy of the pages already sent',async()=>{
+  const t=setup(0),nb=notebook(t);t.drive.fail.upload='Carnet-02';
+  const r=await nb.sync();assert.equal(r.failed,1);assert.equal(await nb.pending(),1,'retried next time');
+  t.drive.fail.upload=null;await nb.sync();
+  assert.deepEqual(nb.names(),['CM 1/Carnet-01.jpg','CM 1/Carnet-02.jpg','CM 1/Carnet.json']);
+  assert.equal(await nb.pending(),0);
+});
+test('notebook never written in: nothing is created in Drive, nothing counted',async()=>{
+  const t=setup(0),nb=notebook(t);nb.empty=true;nb.pages=[];
+  assert.equal(await nb.pending(),0);await nb.sync();
+  assert.equal(nb.built,0);assert.equal(t.drive.folder('CM 1'),undefined);
 });

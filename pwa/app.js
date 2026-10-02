@@ -17,6 +17,8 @@ async function render(){
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e});
 window.addEventListener('online',async()=>{offlineBanner.classList.add('hidden');if(!cloudReady){await bootstrapCloud();render()}else{try{driveStatus=await Drive.status(sb,currentUser.id)}catch{}await refreshSyncIndicator();if(state.settings.autoDriveSync)queueSync('online')}});
 window.addEventListener('offline',()=>{offlineBanner.classList.remove('hidden');refreshSyncIndicator()});
+// The app goes to the background: the notebook's last strokes are saved and copied to Drive.
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&typeof flushNotebook==='function')flushNotebook()});
 window.addEventListener('focus',async()=>{if(sb&&currentUser&&navigator.onLine){try{driveStatus=await Drive.status(sb,currentUser.id);await refreshSyncIndicator();if(driveStatus.connected&&currentView==='sync')render()}catch{}}});
 if(!navigator.onLine)offlineBanner.classList.remove('hidden');
 // App updates: the new version is installed in the background and loaded only when it can't

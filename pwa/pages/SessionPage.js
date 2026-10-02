@@ -28,13 +28,14 @@ async function renderSession(){
   const ctx=findSessionContext();if(!ctx){navigate('courses');return}
   const{course,section,session}=ctx,n=session.photoIds.length,pub=session.visibility==='public';
   const active=sessionViewMode==='notebook'?'notebook':'gallery';
-  const actions=n||active==='notebook'?`<div class="button-stack">
-        ${ActionButton({label:'Créer un PDF',id:'buildPdf',iconName:'fileText'})}
+  const actions=`<div class="button-stack">
+        ${n||active==='notebook'?ActionButton({label:'Créer un PDF',id:'buildPdf',iconName:'fileText'}):''}
         ${n?`${ActionButton({label:pub?'Publiée dans la bibliothèque':'Publier dans la bibliothèque',id:'publishSession',variant:pub?'soft':'ghost',iconName:pub?'checkCircle':'globe'})}
         ${ActionButton({label:'Reconnaître le texte',id:'ocrSession',variant:'ghost',iconName:'scan'})}
         ${ActionButton({label:'Exporter les images',id:'exportImages',variant:'ghost',iconName:'share'})}`:''}
         ${ActionButton({label:'Renommer la séance',id:'renameSession',variant:'ghost',iconName:'pencil'})}
-      </div>`:'';
+        ${ActionButton({label:'Supprimer la séance',id:'deleteSession',variant:'ghost-danger',iconName:'trash'})}
+      </div>`;
   const galleryView=n?`${SectionTitle('Galerie',{action:'Plein écran',id:'openFirstPhoto'})}
       <div class="thumbs" id="sessionThumbs"></div>
       <p class="reorder-hint">${icon('more',{size:14})}Maintenez une photo ou faites glisser sa poignée pour changer l’ordre.</p>`
@@ -78,4 +79,14 @@ async function renderSession(){
   if(n)updateSessionOcrLabel(session);
   byId('publishSession')?.addEventListener('click',()=>publishSession(course,section,session));
   byId('renameSession')?.addEventListener('click',()=>openSheet({title:'Renommer la séance',body:Field({label:'Titre',id:'renameValue',value:session.title}),onConfirm:()=>{session.title=byId('renameValue').value.trim()||session.title;saveState();render();queueSync();return true}}));
+  byId('deleteSession')?.addEventListener('click',()=>confirmDeleteSession(course,section,session));
+}
+
+function confirmDeleteSession(course,section,session){
+  const n=session.photoIds.length;
+  const kept=n?` ${n>1?'Ses photos seront conservées':'Sa photo sera conservée'} dans « Captures à trier ».`:'';
+  const published=session.visibility==='public'?' La version publiée reste dans la bibliothèque : retirez-la depuis votre profil si besoin.':'';
+  openSheet({title:`Supprimer « ${session.title} » ?`,subtitle:`La séance et son carnet seront retirés de ${course.name} · ${section.name}.${kept}${published}`,confirmText:'Supprimer',confirmClass:'coral',onConfirm:()=>{
+    removeSession(session.id);sessionViewMode='gallery';saveState();queueSync();navigate('section');showToast('Séance supprimée');return true;
+  }});
 }

@@ -46,15 +46,8 @@ function confirmDeleteCourse(id){
 
 function removeCourse(id){
   const course=state.courses.find(c=>c.id===id);if(!course)return;
-  const sessionIds=new Set();
-  const assigned=new Set(state.inbox.flatMap(b=>b.photoIds||[]));
-  for(const other of state.courses)if(other.id!==id)for(const section of other.sections)for(const session of section.sessions)for(const photoId of session.photoIds||[])assigned.add(photoId);
-  for(const section of course.sections)for(const session of section.sessions){
-    sessionIds.add(session.id);
-    const photoIds=[...new Set(session.photoIds||[])].filter(photoId=>!assigned.has(photoId));
-    photoIds.forEach(photoId=>assigned.add(photoId));
-    if(photoIds.length)state.inbox.push({id:uid(),title:`${course.name} · ${session.title}`,photoIds,createdAt:session.createdAt||now()});
-  }
+  const sessions=course.sections.flatMap(s=>s.sessions),sessionIds=new Set(sessions.map(s=>s.id));
+  keepPhotosOfRemovedSessions(course,sessions);
   state.courses=state.courses.filter(c=>c.id!==id);
   if(state.cameraLast?.courseId===id)state.cameraLast=null;
   if(Array.isArray(state.timetable))state.timetable=state.timetable.filter(t=>t.courseId!==id);

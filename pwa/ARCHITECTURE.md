@@ -24,7 +24,7 @@ If only one screen changes, edit that page file first. Do not rewrite unrelated 
 
 Shared behavior that several screens use lives in `pwa/features/`:
 
-- `course-actions.js` — photo reorder, move, delete, session gallery helpers
+- `course-actions.js` — photo reorder, move, delete, session gallery helpers; removing a session (`removeSession`, Séance → Supprimer la séance) or a custom section (`removeSection`, Section → Supprimer la section; CM / TD / TP can't be removed or renamed): their photos used nowhere else go to « Captures à trier » (`keepPhotosOfRemovedSessions`, also used when a course is deleted) and their notebook is removed. Course and section names must be unique (`courseNameProblem`, `sectionNameProblem`): they are Drive folder names. Rename: Cours → Renommer le cours, Section → Renommer la section
 - `capture-actions.js` — camera, gallery import, batch helpers (`removeFromInbox`: photos leave Captures only once filed)
 - `camera-destination.js`, `camera-queue.js`, `camera-i18n.js` — camera destination logic, background save queue, camera texts
 - `../ui/camera-picker.js` + the chip in `pages/CapturePage.js` — where the photos go. The chip (top of the camera) has two lines: the course (colour badge, clock badge when chosen by the timetable) and "section · session" (`cameraDestinationParts`: "CM 1", not "CM · CM 1"). The sheet it opens is built once and only its content is replaced on each choice (no replayed entrance, scroll and focus kept): header with timetable + close, a live summary of where the photos will go, recent destinations as horizontal cards, course chips, section segments, session list, fixed buttons. Closes with the close button, Annuler, a tap on the dimmed preview, Escape or a drag down on the header; the camera controls behind are `inert` while it is open and the focus returns to the chip. Tests: `tests/camera-picker.test.mjs`
@@ -46,7 +46,7 @@ Shared behavior that several screens use lives in `pwa/features/`:
 ## Services and app shell
 
 - `db.js` — IndexedDB local-first binary storage
-- `drive.js` — per-user Google Drive sync
+- `drive.js` — per-user Google Drive sync: photos and PDFs one file each, plus documents of several files given by the app (`documents` in `syncAll` / `pendingCount`): the session notebooks (`notebookDriveDocuments` in `features/notebook-ink.js`) go to the session folder as one image per written page (`Carnet-01.jpg`…) and `Carnet.json` (the strokes). What was sent is kept in IndexedDB `kv` `drive:ink:<session id>`; a page is replaced in place only when what it shows changed, moved when a name changes, sent to the Drive trash when it is gone. Leaving the session screen or the app (`flushNotebook`) saves the last strokes and asks for a sync. Tests: `tests/drive-sync.test.mjs`
 - `core.js` — shared state, Supabase bootstrap, navigation helpers, sync queue
 - `app.js` — route dispatcher and lifecycle listeners only
 - `styles.css` — shared visual tokens and shared component styling

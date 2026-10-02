@@ -240,6 +240,7 @@ html.radial-lock,html.radial-lock body{overscroll-behavior:none;-webkit-user-sel
 .action-btn.soft{background:var(--accent-soft);color:var(--accent)}
 .action-btn.ghost{background:var(--surface);color:var(--ink);box-shadow:var(--shadow-sm)}
 .action-btn.danger{background:var(--danger);color:#fff}
+.action-btn.ghost-danger{background:var(--surface);color:var(--danger);box-shadow:var(--shadow-sm)}
 .button-stack{display:flex;flex-direction:column;gap:var(--s2);margin-top:var(--s1)}
 .action-row{display:grid;grid-template-columns:1fr 1fr;gap:var(--s3)}
 

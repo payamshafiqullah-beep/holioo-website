@@ -74,7 +74,7 @@ function navigate(view,payload={}){
   if(view==='home'&&appUpdateReady&&reloadIfSafe())return;
   if(view==='capture'&&currentView!=='capture')prepareCameraEntry(currentView,payload.cameraDest);
   appShell.classList.toggle('capture-active',view==='capture');
-  if(view!=='capture')stopCamera();if(currentView==='scanReview'&&view!=='scanReview'&&typeof flushScanDelete==='function')flushScanDelete();currentView=view;
+  if(view!=='capture')stopCamera();if(currentView==='scanReview'&&view!=='scanReview'&&typeof flushScanDelete==='function')flushScanDelete();if(currentView==='session'&&view!=='session'&&typeof flushNotebook==='function')flushNotebook();currentView=view;
   if(payload.courseId)currentCourseId=payload.courseId;if(payload.sectionId)currentSectionId=payload.sectionId;if(payload.sessionId)currentSessionId=payload.sessionId;
   const mainViews=['home','courses','capture','library','files'];setNav(mainViews.includes(view)?view:'');setChrome(['login','blocked','academicSetup','photoViewer','pdfViewer','capture','scanReview','admin'].includes(view));window.scrollTo(0,0);render().catch(e=>{console.error(e);showToast('Une erreur est survenue')});
 }
@@ -133,8 +133,10 @@ async function bootstrapCloud(){
   }catch(e){console.error(e);cloudReady=false;showToast('Mode local actif — synchronisation plus tard');await refreshSyncIndicator()}
 }
 async function syncProfile(){if(sb&&currentUser&&navigator.onLine){const{error}=await sb.from('profiles').upsert(profilePayload(),{onConflict:'id'});if(error)throw error}}
+// Besides photos and PDFs, Drive keeps the session notebooks (features/notebook-ink.js).
+const driveDocuments=()=>typeof notebookDriveDocuments==='function'?notebookDriveDocuments:null;
 async function refreshSyncIndicator(){
-  let pending=0;try{pending=await Drive.pendingCount(state,DB)}catch{}
+  let pending=0;try{pending=await Drive.pendingCount(state,DB,driveDocuments())}catch{}
   if(!navigator.onLine)syncIndicator={cls:'offline',text:'Hors ligne'};
   else if(syncBusy)syncIndicator={cls:'pending',text:'Synchronisation…'};
   else if(driveStatus.connected)syncIndicator=pending?{cls:'pending',text:`${pending} élément(s) à synchroniser`}:{cls:'online',text:'Google Drive à jour'};
@@ -149,7 +151,7 @@ async function runDriveSync(reason='manual'){
   syncBusy=true;await refreshSyncIndicator();
   try{
     driveStatus=await Drive.status(sb,currentUser.id);if(!driveStatus.connected){if(reason==='manual')showToast('Connectez Google Drive d’abord');return}
-    const result=await Drive.syncAll({sb,user:currentUser,state,db:DB,onProgress:({checked,total})=>{syncIndicator={cls:'pending',text:`Synchronisation… ${checked}/${total}`};applyChromeStatus()}});
+    const result=await Drive.syncAll({sb,user:currentUser,state,db:DB,documents:driveDocuments(),onProgress:({checked,total})=>{syncIndicator={cls:'pending',text:`Synchronisation… ${checked}/${total}`};applyChromeStatus()}});
     if(result.failed){console.warn('Drive sync:',result.lastError);showToast(`${result.failed} élément(s) non synchronisé(s) — nouvel essai plus tard`)}
     else if(reason==='manual'||result.synced)showToast(result.synced?`${result.synced} élément(s) synchronisé(s)`:'Tout est déjà synchronisé');
   }catch(e){console.error(e);syncIndicator={cls:'error',text:'Erreur de synchronisation'};applyChromeStatus();if(e?.code==='DRIVE_FULL')showToast('Google Drive est plein : libérez de l’espace pour continuer la sauvegarde');else if(reason==='manual')showToast(`Sync impossible : ${e.message||e}`)}finally{syncBusy=false;await refreshSyncIndicator();if(currentView==='sync')render()}

@@ -1,9 +1,10 @@
 'use strict';
 // Long-press menu for every item that can be renamed / moved and deleted (courses, sections, séances,
 // photos, PDFs). Press ~450 ms: two round actions open above the finger, with the same ring and
-// liquid-glass lens as Quick Capture (ui/radial-menu.js, used as is). Slide and release on one, or lift
-// and tap one; releasing anywhere else closes. Moving more than 10 px before 450 ms is a scroll, not a
-// press. No tap action follows a long-press. Right-click opens the menu on desktop.
+// liquid-glass lens as Quick Capture (ui/radial-menu.js, used as is). Slide and release on one to choose
+// it; lifting the finger anywhere else closes the menu. Moving more than 10 px before 450 ms is a scroll,
+// not a press. The screen behind is blurred and dimmed; the pressed item stays sharp above it, a little
+// bigger. No tap action follows a long-press. Right-click opens the menu on desktop.
 //
 //   attachItemMenu(el,{name, title, rename(newName), move(), remove()})
 //     rename(newName)  named items: left action "Renommer", edited in place, never empty
@@ -24,7 +25,12 @@ if(typeof window!=='undefined'&&window.addEventListener){
   window.addEventListener('click',e=>{if(performance.now()<itemMenuSwallow){e.preventDefault();e.stopImmediatePropagation()}},true);
   // While the finger is down on an open menu the page must not scroll under it.
   document.addEventListener('touchmove',e=>{if(itemMenuDown&&e.cancelable)e.preventDefault()},{passive:false});
-  const end=()=>{if(itemMenuDown){itemMenuDown=false;itemMenuSwallow=performance.now()+500}};
+  // Lifting the finger without choosing closes the menu (the radial menu would stay open for taps).
+  const end=()=>{
+    if(!itemMenuDown)return;
+    itemMenuDown=false;itemMenuSwallow=performance.now()+500;
+    setTimeout(()=>{if(itemMenuRadial?.isOpen()&&itemMenuRadial.state().mode==='tap')itemMenuRadial.close()},0);
+  };
   document.addEventListener('pointerup',end,true);document.addEventListener('pointercancel',end,true);
   document.addEventListener('visibilitychange',()=>{if(document.hidden)itemUndoCommit()});
   window.addEventListener('pagehide',itemUndoCommit);
@@ -63,6 +69,18 @@ function itemMenuOpen(el,o,at,pointer){
     // Capture refused: leave the menu open for taps instead of one that nothing can close.
     if(radial.isOpen()&&!radial.proxy.hasPointerCapture?.(pointer.id)){radial.close();radial.open()}
   }else radial.open();
+  const overlay=document.querySelector('.radial');
+  if(overlay){
+    // Everything behind is blurred and dimmed; a copy of the pressed item sits above, sharp and a little bigger.
+    overlay.classList.add('item-menu');
+    const r=el.getBoundingClientRect(),lift=el.cloneNode(true);
+    lift.removeAttribute('id');lift.removeAttribute('data-item-menu');lift.removeAttribute('tabindex');
+    lift.querySelectorAll('[id]').forEach(n=>n.removeAttribute('id'));lift.querySelectorAll('img').forEach(i=>i.loading='eager');
+    lift.classList.add('item-menu-lift');lift.setAttribute('aria-hidden','true');lift.inert=true;
+    Object.assign(lift.style,{left:`${r.left}px`,top:`${r.top}px`,width:`${r.width}px`,height:`${r.height}px`});
+    overlay.querySelector('.radial-backdrop').after(lift);
+    requestAnimationFrame(()=>lift.classList.add('on'));
+  }
   document.querySelectorAll('.radial .radial-item.r1').forEach(b=>{
     const a=itemMenuCur?.items[+b.dataset.i],dot=b.querySelector('.radial-dot');
     if(a&&dot){dot.innerHTML=icon(a.icon,{size:26,stroke:2.2});dot.style.cssText='display:grid;place-items:center;line-height:0'}

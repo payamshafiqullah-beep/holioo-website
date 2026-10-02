@@ -991,8 +991,8 @@ body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
 .srv-bar-btn{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:60px;min-height:52px;padding:4px 6px;border-radius:14px;color:rgba(255,255,255,.88)}
 .srv-bar-btn small{font-size:11px;font-weight:700}
 .srv-bar-btn.danger{color:#FF8FA6}
-.srv-stage{position:relative;flex:1;min-height:0;display:grid;place-items:center;padding:var(--s2) var(--s3);touch-action:pan-y}
-.srv-stage img{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;box-shadow:0 8px 30px rgba(0,0,0,.5);background:#fff}
+.srv-stage{position:relative;flex:1;min-height:0;display:grid;grid-template:minmax(0,1fr)/minmax(0,1fr);place-items:center;overflow:hidden;padding:var(--s2) var(--s3);touch-action:pan-y}
+.srv-stage img{min-width:0;min-height:0;max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;box-shadow:0 8px 30px rgba(0,0,0,.5);background:#fff}
 .srv-filter-name{position:absolute;left:50%;top:16px;transform:translateX(-50%);padding:6px 14px;border-radius:14px;background:rgba(0,0,0,.6);font-size:13px;font-weight:800;opacity:0;pointer-events:none}
 .srv-filter-name.show{animation:srv-name 1.2s ease-out}
 @keyframes srv-name{0%,60%{opacity:1}100%{opacity:0}}

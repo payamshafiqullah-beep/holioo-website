@@ -1,11 +1,13 @@
 'use strict';
 // Scanner worker: live page detection with OpenCV.js and QR decoding, off the main thread.
 // Messages in:  {id, type:'init', opencvUrl}                       → progress… then {ready:true}
-//               {id, type:'detect', image:{data,width,height}, mode} → {quad, sharpness, brightness, gutter?}
+//               {id, type:'detect', image:{data,width,height}, mode, prior?}
+//                                                   → {quad, support, far, cutoff, glare, sharpness, brightness, gutter?…}
+//               {id, type:'refine', image, quad, mode, fixed?}    → {quad, ok, support}   (no OpenCV needed)
 //               {id, type:'qr', image, jsqrUrl}                      → {text|null}
 // Out: {id, ok, ...result} | {id, ok:false, error} | {type:'progress', value}
 const V=self.location.search;
-importScripts(`../features/scan-core.js${V}`,`../features/scan-detect.js${V}`);
+importScripts(`../features/scan-core.js${V}`,`../features/scan-refine.js${V}`,`../features/scan-detect.js${V}`);
 
 let cvPromise=null,jsQRReady=false;
 
@@ -39,9 +41,14 @@ self.onmessage=async({data:m})=>{
     if(m.type==='init'){await loadOpenCV(m.opencvUrl);self.postMessage({id:m.id,ok:true,ready:true});return}
     if(m.type==='detect'){
       const cv=await cvPromise;if(!cv)throw new Error('OpenCV not loaded');
-      const img=asImage(m),r=scanDetect(cv,img,m.mode==='book'?'book':m.mode);
+      const img=asImage(m),r=scanDetect(cv,img,m.mode,{prior:m.prior||null});
       if(m.mode==='book'&&r.quad)r.gutter=ScanCore.findGutter(r.quad,scanLumSampler(img));
       self.postMessage({id:m.id,ok:true,...r});return;
+    }
+    if(m.type==='refine'){
+      // Sub-pixel edges on a full-size still, starting from the outline found live.
+      const img=asImage(m),r=ScanRefine.refineQuad(ScanRefine.toGray(img.data,img.width,img.height),img.width,img.height,m.quad,{fixed:m.fixed||undefined,range:m.range||undefined});
+      self.postMessage({id:m.id,ok:true,quad:r.quad,refined:r.ok,support:r.support});return;
     }
     if(m.type==='qr'){
       if(!jsQRReady){importScripts(m.jsqrUrl);jsQRReady=true}

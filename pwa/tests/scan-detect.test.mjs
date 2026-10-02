@@ -1,5 +1,6 @@
-// Scanner detection (features/scan-detect.js) with the same OpenCV.js build as the app, on one
-// synthetic photo per mode. Run: node --test pwa/tests
+// Scanner detection (features/scan-detect.js) with the same OpenCV.js build as the app: one synthetic photo
+// per mode, then the hard cases (white on white, a hand on the page, a mat, a shadow, a printed frame…).
+// Corners must land within a pixel or two (frame 512 px wide). Run: node --test pwa/tests
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -10,7 +11,7 @@ import * as S from './helpers/scenes.mjs';
 const require=createRequire(import.meta.url);
 const ctx={console};ctx.self=ctx;
 vm.createContext(ctx);
-for(const f of ['../features/scan-core.js','../features/scan-detect.js'])vm.runInContext(fs.readFileSync(new URL(f,import.meta.url),'utf8'),ctx);
+for(const f of ['../features/scan-core.js','../features/scan-refine.js','../features/scan-detect.js'])vm.runInContext(fs.readFileSync(new URL(f,import.meta.url),'utf8'),ctx);
 
 let cvPromise;
 function opencv(){
@@ -24,20 +25,83 @@ function opencv(){
 const maxErr=(a,b)=>Math.max(...a.map((p,i)=>Math.hypot(p[0]-b[i][0],p[1]-b[i][1])));
 
 for(const [name,scene,mode,tol] of [
-  ['sheet on a desk','documentScene','document',.03],
-  ['whiteboard seen from a seat, with glare','whiteboardScene','board',.04],
-  ['blackboard','blackboardScene','board',.035],
-  ['open book (whole spread)','bookScene','book',.03],
-  ['ID card','idCardScene','id',.03]
+  ['sheet on a desk','documentScene','document',.004],
+  ['whiteboard seen from a seat, with glare','whiteboardScene','board',.006],
+  ['blackboard','blackboardScene','board',.004],
+  ['open book (whole spread)','bookScene','book',.004],
+  ['ID card','idCardScene','id',.004],
+  // hard cases
+  ['white paper on a light table (low contrast)','lowContrastScene','document',.004],
+  ['white paper on a white table (14 grey levels)','whiteOnWhiteScene','document',.006],
+  ['sheet half in shadow','shadowScene','document',.004],
+  ['sheet held in a hand (thumb on a corner)','handScene','document',.004],
+  ['sheet beside a laptop, a pen and a table edge','clutterScene','document',.004],
+  ['sheet in a dim room','dimScene','document',.004],
+  ['sheet turned 35° in perspective','turnedScene','document',.004],
+  ['sheet on a wooden desk with strong grain','woodScene','document',.004],
+  ['sheet with a window reflection','glareScene','document',.004],
+  ['form with a thick printed frame','framedScene','document',.004],
+  ['sheet on a bigger dark desk mat (not the mat)','matScene','document',.004]
 ]){
   test(`detects the ${name}`,async()=>{
     const cv=await opencv(),{img,quad}=S[scene]();
     const r=ctx.scanDetect(cv,img,mode);
     assert.ok(r.quad,'a quad is found');
     const err=maxErr(r.quad,quad);
-    assert.ok(err<tol,`corner error ${err.toFixed(3)} (max ${tol})`);
+    assert.ok(err<tol,`corner error ${err.toFixed(4)} (max ${tol})`);
+    assert.equal(r.far,false);assert.equal(r.cutoff,false);
   });
 }
+
+test('a sheet far away is still outlined, but flagged "too far" (never auto-captured)',async()=>{
+  const cv=await opencv(),{img,quad}=S.farScene(),r=ctx.scanDetect(cv,img,'document');
+  assert.ok(r.quad&&maxErr(r.quad,quad)<.004);
+  assert.equal(r.far,true);
+  assert.equal(ctx.ScanCore.judgeFrame(r,'document').ok,false);
+  assert.equal(ctx.ScanCore.judgeFrame(r,'document').warn,'far');
+});
+
+test('a sheet bigger than the picture: no outline, but the camera is told the page runs off the frame',async()=>{
+  const cv=await opencv(),{img}=S.cutoffScene(),r=ctx.scanDetect(cv,img,'document');
+  assert.equal(r.quad,null);
+  assert.equal(r.cutoff,true);
+});
+
+test('a window reflection on the sheet is reported',async()=>{
+  const cv=await opencv();
+  assert.equal(ctx.scanDetect(cv,S.glareScene().img,'document').glare,true);
+  assert.equal(ctx.scanDetect(cv,S.documentScene().img,'document').glare,false);
+  const j=ctx.ScanCore.judgeFrame(ctx.scanDetect(cv,S.glareScene().img,'document'),'document');
+  assert.equal(j.warn,'glare');assert.equal(j.ok,true,'a reflection is only a hint');
+});
+
+test('tracking: the previous outline is re-fitted without a new search, and gives up when the page moved',async()=>{
+  const cv=await opencv(),{img,quad}=S.documentScene();
+  const first=ctx.scanDetect(cv,img,'document');
+  const prior=first.quad.map(([x,y])=>[x+.004,y-.003]);
+  const t=ctx.scanDetect(cv,img,'document',{prior});
+  assert.equal(t.source,'track');assert.ok(maxErr(t.quad,quad)<.004);
+  // The page jumped: the old outline no longer sits on edges → full search finds the page again.
+  const wrong=[[.05,.05],[.3,.05],[.3,.3],[.05,.3]];
+  const f=ctx.scanDetect(cv,img,'document',{prior:wrong});
+  assert.notEqual(f.source,'track');assert.ok(maxErr(f.quad,quad)<.004);
+});
+
+test('corner accuracy is far better than the old contour approximation (under 1 px on a hand-held sheet)',async()=>{
+  const cv=await opencv(),{img,quad}=S.handScene(),r=ctx.scanDetect(cv,img,'document');
+  assert.ok(maxErr(r.quad,quad)*512<1,`${(maxErr(r.quad,quad)*512).toFixed(2)} px`);
+  assert.ok(r.support>.7);
+});
+
+test('no phantom page: a dark laptop alone, or text filling the whole frame, is not a sheet',async()=>{
+  const cv=await opencv();
+  const desk=S.makeImage(512,384,[176,150,118]);S.noise(desk,8,5);
+  S.fillPoly(desk,[[200,120],[330,126],[336,210],[196,204]],[30,32,38]);          // laptop, ~8 % of the frame
+  assert.equal(ctx.scanDetect(cv,desk,'document').quad,null,'dark object: not paper');
+  const paper=S.makeImage(512,384,[236,233,224]);S.noise(paper,5,9);
+  S.textLines(paper,[[0,0],[512,0],[512,384],[0,384]],[40,40,56],{u0:.08,u1:.92,v0:.06,v1:.94,lines:16,seed:4});
+  assert.equal(ctx.scanDetect(cv,paper,'document').quad,null,'text only: no edge of a page');
+});
 
 test('book: the fold is found and the spread is split into two pages',async()=>{
   const cv=await opencv(),{img,quad,gutter}=S.bookScene();

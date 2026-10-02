@@ -125,3 +125,153 @@ export function qrScene(matrix,scale=6){
   for(let y=0;y<n;y++)for(let x=0;x<n;x++)if(matrix[y][x]){const px=(x+4)*scale,py=(y+4)*scale;fillPoly(img,[[px,py],[px+scale,py],[px+scale,py+scale],[px,py+scale]],[0,0,0])}
   return{img};
 }
+
+// ---------- hard scenes: what a phone really sees ----------
+
+// Ellipse (pixels), for hands, pens, lamps.
+export function fillEllipse(img,cx,cy,rx,ry,color,alpha=1,angle=0){
+  const c=Math.cos(angle),s=Math.sin(angle),{width:W,height:H,data}=img,r=Math.max(rx,ry)+2;
+  for(let y=Math.max(0,Math.floor(cy-r));y<Math.min(H,Math.ceil(cy+r));y++)for(let x=Math.max(0,Math.floor(cx-r));x<Math.min(W,Math.ceil(cx+r));x++){
+    const dx=x-cx,dy=y-cy,u=(dx*c+dy*s)/rx,v=(-dx*s+dy*c)/ry;
+    if(u*u+v*v>1)continue;
+    const i=(y*W+x)*4;for(let k=0;k<3;k++)data[i+k]=data[i+k]*(1-alpha)+color[k]*alpha;
+  }
+}
+
+// Light paper on a light table: only ~35 grey levels between them, soft shadow, sensor noise.
+export function lowContrastScene(){
+  const img=makeImage(W,H,[206,199,186]);noise(img,5,41);
+  const q=[[110,58],[410,70],[438,334],[88,322]];
+  fillPoly(img,q,[240,237,230]);textLines(img,q,[70,70,86],{lines:11,seed:5});
+  shade(img,1,.82);noise(img,4,43);
+  return{img,quad:norm(q)};
+}
+
+// A shadow (phone, hand, lamp) falls across half of the page and the desk.
+export function shadowScene(){
+  const img=makeImage(W,H,[120,92,70]);noise(img,9,51);
+  const q=[[96,44],[420,60],[446,338],[78,322]];
+  fillPoly(img,q,[246,243,236]);textLines(img,q,[38,38,52],{lines:12,seed:7});
+  const{width:w,data}=img;
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){const f=x<190?1:x>300?.42:1-(x-190)/110*.58,i=(y*w+x)*4;for(let c=0;c<3;c++)data[i+c]*=f}
+  noise(img,4,53);
+  return{img,quad:norm(q)};
+}
+
+// A hand holds the page: a thumb over one corner and fingers over the left edge.
+export function handScene(){
+  const img=makeImage(W,H,[84,96,92]);noise(img,8,61);
+  const q=[[118,46],[404,62],[430,330],[96,314]];
+  fillPoly(img,q,[242,240,232]);textLines(img,q,[40,40,56],{lines:11,seed:9});
+  const skin=[205,150,120];
+  fillEllipse(img,111,308,30,22,skin,1,-.5);   // thumb on the bottom-left corner
+  fillEllipse(img,100,170,17,32,skin,1,.1);     // fingers over the left edge
+  noise(img,4,63);
+  return{img,quad:norm(q)};
+}
+
+// Page next to a big dark laptop, a pen and a table edge crossing the picture.
+export function clutterScene(){
+  const img=makeImage(W,H,[150,118,86]);noise(img,8,71);
+  fillPoly(img,[[0,300],[W,262],[W,H],[0,H]],[104,78,56]);          // table edge
+  fillPoly(img,[[300,10],[505,28],[498,150],[296,132]],[34,36,42]);   // laptop
+  const q=[[44,90],[300,104],[318,330],[30,318]];
+  fillPoly(img,q,[244,241,234]);textLines(img,q,[42,42,58],{lines:10,seed:11});
+  fillEllipse(img,360,230,70,5,[30,60,150],1,.3);                    // pen
+  noise(img,4,73);
+  return{img,quad:norm(q)};
+}
+
+// Dim room: everything dark and noisy.
+export function dimScene(){
+  const img=makeImage(W,H,[40,32,28]);noise(img,10,81);
+  const q=[[120,56],[402,66],[428,332],[92,320]];
+  fillPoly(img,q,[132,128,118]);textLines(img,q,[28,28,36],{lines:11,seed:13});
+  noise(img,9,83);
+  return{img,quad:norm(q)};
+}
+
+// Strongly turned and in perspective, ~35°.
+export function turnedScene(){
+  const img=makeImage(W,H,[70,86,100]);noise(img,8,91);
+  const q=[[210,28],[470,150],[330,350],[40,230]];
+  fillPoly(img,q,[238,236,228]);textLines(img,q,[40,40,56],{lines:12,seed:15});
+  noise(img,4,93);
+  return{img,quad:norm(q)};
+}
+
+// Page far away: ~20 % of the frame.
+export function farScene(){
+  const img=makeImage(W,H,[96,82,70]);noise(img,8,101);
+  const q=[[190,130],[320,138],[330,262],[182,254]];
+  fillPoly(img,q,[240,238,230]);textLines(img,q,[40,40,56],{lines:8,seed:17});
+  noise(img,4,103);
+  return{img,quad:norm(q)};
+}
+
+// Page larger than the frame: two corners are outside the picture.
+export function cutoffScene(){
+  const img=makeImage(W,H,[92,76,66]);noise(img,8,111);
+  const q=[[70,40],[470,52],[560,430],[10,440]];
+  fillPoly(img,q,[242,239,230]);textLines(img,q,[40,40,56],{lines:14,seed:19});
+  noise(img,4,113);
+  return{img,quad:norm(q),cutoff:true};
+}
+
+// Wooden desk with strong grain: lots of competing edges around the page.
+export function woodScene(){
+  const img=makeImage(W,H,[150,108,70]);
+  let s=5;const rnd=()=>(s=(s*16807)%2147483647)/2147483647;
+  const{data}=img;
+  const phase=Array.from({length:40},()=>rnd()*6.28);
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+    const g=Math.sin(y*.55+phase[Math.floor(x/13)%40]+Math.sin(x*.03)*2)*22+Math.sin(y*.17+x*.01)*14;
+    const i=(y*W+x)*4;data[i]+=g;data[i+1]+=g*.8;data[i+2]+=g*.6;
+  }
+  noise(img,6,121);
+  const q=[[112,60],[408,74],[436,336],[90,322]];
+  fillPoly(img,q,[238,234,224]);textLines(img,q,[44,44,60],{lines:11,seed:21});
+  noise(img,4,123);
+  return{img,quad:norm(q)};
+}
+
+// Window reflection washing out part of the page and its edge.
+export function glareScene(){
+  const img=makeImage(W,H,[88,74,64]);noise(img,8,131);
+  const q=[[100,52],[414,66],[440,330],[80,316]];
+  fillPoly(img,q,[236,232,222]);textLines(img,q,[44,44,60],{lines:11,seed:23});
+  glare(img,380,120,95,.95);
+  noise(img,4,133);
+  return{img,quad:norm(q)};
+}
+
+// A form with a thick dark printed frame 6 % inside the paper edge.
+export function framedScene(){
+  const img=makeImage(W,H,[96,84,72]);noise(img,8,141);
+  const q=[[90,48],[420,60],[446,336],[70,322]];
+  fillPoly(img,q,[244,241,232]);
+  const inner=(a)=>[inQuad(q,a,a),inQuad(q,1-a,a),inQuad(q,1-a,1-a),inQuad(q,a,1-a)];
+  fillPoly(img,inner(.06),[30,30,40]);fillPoly(img,inner(.075),[244,241,232]);
+  textLines(img,q,[44,44,60],{u0:.12,u1:.88,v0:.12,v1:.88,lines:10,seed:25});
+  noise(img,4,143);
+  return{img,quad:norm(q)};
+}
+
+// White paper on a white-ish table: only ~14 grey levels between them (hard case).
+export function whiteOnWhiteScene(){
+  const img=makeImage(W,H,[224,224,219]);noise(img,5,151);
+  const q=[[112,56],[408,68],[436,334],[90,320]];
+  fillPoly(img,q,[238,238,233]);textLines(img,q,[90,90,104],{lines:11,seed:27});
+  shade(img,1,.9);noise(img,3,153);
+  return{img,quad:norm(q)};
+}
+
+// Page on a larger dark desk mat, on a light desk: the mat is the biggest rectangle, the page is what to scan.
+export function matScene(){
+  const img=makeImage(W,H,[196,184,160]);noise(img,6,161);
+  fillPoly(img,[[14,18],[498,26],[502,368],[10,360]],[52,58,70]);
+  const q=[[120,70],[390,80],[412,310],[98,298]];
+  fillPoly(img,q,[244,242,234]);textLines(img,q,[40,40,56],{lines:10,seed:29});
+  noise(img,4,163);
+  return{img,quad:norm(q),pageOnMat:true};
+}

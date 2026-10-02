@@ -15,7 +15,11 @@ function renderCapture(){
 
     <div class="camera-top">
       ${glass('closeCam','x',camT('close'))}
-      <button class="cam-dest" id="camDest" aria-haspopup="dialog"><span class="cam-dest-dot" aria-hidden="true"></span><span class="cam-dest-text" id="camDestText">${esc(camT('chooseDest'))}</span>${icon('chevronRight',{size:16,stroke:2.4})}</button>
+      <button class="cam-dest empty" id="camDest" aria-haspopup="dialog" aria-expanded="false">
+        <span class="cam-dest-badge" aria-hidden="true">${icon('folder',{size:19,stroke:2.1})}<i class="cam-dest-auto">${icon('clock',{size:11,stroke:3})}</i></span>
+        <span class="cam-dest-text"><b id="camDestText">${esc(camT('chooseDest'))}</b><small id="camDestSub">${esc(camT('chooseDestHint'))}</small></span>
+        <span class="cam-dest-chev" aria-hidden="true">${icon('chevronDown',{size:16,stroke:2.5})}</span>
+      </button>
       ${glass('torchBtn','zap',camT('flashOff'),'aria-pressed="false"')}
     </div>
     <div class="scan-tools" id="scanTools">

@@ -1,10 +1,15 @@
 'use strict';
 // Document scanner inside the camera (modes Document, Tableau, Livre, Carte, QR).
 // - Live detection: small frames (≤512 px) go to workers/scanner-worker.js (OpenCV.js) about
-//   10 times a second; the page outline is smoothed (ScanCore tracker) and drawn at 60 fps.
-// - Auto-capture when the page is held still ~1 s and sharp; manual shutter always works.
+//   10 times a second; once a page is locked, the next frames only re-fit its outline to the real
+//   edges (3× cheaper, steadier), with a full search every few frames. The outline is smoothed
+//   (ScanCore tracker) and drawn at 60 fps.
+// - Auto-capture when the page is held still ~1 s, sharp, fully in the frame and close enough;
+//   the manual shutter always works.
 // - Each capture keeps the original photo and stores the crop/perspective + filter as an edit
-//   (non-destructive, like the photo editor); the clean page is rendered in the background.
+//   (non-destructive, like the photo editor). Before the page is rendered, its outline is searched
+//   again on the stored full-size photo (sub-pixel edges), then the clean page is rendered in the
+//   background.
 
 const SCAN_OPENCV_URL='https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.10.0-release.1/dist/opencv.js';
 const SCAN_JSQR_URL='https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js';
@@ -12,11 +17,16 @@ const SCAN_WORKER_URL=`./workers/scanner-worker.js${document.currentScript?new U
 const SCAN_MODES=['photo','document','board','book','id','qr'];
 const SCAN_DEFAULT_FILTER={document:'auto',board:'board',book:'auto',id:'auto'};
 const SCAN_FILTERS=['original','auto','gray','bw','lighten','shadows','board','board-dark'];
+const SCAN_STILL_SIDE=1600;      // longest side of the photo the edges are searched on after the shot
+const SCAN_FULL_EVERY=6;         // live frames: one full search in this many, the rest only re-fit the outline
+const SCAN_BLOCKING_WARNS=new Set(['far','cutoff','blur','dark']);
 
 const Scanner=(()=>{
   let worker=null,seq=0,cvState='idle',cvProgress=0;
   const calls=new Map(),listeners=new Set();
   let run=null; // live session
+  const SVG_NS='http://www.w3.org/2000/svg';
+  const reducedMotion=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const emit=()=>{for(const fn of listeners)try{fn(snapshot())}catch(e){console.warn(e)}};
   const snapshot=()=>({cvState,cvProgress,...(run?.status||{})});
@@ -61,14 +71,15 @@ const Scanner=(()=>{
     return x.getImageData(0,0,w,h);
   }
 
-  function detectFrame(image,mode){return call('detect',{image:{data:image.data.buffer,width:image.width,height:image.height},mode},[image.data.buffer])}
+  function detectFrame(image,mode,prior=null){return call('detect',{image:{data:image.data.buffer,width:image.width,height:image.height},mode,prior},[image.data.buffer])}
 
   // ---------- live session ----------
   function start({video,overlay,mode,getZoom,onAuto,onQr,onStatus}){
     stop();
-    const r=run={video,overlay,mode,getZoom,onAuto,onQr,onStatus,alive:true,busy:false,
+    const r=run={video,overlay,mode,getZoom,onAuto,onQr,onStatus,alive:true,busy:false,frame:0,
       tracker:ScanCore.createTracker(),auto:ScanCore.createAutoCapture(),
-      shown:null,target:null,quality:null,gutter:.5,raw:null,status:{},lastQr:{text:null,at:0},tilt:null};
+      shown:null,target:null,quality:null,gutter:.5,raw:null,status:{},lastQr:{text:null,at:0},tilt:null,cutStreak:0,lastTick:0,el:null};
+    buildOverlay(r);
     if(mode!=='qr')prepare();
     const tick=async()=>{
       if(!r.alive)return;
@@ -84,27 +95,41 @@ const Scanner=(()=>{
           if(res.text&&(res.text!==r.lastQr.text||t-r.lastQr.at>4000)){r.lastQr={text:res.text,at:t};r.onQr?.(res.text)}
           r.raw=res.corners;r.target=res.corners;setStatus(r,{state:res.text?'qr':'search'});
         }else if(cvState==='ready'){
-          const img=grab(video,region,512),res=await detectFrame(img,mode);
+          const img=grab(video,region,512);
+          // Outline of the last frame lets the worker skip the full search while it still fits the page.
+          const prior=r.raw&&r.frame%SCAN_FULL_EVERY!==0?r.raw:null;r.frame++;
+          const res=await detectFrame(img,mode,prior);
           if(!r.alive)return;
           r.quality=ScanCore.judgeFrame(res,mode);
           const st=r.tracker.update(res.quad,t);
-          r.target=st.quad;r.raw=res.quad;if(res.gutter!=null)r.gutter=res.gutter;
+          r.target=st.quad;r.raw=res.quad;if(res.gutter!=null)r.gutter=res.gutter;r.support=res.support;
+          // A page larger than the picture is never found as an outline: say so once it has been seen a few times.
+          r.cutStreak=!res.quad&&res.cutoff?r.cutStreak+1:0;
           const autoOn=state.scanAuto!==false&&mode!=='id';
           const shoot=r.auto.decide({quad:st.quad,stable:st.stable,quality:r.quality,t,enabled:autoOn&&!r.paused});
-          setStatus(r,{state:st.visible?(st.stable?'stable':'tracking'):'search',stableFor:st.stableFor,warn:st.visible?(r.quality.warn||tiltWarn(r)):tiltWarn(r),auto:autoOn});
+          // Nothing found for a while: say what usually helps (page too close, page lost against its background).
+          if(st.visible)r.searchSince=null;else r.searchSince??=t;
+          const lost=!st.visible&&t-r.searchSince>2500;
+          const warn=st.visible?(r.quality.warn||tiltWarn(r)):(r.cutStreak>=4?'cutoff':tiltWarn(r)||(lost?'find':null));
+          // A light tick the moment a page is found (Android; iPhone ignores vibration).
+          if(st.visible&&r.status.state==='search'&&t-r.lastTick>1500){r.lastTick=t;navigator.vibrate?.(6)}
+          setStatus(r,{state:st.visible?(st.stable?'stable':'tracking'):'search',stableFor:st.stableFor,warn,auto:autoOn});
           if(shoot)r.onAuto?.();
         }else setStatus(r,{state:cvState==='failed'?'manual':'loading',warn:tiltWarn(r)});
       }catch(e){if(r.alive)console.warn('Scanner frame',e.message)}
       finally{r.busy=false}
     };
     r.timer=setTimeout(tick,120);
-    // Outline drawn every display frame, easing toward the latest smoothed detection.
-    const paint=()=>{
+    // The outline is redrawn every display frame, easing toward the latest smoothed detection.
+    const paint=now=>{
       if(!r.alive)return;r.raf=requestAnimationFrame(paint);
+      const dt=Math.min(80,now-(r.lastPaint||now));r.lastPaint=now;
       const tgt=r.target&&r.region?screenQuad(r,r.target):null;
-      if(!tgt){r.shown=null;drawOverlay(r,null);return}
-      r.shown=r.shown?r.shown.map((p,i)=>[p[0]+(tgt[i][0]-p[0])*.35,p[1]+(tgt[i][1]-p[1])*.35]):tgt;
-      drawOverlay(r,r.shown);
+      if(tgt){
+        const k=1-Math.exp(-dt/48); // same easing at any frame rate
+        r.shown=r.shown?r.shown.map((p,i)=>[p[0]+(tgt[i][0]-p[0])*k,p[1]+(tgt[i][1]-p[1])*k]):tgt;
+      }else r.shown=null;
+      drawOverlay(r);
     };
     r.raf=requestAnimationFrame(paint);
     return r;
@@ -118,28 +143,78 @@ const Scanner=(()=>{
     const el=r.video.getBoundingClientRect(),z=r.getZoom();
     return ScanCore.mapToScreen(q,{videoW:r.video.videoWidth,videoH:r.video.videoHeight,elW:el.width,elH:el.height,zoom:z.css,crop:r.region});
   }
-  function drawOverlay(r,pts){
+
+  // ---------- overlay ----------
+  // The SVG is built once; frames only change path data and a few data-attributes, so colours slide
+  // between states and the outline fades in and out (see .scan-overlay in styles.css).
+  //   data-state: search | tracking | ready | warn | qr     data-page: "1" while an outline is shown
+  function buildOverlay(r){
     const svg=r.overlay;if(!svg)return;
-    if(!pts){if(svg.dataset.on){svg.innerHTML='';delete svg.dataset.on}return}
-    const w=svg.clientWidth,h=svg.clientHeight,st=r.status.state;
-    const cls=st==='stable'?'ok':st==='qr'?'qr':'';
-    const progress=r.status.auto?Math.min(1,(r.status.stableFor||0)/1000):0;
-    const d=pts.map(p=>p.map(v=>v.toFixed(1)).join(',')).join(' ');
-    let fold='';
-    if(r.mode==='book'&&r.target){const[a,b]=ScanCore.splitSpread(r.target,r.gutter)[0].slice(1,3);const[p1,p2]=screenQuad(r,[a,b]);fold=`<line class="scan-fold" x1="${p1[0]}" y1="${p1[1]}" x2="${p2[0]}" y2="${p2[1]}"/>`}
-    svg.setAttribute('viewBox',`0 0 ${w} ${h}`);
-    svg.innerHTML=`<path class="scan-dim" fill-rule="evenodd" d="M0 0H${w}V${h}H0Z M${pts.map(p=>p.join(' ')).join(' L')}Z"/><polygon class="scan-quad ${cls}" points="${d}"/>${fold}${pts.map(p=>`<circle class="scan-corner ${cls}" cx="${p[0]}" cy="${p[1]}" r="7"/>`).join('')}${progress>.15&&r.mode!=='qr'?`<circle class="scan-ring" cx="${(pts[0][0]+pts[2][0])/2}" cy="${(pts[0][1]+pts[2][1])/2}" r="22" style="stroke-dashoffset:${(1-progress)*138}"/>`:''}`;
-    svg.dataset.on='1';
+    svg.innerHTML='<g class="scan-guide"><path class="scan-guide-under"/><path class="scan-guide-path"/></g><g class="scan-layer"><path class="scan-dim" fill-rule="evenodd"/><path class="scan-glow"/><path class="scan-quad"/><path class="scan-fold"/><path class="scan-brackets-under"/><path class="scan-brackets"/><path class="scan-progress" pathLength="100"/></g>';
+    const q=s=>svg.querySelector(s);
+    r.el={guide:q('.scan-guide-path'),guideUnder:q('.scan-guide-under'),bracketsUnder:q('.scan-brackets-under'),dim:q('.scan-dim'),glow:q('.scan-glow'),quad:q('.scan-quad'),fold:q('.scan-fold'),brackets:q('.scan-brackets'),progress:q('.scan-progress')};
+    svg.dataset.state='search';svg.dataset.page='';svg.dataset.mode=r.mode;
   }
+  function visualState(r,hasPage){
+    if(!hasPage)return'search';
+    if(r.mode==='qr')return'qr';
+    const s=r.status;
+    if(SCAN_BLOCKING_WARNS.has(s.warn))return'warn';
+    return s.state==='stable'?'ready':'tracking';
+  }
+  function drawOverlay(r){
+    const svg=r.overlay,el=r.el;if(!svg||!el)return;
+    const w=svg.clientWidth,h=svg.clientHeight;if(!w||!h)return;
+    if(r.w!==w||r.h!==h){
+      r.w=w;r.h=h;svg.setAttribute('viewBox',`0 0 ${w} ${h}`);
+      const g=ScanCore.bracketPath(ScanCore.guideQuad(r.mode,w,h),{min:18,max:46,frac:.16});
+      el.guide.setAttribute('d',g);el.guideUnder.setAttribute('d',g);
+    }
+    const pts=r.shown,state=visualState(r,!!pts);
+    if(svg.dataset.state!==state)svg.dataset.state=state;
+    const page=pts?'1':'';if(svg.dataset.page!==page)svg.dataset.page=page;
+    if(!pts)return; // the last outline stays in place while it fades out
+    const d=ScanCore.polyPath(pts);
+    el.dim.setAttribute('d',`M0 0H${w}V${h}H0Z${d}`);
+    el.glow.setAttribute('d',d);el.quad.setAttribute('d',d);el.progress.setAttribute('d',d);
+    const br=ScanCore.bracketPath(pts);
+    el.brackets.setAttribute('d',br);el.bracketsUnder.setAttribute('d',br);
+    // Hold-still progress fills the page outline clockwise from the top-left corner.
+    const progress=state==='ready'&&r.status.auto?Math.min(1,(r.status.stableFor||0)/1000):0;
+    el.progress.style.strokeDashoffset=String(100*(1-progress));
+    el.progress.style.opacity=progress>.02?'1':'0';
+    if(r.mode==='book'&&r.target){const[a,b]=ScanCore.splitSpread(r.target,r.gutter)[0].slice(1,3);const[p1,p2]=screenQuad(r,[a,b]);el.fold.setAttribute('d',`M${p1[0].toFixed(1)} ${p1[1].toFixed(1)}L${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`)}
+  }
+
+  // After a shot: the page outline shrinks into the last-photo thumbnail, so it is clear what was kept.
+  function snap(){
+    const r=run;if(!r||!r.overlay||!r.shown||r.mode==='qr')return;
+    const svg=r.overlay,box=svg.getBoundingClientRect(),thumb=document.getElementById('lastPhotoBtn');
+    let cx=box.width/2,cy=box.height*.86,s=24;
+    if(thumb){const b=thumb.getBoundingClientRect();cx=b.left+b.width/2-box.left;cy=b.top+b.height/2-box.top;s=b.width*.4}
+    const from=r.shown.map(p=>p.slice()),to=[[cx-s,cy-s],[cx+s,cy-s],[cx+s,cy+s],[cx-s,cy+s]];
+    const el=document.createElementNS(SVG_NS,'path');el.setAttribute('class','scan-snap');svg.appendChild(el);
+    const t0=performance.now(),dur=reducedMotion()?1:420;
+    const step=now=>{
+      const k=Math.min(1,(now-t0)/dur),e=k<.5?4*k*k*k:1-Math.pow(-2*k+2,3)/2; // ease-in-out
+      el.setAttribute('d',ScanCore.polyPath(from.map((p,i)=>[p[0]+(to[i][0]-p[0])*e,p[1]+(to[i][1]-p[1])*e])));
+      el.style.opacity=String(k<.15?k/.15:1-Math.max(0,k-.6)/.4);
+      if(k<1)requestAnimationFrame(step);else el.remove();
+    };
+    requestAnimationFrame(step);
+  }
+
   function stop(){
     if(!run)return;run.alive=false;clearTimeout(run.timer);cancelAnimationFrame(run.raf);
-    if(run.overlay){run.overlay.innerHTML='';delete run.overlay.dataset.on}
+    if(run.overlay){run.overlay.innerHTML='';delete run.overlay.dataset.state;delete run.overlay.dataset.page}
     run=null;
   }
   function pause(on){if(run)run.paused=on}
   function setTilt(t){if(run)run.tilt=t}
   // What the capture needs: the smoothed outline (frame-normalised) and the book fold.
   const current=()=>run?{quad:run.target&&run.target.map(p=>p.slice()),gutter:run.gutter,region:run.region,quality:run.quality}:null;
+
+  // ---------- one-off detection and refinement on images ----------
 
   // Detection on an imported photo (gallery / fallback camera): same pipeline, one frame.
   async function detectBlob(blob,mode){
@@ -157,24 +232,56 @@ const Scanner=(()=>{
   // Detection on pixels already in memory (the photo editor's "Détecter les bords").
   async function detectImage(img,mode='document'){if(!(await prepare()))return null;return detectFrame(img,mode)}
 
-  return{prepare,start,stop,pause,setTilt,current,detectBlob,detectImage,subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn)},get state(){return cvState},get progress(){return cvProgress}};
+  // Sub-pixel outline: the rough quad (frame-normalised) is searched again on the pixels, side by side.
+  // Needs no OpenCV. Returns {quad, support} or null when the edges are not clear enough to trust.
+  async function refineImage(img,quad,{fixed}={}){
+    const r=await call('refine',{image:{data:img.data.buffer,width:img.width,height:img.height},quad,fixed},[img.data.buffer]);
+    return r.refined?{quad:r.quad,support:r.support}:null;
+  }
+  // Same on a stored photo, at most SCAN_STILL_SIDE px on the long side. Adds the photo's real size.
+  async function refineBlob(blob,quad,opts){
+    const bmp=await createImageBitmap(blob);
+    try{
+      const k=Math.min(1,SCAN_STILL_SIDE/Math.max(bmp.width,bmp.height)),c=document.createElement('canvas');
+      c.width=Math.max(1,Math.round(bmp.width*k));c.height=Math.max(1,Math.round(bmp.height*k));
+      const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(bmp,0,0,c.width,c.height);
+      const r=await refineImage(x.getImageData(0,0,c.width,c.height),quad,opts);
+      return r&&{...r,width:bmp.width,height:bmp.height};
+    }finally{bmp.close?.()}
+  }
+
+  return{prepare,start,stop,pause,setTilt,current,snap,detectBlob,detectImage,refineImage,refineBlob,subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn)},get state(){return cvState},get progress(){return cvProgress}};
 })();
 
 // ---------- turning a capture into stored pages ----------
 
 // The edit stored with a scanned page: perspective crop (if a page was found) + the mode's filter.
-function scanEdit(mode,quadFrame,w,h){
+// `refined`: the outline was fitted to the real edges on the full photo, so only a hair is trimmed
+// (otherwise a little more, so no sliver of desk or wall shows along the page).
+function scanEdit(mode,quadFrame,w,h,{refined=false}={}){
   const edit={...HoliooImage.defaultEdit(),filter:scanFilterFor(mode)};
-  // Slightly inside the detected edges, so no sliver of desk or wall shows along the page.
-  if(quadFrame){edit.mode='quad';edit.quad=ScanCore.toEditQuad(ScanCore.insetQuad(quadFrame,.006),w,h);edit.aspect='free'}
+  if(quadFrame){edit.mode='quad';edit.quad=ScanCore.toEditQuad(ScanCore.insetQuad(quadFrame,refined?.0012:.006),w,h);edit.aspect='free';if(refined)edit.refined=true}
   if(mode==='document')edit.snap='a4';
   return edit;
 }
 function scanFilterFor(mode){return state.scanFilters?.[mode]||SCAN_DEFAULT_FILTER[mode]||'auto'}
 function rememberScanFilter(mode,filter){if(!SCAN_DEFAULT_FILTER[mode])return;state.scanFilters={...(state.scanFilters||{}),[mode]:filter};saveState()}
 
-// Pages captured by the scanner are rendered (crop + filter) one at a time in the image worker,
-// then their text is recognised (features/ocr.js) — all in the background.
+// A stored scan with its outline made precise: the live outline (row.scanQuad) is searched again on
+// the full photo. Book halves are cut from the refined whole spread, so both share one fold line.
+// Returns the improved edit, or null to keep the live one.
+async function preciseScanEdit(row){
+  if(!row?.blob||!row.scanQuad||row.edit?.mode!=='quad'||row.edit.refined)return null;
+  try{
+    const r=await Scanner.refineBlob(row.blob,row.scanQuad);
+    if(!r)return null;
+    const q=row.scanHalf!=null?ScanCore.splitSpread(r.quad,row.scanGutter??.5)[row.scanHalf]:r.quad;
+    return{...row.edit,quad:scanEdit(row.scanMode||'document',q,r.width,r.height,{refined:true}).quad,refined:true};
+  }catch(e){console.warn('Scan refine failed',e);return null}
+}
+
+// Pages captured by the scanner are made precise and rendered (crop + filter) one at a time in the
+// image worker, then their text is recognised (features/ocr.js) — all in the background.
 const scanRenderQueue=(()=>{
   const ids=[];let running=false;
   async function run(){
@@ -183,7 +290,7 @@ const scanRenderQueue=(()=>{
       const id=ids.shift();
       try{
         const row=await DB.get('photos',id);
-        if(row?.edit&&!row.rendered){await savePhotoEdit(id,row.edit);scanPageRendered(id)}
+        if(row?.edit&&!row.rendered){await savePhotoEdit(id,await preciseScanEdit(row)||row.edit);scanPageRendered(id)}
         if(row&&typeof Ocr!=='undefined')Ocr.enqueue(id);
       }catch(e){console.warn('Scan render failed',e)}
     }

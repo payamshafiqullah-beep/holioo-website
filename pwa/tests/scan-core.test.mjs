@@ -100,3 +100,36 @@ test('screen mapping follows object-fit: cover and zoom',()=>{
   const [z]=C.mapToScreen([[0,0]],{videoW:1080,videoH:1920,elW:390,elH:844,zoom:2});
   assert.ok(z[0]<tl[0]&&z[1]<tl[1],'zoom pushes corners outward');
 });
+
+test('frame judgement: dark, blur, page cut off or too far block the auto-capture; a reflection only warns',()=>{
+  const good={sharpness:300,brightness:130};
+  assert.deepEqual(plain(C.judgeFrame(good)),{ok:true,warn:null});
+  assert.equal(C.judgeFrame({...good,brightness:30}).warn,'dark');
+  assert.equal(C.judgeFrame({...good,sharpness:10}).warn,'blur');
+  assert.deepEqual(plain(C.judgeFrame({...good,cutoff:true})),{ok:false,warn:'cutoff'});
+  assert.deepEqual(plain(C.judgeFrame({...good,far:true})),{ok:false,warn:'far'});
+  assert.deepEqual(plain(C.judgeFrame({...good,glare:true})),{ok:true,warn:'glare'});
+  assert.deepEqual(plain(C.judgeFrame({...good,support:.1})),{ok:false,warn:null},'an outline not on real edges is never shot by itself');
+});
+
+test('framing guide: a rectangle in the shape of the mode, centred, clear of the top bar and the shutter',()=>{
+  const side=g=>[Math.hypot(g[1][0]-g[0][0],g[1][1]-g[0][1]),Math.hypot(g[3][0]-g[0][0],g[3][1]-g[0][1])];
+  const doc=C.guideQuad('document',390,844),[dw,dh]=side(doc);
+  assert.ok(Math.abs(dh/dw-Math.SQRT2)<.01,'A4 portrait on a portrait phone');
+  assert.ok(doc[0][1]>90&&doc[2][1]<844-190,'between the top bar and the controls');
+  const[iw,ih]=side(C.guideQuad('id',390,844));assert.ok(Math.abs(iw/ih-85.6/54)<.01,'card shape');
+  const[lw,lh]=side(C.guideQuad('document',844,390));assert.ok(lw>lh,'a landscape phone gets a landscape page');
+  const[qw,qh]=side(C.guideQuad('qr',390,844));assert.ok(Math.abs(qw-qh)<.01,'square for QR');
+  for(const m of['document','board','book','id','qr'])for(const[w,h]of[[390,844],[844,390],[768,1024]]){
+    const g=C.guideQuad(m,w,h);assert.ok(g.every(([x,y])=>x>=0&&x<=w&&y>=0&&y<=h),`${m} ${w}×${h} stays inside the preview`);
+  }
+});
+
+test('corner brackets: one L at every corner, along the two sides, never longer than the sides allow',()=>{
+  const q=[[100,100],[300,100],[300,400],[100,400]],d=C.bracketPath(q);
+  assert.equal(d.match(/M/g).length,4);
+  assert.ok(d.startsWith('M100.0 136.0L100.0 100.0L136.0 100.0'),'36 px arms from the top-left corner');
+  const tiny=C.bracketPath([[0,0],[10,0],[10,10],[0,10]]);
+  assert.ok(!/NaN|Infinity/.test(tiny));
+  assert.equal(C.polyPath(q),'M100.0 100.0L300.0 100.0L300.0 400.0L100.0 400.0Z');
+});

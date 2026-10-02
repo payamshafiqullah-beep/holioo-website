@@ -87,10 +87,15 @@
   }
 
   // Frame quality from the worker's measures. Thresholds are tuned for 512 px analysis frames.
-  function judgeFrame({sharpness=0,brightness=128}={},mode='document'){
+  // `ok` gates the auto-capture; `warn` is the hint shown to the person (a reflection is only a hint).
+  function judgeFrame({sharpness=0,brightness=128,far=false,cutoff=false,glare=false,support=1}={},mode='document'){
     if(brightness<55)return{ok:false,warn:'dark'};
     const minSharp=mode==='board'?35:60;
     if(sharpness<minSharp)return{ok:false,warn:'blur'};
+    if(cutoff)return{ok:false,warn:'cutoff'};
+    if(far)return{ok:false,warn:'far'};
+    if(support<.3)return{ok:false,warn:null}; // outline not really on edges: never shoot by itself
+    if(glare)return{ok:true,warn:'glare'};
     return{ok:true,warn:null};
   }
 
@@ -183,6 +188,32 @@
   // Quad pulled toward its centre by a fraction of its size.
   function insetQuad(q,k){const o=orderQuad(q),cx=o.reduce((s,p)=>s+p[0],0)/4,cy=o.reduce((s,p)=>s+p[1],0)/4;return o.map(([x,y])=>[x+(cx-x)*k*2,y+(cy-y)*k*2])}
 
-  root.ScanCore={insetQuad,orderQuad,area,isConvex,angles,quadValid,maxCornerShift,createTracker,judgeFrame,createAutoCapture,toEditQuad,fromEditQuad,fullQuad,splitSpread,findGutter,pageRatio,idCardLayout,tiltHint,mapToScreen};
+  // Framing guide shown while no page is found: a rectangle (screen px, TL TR BR BL) with the shape
+  // the mode expects, centred in the part of the preview the controls leave free (below the top bar and
+  // above the shutter; in a landscape phone, left of the control column — same rule as the CSS).
+  function guideQuad(mode,w,h){
+    const land=w>h,column=land&&h<=520,ar={document:land?Math.SQRT2:1/Math.SQRT2,board:1.6,book:1.4,id:85.6/54,qr:1}[mode]||1/Math.SQRT2;
+    const box=column?{x0:16,x1:w-224,y0:56,y1:h-16}:{x0:w*.07,x1:w*.93,y0:96,y1:h-250};
+    const k=mode==='qr'?.72:1,aw=Math.max(80,box.x1-box.x0)*k,ah=Math.max(80,box.y1-box.y0)*k;
+    let gw=aw,gh=gw/ar;if(gh>ah){gh=ah;gw=gh*ar}
+    const cx=(box.x0+box.x1)/2,cy=(box.y0+box.y1)/2;
+    return[[cx-gw/2,cy-gh/2],[cx+gw/2,cy-gh/2],[cx+gw/2,cy+gh/2],[cx-gw/2,cy+gh/2]];
+  }
+
+  // SVG path of the four corner brackets of a quad ("L" shapes along its two sides at every corner).
+  function bracketPath(q,{min=14,max=36,frac=.2}={}){
+    const f=n=>n.toFixed(1);let d='';
+    for(let i=0;i<4;i++){
+      const c=q[i],a=q[(i+3)%4],b=q[(i+1)%4],la=dist(c,a),lb=dist(c,b);
+      const len=Math.max(min,Math.min(max,Math.min(la,lb)*frac)),ka=Math.min(1,len/(la||1)),kb=Math.min(1,len/(lb||1));
+      d+=`M${f(c[0]+(a[0]-c[0])*ka)} ${f(c[1]+(a[1]-c[1])*ka)}L${f(c[0])} ${f(c[1])}L${f(c[0]+(b[0]-c[0])*kb)} ${f(c[1]+(b[1]-c[1])*kb)}`;
+    }
+    return d;
+  }
+
+  // Quad corners as a closed SVG path.
+  const polyPath=q=>`M${q.map(p=>`${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join('L')}Z`;
+
+  root.ScanCore={guideQuad,bracketPath,polyPath,insetQuad,orderQuad,area,isConvex,angles,quadValid,maxCornerShift,createTracker,judgeFrame,createAutoCapture,toEditQuad,fromEditQuad,fullQuad,splitSpread,findGutter,pageRatio,idCardLayout,tiltHint,mapToScreen};
 })(typeof self!=='undefined'?self:typeof window!=='undefined'?window:globalThis);
 if(typeof module!=='undefined')module.exports=(typeof self!=='undefined'?self:globalThis).ScanCore;

@@ -445,7 +445,17 @@ async function openPhotoEditor({ids,index=0,fromEl=null,onSaved=null}){
       const small=HoliooImage.scaleTo(it.oriented,640),c=document.createElement('canvas');c.width=small.width;c.height=small.height;
       const x=c.getContext('2d');x.drawImage(small,0,0);
       const r=await Scanner.detectImage(x.getImageData(0,0,c.width,c.height),'document');
-      if(r?.quad)quad=ScanCore.toEditQuad(r.quad,c.width,c.height);
+      if(r?.quad){
+        let q=r.quad;
+        // Edges searched again at higher resolution: straight sides, exact corners.
+        try{
+          const big=HoliooImage.scaleTo(it.oriented,1600),bc=document.createElement('canvas');bc.width=big.width;bc.height=big.height;
+          const bx=bc.getContext('2d',{willReadFrequently:true});bx.drawImage(big,0,0);
+          const fine=await Scanner.refineImage(bx.getImageData(0,0,bc.width,bc.height),q);
+          if(fine)q=fine.quad;
+        }catch(e){console.warn('Edge refinement skipped',e)}
+        quad=ScanCore.toEditQuad(q,c.width,c.height);
+      }
     }catch(e){
       console.warn('Auto detection unavailable',e);
       showToast(navigator.onLine?'Détection indisponible — ajustez les 4 coins':'Hors ligne — ajustez les 4 coins');

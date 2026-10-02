@@ -65,13 +65,18 @@ function renderCameraChip(){
   const btn=byId('camDest'),text=byId('camDestText');if(!btn||!text)return;
   const ok=!!cameraDestContext();
   if(!ok)camDest=null;
-  const label=cameraDestinationLabel(camDest);
-  text.textContent=label;
+  const label=cameraDestinationLabel(camDest),parts=ok&&cameraDestinationParts(camDest),sub=byId('camDestSub');
+  const key=ok?`${camDest.courseId}/${camDest.sectionId}/${camDest.sessionId||''}`:'';
+  // Two lines: the course, then section and session (a short pulse on the badge when it changed).
+  text.textContent=ok?parts.course:camT('chooseDest');
+  if(sub)sub.textContent=ok?parts.detail:camT('chooseDestHint');
   btn.classList.toggle('empty',!ok);
   btn.classList.toggle('auto',ok&&camDest.source==='timetable');
-  const dot=btn.querySelector('.cam-dest-dot');
-  if(dot)dot.style.background=ok?(cameraDestContext().course.color||'#5B67F1'):'';
-  btn.setAttribute('aria-label',ok?camT('destLabel',{dest:label})+(camDest.source==='timetable'?` (${camT('auto')})`:''):camT('chooseDest'));
+  btn.style.setProperty('--c',ok?parts.color:'');
+  btn.style.setProperty('--on',ok?radialInk(parts.color):'');
+  if(btn.dataset.dest!==undefined&&btn.dataset.dest!==key&&ok){btn.classList.remove('changed');void btn.offsetWidth;btn.classList.add('changed')}
+  btn.dataset.dest=key;
+  btn.setAttribute('aria-label',ok?camT('destLabel',{dest:label})+(camDest.source==='timetable'?` (${camT('destAutoBadge')})`:''):camT('chooseDest'));
 }
 
 function rememberCameraDestination(){
@@ -500,12 +505,18 @@ function renderScanHint(s){
   if(camRetakeId)text=camT('retakeHint');
   if(s.state==='loading')text=camT('scanLoading',{p:Math.round((Scanner.progress||0)*100)});
   else if(s.state==='manual')text=camT('scanFailed');
-  else if(s.warn){warn=true;text=camT({dark:'warnDark',blur:'warnBlur',tilt:camMode==='board'?'warnTiltBoard':'warnTilt'}[s.warn]);if(camMode==='id'&&camIdFront)text=`${camT('idBackShort')} — ${text}`}
+  else if(s.warn){
+    warn=s.warn!=='find'; // "find" is a tip, not a problem: neutral chip
+    const board=camMode==='board';
+    text=camT({dark:'warnDark',blur:'warnBlur',tilt:board?'warnTiltBoard':'warnTilt',far:board?'warnFarBoard':'warnFar',cutoff:board?'warnCutBoard':'warnCut',glare:'warnGlare',find:board?'warnFindBoard':'warnFind'}[s.warn]);
+    if(camMode==='id'&&camIdFront)text=`${camT('idBackShort')} — ${text}`;
+  }
   // ID card: always say which side is expected.
   else if(camMode==='id'&&(s.state==='stable'||s.state==='tracking'))text=camT(camIdFront?'idBackReady':'idFrontReady');
-  else if(s.state==='stable'||s.state==='tracking')text=s.auto?camT('holdStill'):camT('ready');
+  else if(s.state==='stable'||s.state==='tracking')text=s.auto?camT('pageLocked'):camT('ready');
   else if(!text)text=camT(search);
   el.textContent=text;el.classList.toggle('warn',warn);el.classList.remove('hidden');
+  el.dataset.tone=warn?'warn':s.state==='stable'?'ready':s.state==='tracking'?'track':'search';
 }
 Scanner.subscribe(s=>{if(currentView==='capture'&&s.cvState==='loading')renderScanHint({state:'loading'});if(currentView==='capture'&&s.cvState==='failed'&&isScanMode(camMode))renderScanHint({state:'manual'})});
 
@@ -550,34 +561,47 @@ function queueScanCapture(canvas,dest){
   const thumb=canvasToJpeg(scaleCanvas(canvas,W,H));
   const stored=id=>scanRenderQueue.add(id);
   const mode=camRetakeId&&(camMode==='book'||camMode==='id')?'document':camMode;
-  const ids=[];
+  const ids=[],live=quad?{scanQuad:quad}:{}; // the live outline stays with the photo: refined on the full image before rendering
   if(camRetakeId){
     const id=camRetakeId;camRetakeId=null;
-    cameraQueue.add({id,blob,thumb,dest,createdAt:now(),replace:true,edit:scanEdit(mode,quad,W,H),extra:{scanMode:mode},onStored:id=>{stored(id);showToast(camT('retaken'));if(currentView==='capture'){camKeepBatch=true;navigate('scanReview')}}});
+    cameraQueue.add({id,blob,thumb,dest,createdAt:now(),replace:true,edit:scanEdit(mode,quad,W,H),extra:{scanMode:mode,...live},onStored:id=>{stored(id);showToast(camT('retaken'));if(currentView==='capture'){camKeepBatch=true;navigate('scanReview')}}});
     return[];
   }
   if(mode==='book'&&quad){
-    for(const half of ScanCore.splitSpread(quad,cur.gutter??.5)){
+    ScanCore.splitSpread(quad,cur.gutter??.5).forEach((half,i)=>{
       const id=uid();ids.push(id);
-      cameraQueue.add({id,blob,thumb,dest,createdAt:now(),edit:scanEdit('book',half,W,H),extra:{scanMode:'book'},onStored:stored});
-    }
+      cameraQueue.add({id,blob,thumb,dest,createdAt:now(),edit:scanEdit('book',half,W,H),extra:{scanMode:'book',...live,scanHalf:i,scanGutter:cur.gutter??.5},onStored:stored});
+    });
     showToast(camT('bookSplit'));
     return ids;
   }
   if(mode==='id'){
-    const side={blob,edit:scanEdit('id',quad,W,H)};
+    const side={blob,edit:scanEdit('id',quad,W,H),quad};
     if(!camIdFront){camIdFront=side;renderScanHint({state:'search'});showToast(camT('idFrontSaved'));return[]}
     const front=camIdFront;camIdFront=null;
-    const page=(async()=>{const[fb,bb]=await Promise.all([front.blob,side.blob]);const r=await imageJob('idcard',{front:{blob:fb,edit:front.edit},back:{blob:bb,edit:side.edit}});return{...r,fb,bb}})();
+    const page=(async()=>{
+      const[fb,bb]=await Promise.all([front.blob,side.blob]);
+      const[fe,be]=await Promise.all([preciseSideEdit(fb,front),preciseSideEdit(bb,side)]);
+      const r=await imageJob('idcard',{front:{blob:fb,edit:fe},back:{blob:bb,edit:be}});
+      return{...r,fb,bb,fe,be};
+    })();
     const id=uid();ids.push(id);
     cameraQueue.add({id,blob:page.then(r=>r.page),thumb:page.then(r=>r.thumb),dest,createdAt:now(),extra:{scanMode:'id'},
-      onStored:async id=>{try{const r=await page;await DB.patch('photos',id,{scanSources:[{blob:r.fb,edit:front.edit},{blob:r.bb,edit:side.edit}]})}catch{}if(typeof Ocr!=='undefined')Ocr.enqueue(id)}});
+      onStored:async id=>{try{const r=await page;await DB.patch('photos',id,{scanSources:[{blob:r.fb,edit:r.fe},{blob:r.bb,edit:r.be}]})}catch{}if(typeof Ocr!=='undefined')Ocr.enqueue(id)}});
     renderScanHint({state:'search'});showToast(camT('idDone'));
     return ids;
   }
   const id=uid();ids.push(id);
-  cameraQueue.add({id,blob,thumb,dest,createdAt:now(),edit:scanEdit(mode,quad,W,H),extra:{scanMode:mode},onStored:stored});
+  cameraQueue.add({id,blob,thumb,dest,createdAt:now(),edit:scanEdit(mode,quad,W,H),extra:{scanMode:mode,...live},onStored:stored});
   return ids;
+}
+
+// ID card side: its outline searched again on the stored photo (the card is small in the frame, so
+// the live outline is the least precise there).
+async function preciseSideEdit(blob,side){
+  if(!side.quad)return side.edit;
+  try{const r=await Scanner.refineBlob(blob,side.quad);if(r)return scanEdit('id',r.quad,r.width,r.height,{refined:true})}catch(e){console.warn('Scan refine failed',e)}
+  return side.edit;
 }
 
 // Imported photos (gallery, or the phone's camera app as fallback) follow the same pipeline.
@@ -585,12 +609,14 @@ async function importScanFiles(files,dest){
   const ids=[];
   for(const file of files){
     let det=null;try{det=await Scanner.detectBlob(file,camMode==='id'?'id':camMode)}catch{}
-    const W=det?.width||1,H=det?.height||1,quad=det?.quad||null;
+    const W=det?.width||1,H=det?.height||1;let quad=det?.quad||null,refined=false;
+    // Edges searched again on the photo itself (detection ran on a 640 px copy).
+    if(quad){try{const r=await Scanner.refineBlob(file,quad);if(r){quad=r.quad;refined=true}}catch(e){console.warn('Scan refine failed',e)}}
     if(camMode==='book'&&quad){
-      for(const half of ScanCore.splitSpread(quad,det.gutter??.5)){const id=uid();ids.push(id);cameraQueue.add({id,blob:Promise.resolve(file),dest,createdAt:now(),edit:scanEdit('book',half,W,H),extra:{scanMode:'book'},onStored:id=>scanRenderQueue.add(id)})}
+      for(const half of ScanCore.splitSpread(quad,det.gutter??.5)){const id=uid();ids.push(id);cameraQueue.add({id,blob:Promise.resolve(file),dest,createdAt:now(),edit:scanEdit('book',half,W,H,{refined}),extra:{scanMode:'book'},onStored:id=>scanRenderQueue.add(id)})}
     }else{
       const id=uid();ids.push(id);
-      cameraQueue.add({id,blob:Promise.resolve(file),dest,createdAt:now(),edit:scanEdit(camMode==='id'?'id':camMode,quad,W,H),extra:{scanMode:camMode},onStored:id=>scanRenderQueue.add(id)});
+      cameraQueue.add({id,blob:Promise.resolve(file),dest,createdAt:now(),edit:scanEdit(camMode==='id'?'id':camMode,quad,W,H,{refined}),extra:{scanMode:camMode},onStored:id=>scanRenderQueue.add(id)});
     }
   }
   return ids;
@@ -648,6 +674,7 @@ function capturePhoto({auto=false}={}){
 }
 
 function captureFeedback(auto){
+  if(isScanMode(camMode))Scanner.snap();
   const stage=byId('cameraStage');
   stage?.classList.remove('capture-flash');void stage?.offsetWidth;
   stage?.classList.add('capture-flash');

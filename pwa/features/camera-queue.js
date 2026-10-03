@@ -18,7 +18,7 @@ const cameraQueue=(()=>{
   // never points at a photo that isn't stored.
   function fileIntoSession(id,dest){
     const ctx=findSessionContext(dest.sessionId);
-    if(ctx){ctx.session.photoIds.push(id);return}
+    if(ctx){ctx.session.photoIds.push(id);state.cameraShot={sessionId:dest.sessionId};return}
     // The session was deleted while the photo was saving: keep it in Captures rather than lose it.
     let batch=state.inbox.find(b=>b.id===CAMERA_ORPHAN_BATCH);
     if(!batch){batch={id:CAMERA_ORPHAN_BATCH,title:'Capture',photoIds:[],createdAt:now()};state.inbox.unshift(batch)}

@@ -2,7 +2,7 @@
 async function renderHome(){
   setChrome(false);
   const inboxCount=state.inbox.reduce((a,b)=>a+b.photoIds.length,0);
-  const latest=latestSession();
+  const latest=lastCapturedSession();
   const courses=state.courses.slice(0,3);
 
   // Capture rapide card: the same panel as Lecture rapide (two turning rings round the trigger, a large title, a round
@@ -36,7 +36,7 @@ async function renderHome(){
   attachQuickCapture(heroQuick,heroQuick?.hasAttribute('data-desk-notes')?openQuickNotes:undefined);
   attachQuickReading(byId('readQuick'));
   byId('readQuickResume')?.addEventListener('click',resumeLastReading);
-  byId('heroResume')?.addEventListener('click',()=>{currentCourseId=latest.course.id;currentSectionId=latest.section.id;currentSessionId=latest.session.id;navigate('session')});
+  byId('heroResume')?.addEventListener('click',()=>resumeQuickCapture(latest));
   byId('homeInbox').onclick=()=>navigate(inboxCount?'inbox':'capture');
 }
 

@@ -111,6 +111,18 @@ async function sessionHasHandwriting(session){
   return false;
 }
 
+// The séance the last camera photo was filed in (state.cameraShot, set by features/camera-queue.js); when it was deleted
+// or nothing was shot yet, the most recent séance left. null when there is none.
+function lastCapturedSession(){
+  const shot=state.cameraShot?.sessionId&&findSessionContext(state.cameraShot.sessionId);
+  return shot?{course:shot.course,section:shot.section,session:shot.session}:latestSession();
+}
+
+// Reprendre: the camera opens straight into that séance.
+function resumeQuickCapture(latest){
+  openQuickCamera({courseId:latest.course.id,sectionId:latest.section.id,sessionId:latest.session.id,source:'quick'});
+}
+
 // Accueil's Capture rapide card: rings + trigger (the radial menu), title, Reprendre (the last séance) and its caption.
 function QuickCaptureCard({id='heroQuick',latest=null,hand=false}={}){
   const desk=typeof isDesk==='function'&&isDesk();
@@ -120,7 +132,7 @@ function QuickCaptureCard({id='heroQuick',latest=null,hand=false}={}){
   const resume=latest
     ?`<button type="button" class="qr-resume" id="heroResume" aria-label="Reprendre ${esc(latest.session.title)}, ${esc(where)}"><span class="qr-play">${icon('play',{size:16})}</span><small>Reprendre</small><em class="qr-where">${caption}</em></button>`
     :`<button type="button" class="qr-resume" data-nav="capture" aria-label="Capturer un premier cours"><span class="qr-play">${icon('camera',{size:16})}</span><small>Capturer</small><em class="qr-where">${caption}</em></button>`;
-  return`<div class="qr-row qcap-row"><span class="qr-copy"><strong>${esc(desk?'Note rapide':camT('qcTrigger'))}</strong></span>${resume}${trigger}</div>`;
+  return`<div class="qr-row qcap-row">${trigger}<span class="qr-copy"><strong>${esc(desk?'Note rapide':camT('qcTrigger'))}</strong></span>${resume}</div>`;
 }
 
 // Without a live camera (old browser, page not on https): the phone's own camera app.

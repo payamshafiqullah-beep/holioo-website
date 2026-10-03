@@ -1346,7 +1346,7 @@ body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
 .qr-resume small{font-size:11px;font-weight:600;color:var(--lavender-fg)}
 @media (prefers-reduced-motion:reduce){.qr-ring{animation:none}}
 /* Capture rapide card (Accueil): same panel as Lecture rapide, in the app's blue; a bigger title; Reprendre + caption. */
-.qcap-row{padding:var(--s4);background:color-mix(in srgb,var(--accent) 10%,var(--surface));border-color:color-mix(in srgb,var(--accent) 28%,transparent)}
+.qcap-row{background:color-mix(in srgb,var(--accent) 10%,var(--surface));border-color:color-mix(in srgb,var(--accent) 28%,transparent)}
 .qcap-row .qr-ring{border-color:color-mix(in srgb,var(--accent) 55%,transparent)}
 .qcap-row .qr-core{background:var(--accent)}
 .qcap-row .qr-trigger:focus-visible{outline-color:var(--accent)}

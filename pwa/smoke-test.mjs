@@ -13,7 +13,7 @@ const uiFiles=['./ui/icons.js','./ui/components.js','./ui/reorder.js','./ui/shel
 const featureFiles=[
   './features/media-viewer.js','./features/course-actions.js','./features/image-pipeline.js','./features/photo-edits.js','./features/thumbs.js','./features/camera-i18n.js','./features/camera-destination.js','./features/gallery-logic.js','./features/navigator-logic.js','./features/canvas-doc.js','./features/canvas-render.js','./features/canvas-sync.js','./features/canvas-export.js',
   './features/camera-queue.js','./features/scan-core.js','./features/scanner.js','./features/scan-ml.js','./features/ocr.js','./features/text-actions.js','./features/capture-actions.js','./features/quick-capture.js','./features/item-menu.js',
-  './features/pdf-actions.js','./features/cloud-sync.js','./features/community-actions.js','./features/state-merge.js','./features/remote-sync.js','./features/notes.js','./features/people.js'
+  './features/pdf-actions.js','./features/cloud-sync.js','./features/community-actions.js','./features/state-merge.js','./features/remote-sync.js','./features/notes.js','./features/people.js','./features/reading-logic.js','./features/quick-reading.js'
 ];
 
 const app=[
@@ -28,7 +28,7 @@ const drive=read('./drive.js');
 const html=read('./index.html');
 const sw=read('./sw.js');
 const manifest=JSON.parse(read('./manifest.webmanifest'));
-if(!html.includes('20261003-epure-v9'))throw new Error('Asset cache-bust version missing');
+if(!html.includes('20261003-epure-v10'))throw new Error('Asset cache-bust version missing');
 
 const required=[
   'Diviser le lot','Organiser les photos','Captures à trier','Section personnalisée','Nouvelle séance',
@@ -101,6 +101,14 @@ if(!read('./pages/PeoplePage.js').includes('pplQrBtn')||!read('./pages/HolioShar
 if(!sw.includes('./vendor/qrcode.js')||!html.includes('vendor/qrcode.js'))throw new Error('QR generator must be loaded and cached offline');
 if(/https?:\/\/[^'"]*qr[^'"]*\.(png|svg)|api\.qrserver|chart\.googleapis/i.test(people))throw new Error('The QR code is drawn locally: no third-party QR service');}
 for(const f of ['./pages/PeoplePage.js','./pages/HolioSharesPage.js','./pages/SharedViewerPage.js','./features/people.js'])if(!sw.includes(f.slice(1)))throw new Error(`Offline cache missing: ${f}`);}
+// Lecture rapide: the Accueil reading shortcut is the paper-page trigger of a 4-ring stacked radial menu; Capture rapide stays 2 rings.
+{const home=read('./pages/HomePage.js'),rd=read('./features/quick-reading.js'),radial=read('./ui/radial-menu.js'),css=read('./styles.css');
+if(home.includes('Relire mes PDF')||!home.includes('QuickReadingTrigger')||!home.includes('attachQuickReading'))throw new Error('Accueil must use the Lecture rapide trigger in place of "Relire mes PDF"');
+for(const s of ['quickReadingItems','quickReadingSelect','maxDepth:4,stack:true','openPdfViewer(item.pdfId,\'home\')','readingTree','qr-page'])if(!rd.includes(s))throw new Error(`Lecture rapide missing: ${s}`);
+for(const s of ['radialHitN','radialRadius','applyStack','maxDepth'])if(!radial.includes(s))throw new Error(`Radial menu missing: ${s}`);
+if(/maxDepth|stack:/.test(read('./features/quick-capture.js')+read('./features/item-menu.js')))throw new Error('Capture rapide / item menus must keep the plain two-ring menu');
+for(const s of ['.radial.open .radial-item.blurred','.radial.open .radial-item.gone','.qr-sheet','.qr-line'])if(!css.includes(s))throw new Error(`Lecture rapide style missing: ${s}`);
+if(html.indexOf('features/reading-logic.js')>html.indexOf('features/quick-reading.js')||html.indexOf('features/quick-reading.js')<html.indexOf('features/quick-capture.js'))throw new Error('reading-logic.js, then quick-reading.js, must load after quick-capture.js');}
 // Tablet / computer layout: built only at ≥768px, phones keep their own DOM; typed notes beside the photos.
 {const desk=read('./ui/desk-shell.js'),css=read('./styles.css');
 if(!desk.includes("matchMedia('(min-width:768px)')"))throw new Error('Desk layout must start at 768px');

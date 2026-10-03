@@ -80,7 +80,18 @@ const CAMERA_STRINGS={
     qcMore:'Plus…',qcMoreCourses:'Autres cours',qcMoreSections:'Autres sections',qcMoreHint:'Choisir dans la liste complète',
     qcCourseAria:'{name} : afficher les sections',qcSectionAria:'{course}, {section} : ouvrir la caméra',
     qcHint:'Appuyez ici, glissez vers un cours puis une section sans lever le doigt, et relâchez : la caméra s’ouvre directement.',
-    qcNoCourses:'Aucun cours pour l’instant. Créez-en un pour capturer directement dedans.',qcCreateCourse:'Créer un cours'
+    qcNoCourses:'Aucun cours pour l’instant. Créez-en un pour capturer directement dedans.',qcCreateCourse:'Créer un cours',
+    // Lecture rapide (Accueil, features/quick-reading.js)
+    rdButton:'Lecture rapide : maintenez, glissez vers un cours, une section, une séance puis un PDF, et relâchez pour l’ouvrir',rdTrigger:'Lecture rapide',
+    rdMenu:'Lecture rapide',rdClose:'Fermer la lecture rapide',
+    rdDragCourse:'Glissez vers un cours',rdDragSection:'Glissez vers une section',rdDragSession:'Glissez vers une séance',rdDragPdf:'Glissez vers un PDF',
+    rdOpenPdf:'Relâchez pour ouvrir « {title} »',rdKeyOpen:'Entrée pour ouvrir « {title} »',rdKeyCourse:'Choisissez un cours (flèches, Entrée)',
+    rdPdfCount:'{n} PDF',rdMoreHint:'Relâchez pour voir tous les PDF',rdOther:'Autres',rdOtherHint:'PDF sans cours ni séance',rdMoreAll:'Tous les PDF',
+    rdCourseAria:'{name} : afficher les sections',rdSectionAria:'{course}, {section} : afficher les séances',
+    rdSessionOneAria:'{session} : ouvrir le PDF',rdSessionManyAria:'{session} : afficher les PDF',rdPdfAria:'Ouvrir {title}',
+    rdNoPdf:'Aucun PDF à relire pour l’instant. Créez-en un depuis une séance.',rdGoCourses:'Voir mes cours',
+    rdSummary:'{n} document(s) à relire',rdSummaryNone:'Aucun PDF pour le moment',
+    rdHint:'Maintenez la page, glissez : cours › section › séance › PDF, puis relâchez.'
   }
 };
 const cameraLang='fr';

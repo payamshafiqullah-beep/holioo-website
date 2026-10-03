@@ -4,7 +4,6 @@ async function renderHome(){
   const inboxCount=state.inbox.reduce((a,b)=>a+b.photoIds.length,0);
   const latest=latestSession();
   const courses=state.courses.slice(0,3);
-  const pdfCount=state.files.length;
 
   // Right of the card: Quick Capture (press, drag to a course then a section, release → camera).
   const quick=QuickCaptureTrigger({id:'heroQuick'});
@@ -22,7 +21,7 @@ async function renderHome(){
     ${SectionTitle('Révisions du jour')}
     <div class="list-stack">
       ${ListCard({iconName:'layers',tone:'peach',title:'Captures à trier',meta:inboxCount?`${plural(inboxCount,'photo')} en attente de classement`:'Tout est classé',attrs:'id="homeInbox"'})}
-      ${ListCard({iconName:'fileText',tone:'lavender',title:'Relire mes PDF',meta:pdfCount?`${plural(pdfCount,'document')} prêt${pdfCount>1?'s':''} à relire`:'Créez un PDF depuis une séance',attrs:'data-nav="files"'})}
+      ${QuickReadingTrigger({id:'readQuick'})}
       ${ListCard({iconName:'users',tone:'mint',title:'Ressources partagées',meta:'Matériel publié par votre promotion',attrs:'data-nav="library"'})}
     </div>
   </section>`;
@@ -37,6 +36,7 @@ async function renderHome(){
   }});
   const heroQuick=byId('heroQuick');
   attachQuickCapture(heroQuick,heroQuick?.hasAttribute('data-desk-notes')?openQuickNotes:undefined);
+  attachQuickReading(byId('readQuick'));
   byId('heroResume')?.addEventListener('click',()=>{currentCourseId=latest.course.id;currentSectionId=latest.section.id;currentSessionId=latest.session.id;navigate('session')});
   byId('homeInbox').onclick=()=>navigate(inboxCount?'inbox':'capture');
 }

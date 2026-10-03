@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <!-- Fonts never block the first paint (slow or no connection): system font until Inter arrives. -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'" />
-  <link rel="stylesheet" href="./styles.css?v=20261002-device-sync-v1" />
+  <link rel="stylesheet" href="./styles.css?v=20261002-full-sync-v1" />
   <!-- Exact versions (a new release can't change the app by surprise); CORS so the service worker can keep them offline. -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2" crossorigin="anonymous" defer></script>
 </head>
@@ -28,68 +28,70 @@
     <main id="app" class="main"></main>
     <nav id="bottomNav" class="bottom-nav" aria-label="Navigation principale"></nav>
   </div>
-  <script src="./db.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./drive.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./sync-signals.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./features/state-merge.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./core.js?v=20261002-device-sync-v1" defer></script>
+  <script src="./db.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./drive.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./features/cloud-sync.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./sync-signals.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./features/state-merge.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./core.js?v=20261002-full-sync-v1" defer></script>
 
   <!-- Shared UI layer (icons, components, app shell) -->
-  <script src="./ui/icons.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./ui/components.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./ui/reorder.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./ui/shell.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./ui/camera-picker.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./ui/radial-menu.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./ui/photo-editor.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./vendor/perfect-freehand.js?v=20261002-device-sync-v1" defer></script>
+  <script src="./ui/icons.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./ui/components.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./ui/reorder.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./ui/shell.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./ui/camera-picker.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./ui/radial-menu.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./ui/photo-editor.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./vendor/perfect-freehand.js?v=20261002-full-sync-v1" defer></script>
 
   <!-- Shared feature logic -->
-  <script src="./features/media-viewer.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./features/course-actions.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./features/image-pipeline.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./features/photo-edits.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./features/thumbs.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./features/camera-i18n.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./features/camera-destination.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./features/camera-queue.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./features/scan-core.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./features/scanner.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./features/ocr.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./features/text-actions.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./features/capture-actions.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./features/quick-capture.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./features/item-menu.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./features/pdf-actions.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./features/community-actions.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./features/notebook-ink.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./features/xlsx-export.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./features/activity.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./features/remote-sync.js?v=20261002-device-sync-v1" defer></script>
+  <script src="./features/media-viewer.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./features/course-actions.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./features/image-pipeline.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./features/photo-edits.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./features/thumbs.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./features/camera-i18n.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./features/camera-destination.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./features/camera-queue.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./features/scan-core.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./features/scanner.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./features/scan-ml.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./features/ocr.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./features/text-actions.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./features/capture-actions.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./features/quick-capture.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./features/item-menu.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./features/pdf-actions.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./features/community-actions.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./features/notebook-ink.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./features/xlsx-export.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./features/activity.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./features/remote-sync.js?v=20261002-full-sync-v1" defer></script>
 
   <!-- One file per screen -->
-  <script src="./pages/LoginPage.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./pages/AdminPage.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./pages/AcademicSetupPage.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./pages/HomePage.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./pages/CoursesPage.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./pages/CourseDetailPage.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./pages/SectionPage.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./pages/SessionPage.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./pages/CapturePage.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./pages/ScanReviewPage.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./pages/CaptureCompletePage.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./pages/SplitBatchPage.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./pages/OrganizeBatchPage.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./pages/InboxPage.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./pages/PhotoViewerPage.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./pages/PdfBuilderPage.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./pages/PdfViewerPage.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./pages/FilesPage.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./pages/AcademicLibraryPage.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./pages/ProfilePage.js?v=20261002-device-sync-v1" defer></script>
-  <script src="./pages/SyncPage.js?v=20261002-device-sync-v1" defer></script>
+  <script src="./pages/LoginPage.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./pages/AdminPage.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./pages/AcademicSetupPage.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./pages/HomePage.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./pages/CoursesPage.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./pages/CourseDetailPage.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./pages/SectionPage.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./pages/SessionPage.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./pages/CapturePage.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./pages/ScanReviewPage.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./pages/CaptureCompletePage.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./pages/SplitBatchPage.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./pages/OrganizeBatchPage.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./pages/InboxPage.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./pages/PhotoViewerPage.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./pages/PdfBuilderPage.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./pages/PdfViewerPage.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./pages/FilesPage.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./pages/AcademicLibraryPage.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./pages/ProfilePage.js?v=20261002-full-sync-v1" defer></script>
+  <script src="./pages/SyncPage.js?v=20261002-full-sync-v1" defer></script>
 
-  <script src="./app.js?v=20261002-device-sync-v1" defer></script>
+  <script src="./app.js?v=20261002-full-sync-v1" defer></script>
 </body>
 </html>

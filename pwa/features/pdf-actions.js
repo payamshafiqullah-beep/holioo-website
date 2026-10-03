@@ -102,6 +102,14 @@ async function generatePdfFile(course,sessionIds,opts){
       catch(err){console.warn(err);inkPages.set(e.session.id,[]);showToast('Notes manuscrites non incluses (erreur de rendu)')}
     }
     const pageLabel=e=>`${course.name} · ${e.section.name} · ${e.session.title}`;
+    // Text first. Photos taken in Photo mode or imported are never read in the background, so without this a PDF made
+    // on a tablet that had not read them held only images. Read what is missing now and wait: same text on every device.
+    let ocrFailed=0;
+    if(opts.searchable!==false){
+      const plain=orderedIds.filter(id=>!inkPages.get(photoContext.get(id).session.id).some(c=>c.photoId===id));
+      const r=await Ocr.ensure(plain,{onProgress:({total,done,failed})=>{if(total)showToast(`Lecture du texte… ${done+failed} / ${total}`)}});
+      ocrFailed=r.failed;
+    }
     const pages=[];
     for(const id of orderedIds){
       const e=photoContext.get(id),row=await DB.get('photos',id);if(!e||!row?.blob)continue;
@@ -138,7 +146,7 @@ async function generatePdfFile(course,sessionIds,opts){
     await DB.put('files',{id:fid,blob,createdAt:now(),syncState:'pending'});
     state.files.unshift({id:fid,title:opts.title,fileName,courseId:course.id,sessionIds,createdAt:now(),pages:total,searchable:withText>0});
     saveState();queueSync();
-    showToast(withText?`PDF créé — texte recherchable sur ${withText} page(s)`:'PDF créé');
+    showToast(ocrFailed?`PDF créé — le texte de ${ocrFailed} photo(s) n’a pas pu être lu (connexion nécessaire la première fois)`:withText?`PDF créé — texte recherchable sur ${withText} page(s)`:'PDF créé');
     openPdfViewer(fid,'files');
   }catch(e){console.error(e);showToast('Erreur pendant la création du PDF')}
 }

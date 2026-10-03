@@ -22,6 +22,12 @@ window.addEventListener('offline',()=>{offlineBanner.classList.remove('hidden');
 // The app goes to the background: the notebook's last strokes are saved and copied to Drive.
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&typeof flushNotebook==='function')flushNotebook()});
 window.addEventListener('focus',async()=>{if(sb&&currentUser&&navigator.onLine){try{driveStatus=await Drive.status(sb,currentUser.id);await refreshSyncIndicator();if(driveStatus.connected&&currentView==='sync')render();if(typeof pullStructureSoon==='function')pullStructureSoon()}catch{}}});
+// Back on screen after a while: look at what the account's other devices did (at most once a minute).
+let lastPullAt=0;
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden||Date.now()-lastPullAt<60000||!driveStatus.connected||!sb||!currentUser)return;
+  lastPullAt=Date.now();queueSync('visible');
+});
 if(!navigator.onLine)offlineBanner.classList.remove('hidden');
 // App updates: the new version is installed in the background and loaded only when it can't
 // interrupt anything (app in the background, or back on Accueil) — never in the middle of a capture.

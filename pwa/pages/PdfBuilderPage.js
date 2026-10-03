@@ -34,7 +34,7 @@ async function renderPdfBuilder(){
       ${toggle('pdfCover','Page de couverture','Page de titre sans photo, au début du PDF',false)}
       ${toggle('pdfToc','Table des matières','Liste des séances, sans photo',false)}
       ${toggle('pdfNumbers','Numéroter les pages','« 3 / 12 » en bas de chaque page')}
-      ${toggle('pdfSearchable','Texte recherchable','Le texte reconnu sur l’appareil est ajouté (invisible) : recherche et copie dans le PDF')}
+      ${toggle('pdfSearchable','Texte recherchable','Le texte est lu sur chaque photo à la création du PDF (quelques secondes par photo) et ajouté, invisible : recherche et copie dans le PDF')}
     </div>
     ${SectionTitle('Export')}
     <div class="form-card">
@@ -87,7 +87,8 @@ async function renderPdfBuilder(){
   byId('generatePdf').onclick=async()=>{
     const ids=[...document.querySelectorAll('.pdfSession:checked')].map(x=>x.value);
     if(!ids.length){showToast('Sélectionnez au moins une séance');return}
-    await generatePdfFile(course,ids,{
+    const go=byId('generatePdf');go.disabled=true;   // reading the text can take a while: no second tap
+    try{await generatePdfFile(course,ids,{
       title:byId('pdfTitle').value.trim()||course.name,
       cover:byId('pdfCover').checked,
       toc:byId('pdfToc').checked,
@@ -96,7 +97,7 @@ async function renderPdfBuilder(){
       pageSize:byId('pdfPageSize').value,
       quality:byId('pdfQuality').value,
       photoOrder:[...photoOrder]
-    })
+    })}finally{go.disabled=false}
   };
 
   // Last export settings are remembered.

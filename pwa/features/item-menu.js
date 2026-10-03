@@ -1,5 +1,5 @@
 'use strict';
-// Long-press menu for every item that can be renamed / moved and deleted (courses, sections, séances,
+// Menu for every item that can be renamed / moved and deleted (courses, sections, séances,
 // photos, PDFs). Press ~450 ms: two round actions open above the finger, with the same ring and
 // liquid-glass lens as Quick Capture (ui/radial-menu.js, used as is). Slide and release on one to choose
 // it. Lifting the finger without choosing while it is still over the menu (where it pressed — even with
@@ -8,7 +8,8 @@
 // not a press. The screen behind is blurred and dimmed; the pressed item stays sharp above it, a little
 // bigger. No tap action follows a long-press. Right-click opens the menu on desktop.
 //
-//   attachItemMenu(el,{name, title, rename(newName), move(), remove()})
+//   attachItemMenu(el,{name, title, rename(newName), move(), remove()},{press})
+//     press:false      reorderable items (courses, séance / Captures photos): opened by the grip's tap only, see itemMenuFromHandle
 //     rename(newName)  named items: left action "Renommer", edited in place, never empty
 //     move()           unnamed items (photos): left action "Déplacer"
 //     reposition()     gallery photos (tablet / computer): left action "Changer la position" instead of "Déplacer"
@@ -98,9 +99,12 @@ function itemMenuOpen(el,o,at,pointer){
   });
 }
 
-function attachItemMenu(el,o){
+// {press:false}: no long-press / right-click trigger; the menu is opened only by itemMenuFromHandle (the two-dot grip).
+function attachItemMenu(el,o,{press:byPress=true}={}){
   if(!el||el.dataset.itemMenu)return;
   el.dataset.itemMenu='1';
+  el._itemMenu=at=>{const r=el.getBoundingClientRect();itemMenuOpen(el,o,at||{x:r.left+r.width/2,y:r.top+r.height/2},null)};
+  if(!byPress)return;
   let press=null,type='';
   const clear=()=>{if(press){clearTimeout(press.t);press=null}};
   el.addEventListener('pointerdown',e=>{
@@ -118,6 +122,12 @@ function attachItemMenu(el,o){
     const r=el.getBoundingClientRect();
     itemMenuOpen(el,o,e.clientX||e.clientY?{x:e.clientX,y:e.clientY}:{x:r.left+r.width/2,y:r.top+r.height/2},null);
   });
+}
+
+// The two-dot grip of a reorderable item (ui/reorder.js, onHandle): a tap opens the item's menu, anchored on the grip.
+function itemMenuFromHandle(card,grip){
+  const r=grip.getBoundingClientRect();
+  card._itemMenu?.({x:r.left+r.width/2,y:r.top+r.height/2});
 }
 
 // ─── Rename, in place ───

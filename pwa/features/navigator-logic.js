@@ -49,9 +49,10 @@ function navBreadcrumb(courses,ids){
 // opens the Galerie, a session opens the séance. The séance screen and the PDF builder need a session, so they
 // cannot follow a course or a type alone (the PDF builder picks one, see navPickSession).
 const NAV_FOLLOWS={course:['gallery','notes','pdfBuilder'],section:['gallery','notes','pdfBuilder'],session:['gallery','notes','pdfBuilder','session']};
-function navTargetView(view,kind){
+function navTargetView(view,kind,desk=false){
+  if(desk&&kind==='session'&&view==='session')return'notes';
   if((NAV_FOLLOWS[kind]||[]).includes(view))return view;
-  return kind==='session'?'session':'gallery';
+  return kind==='session'?(desk?'notes':'session'):'gallery';
 }
 
 // A session for the screens that need one when only a course or a type is chosen: today's if there is one,

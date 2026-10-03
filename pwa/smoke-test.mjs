@@ -4,7 +4,7 @@ const read=p=>fs.readFileSync(new URL(p,import.meta.url),'utf8');
 
 const pageFiles=[
   './pages/LoginPage.js','./pages/AdminPage.js','./pages/AcademicSetupPage.js','./pages/HomePage.js','./pages/CoursesPage.js',
-  './pages/CourseDetailPage.js','./pages/SectionPage.js','./pages/SessionPage.js','./pages/SessionDeskPage.js','./pages/GalleryDeskPage.js','./pages/NotesCanvasPage.js','./pages/LiveCapturePage.js','./pages/CapturePage.js','./pages/ScanReviewPage.js',
+  './pages/CourseDetailPage.js','./pages/SectionPage.js','./pages/SessionPage.js','./pages/GalleryDeskPage.js','./pages/NotesCanvasPage.js','./pages/LiveCapturePage.js','./pages/CapturePage.js','./pages/ScanReviewPage.js',
   './pages/CaptureCompletePage.js','./pages/SplitBatchPage.js','./pages/OrganizeBatchPage.js','./pages/InboxPage.js',
   './pages/PhotoViewerPage.js','./pages/PdfBuilderPage.js','./pages/PdfViewerPage.js','./pages/FilesPage.js',
   './pages/AcademicLibraryPage.js','./pages/ProfilePage.js','./pages/SyncPage.js','./pages/PeoplePage.js','./pages/HolioSharesPage.js','./pages/SharedViewerPage.js'
@@ -28,7 +28,7 @@ const drive=read('./drive.js');
 const html=read('./index.html');
 const sw=read('./sw.js');
 const manifest=JSON.parse(read('./manifest.webmanifest'));
-if(!html.includes('20261003-epure-v6'))throw new Error('Asset cache-bust version missing');
+if(!html.includes('20261003-epure-v8'))throw new Error('Asset cache-bust version missing');
 
 const required=[
   'Diviser le lot','Organiser les photos','Captures à trier','Section personnalisée','Nouvelle séance',
@@ -85,9 +85,9 @@ for(const s of ['find_holioo_person','loadPeople','addPerson','removePerson','sh
 if(/from\('profiles'\)/.test(people+read('./pages/PeoplePage.js')+read('./pages/HolioSharesPage.js')))throw new Error('People screens must never read the private profiles table');
 if(/\.from\('public_profiles'\)\.select\([^)]*email/.test(people))throw new Error('Public profiles carry no e-mail');
 if(!read('./pages/ProfilePage.js').includes('data-nav="people"')||!read('./pages/AcademicLibraryPage.js').includes('holiooSharesBtn'))throw new Error('People entry / Holioo Shares icon missing');
-for(const f of ['./pages/FilesPage.js','./pages/PdfViewerPage.js','./pages/SessionPage.js','./pages/SessionDeskPage.js'])if(!/sharePdfWithPeople|shareSessionWithPeople/.test(read(f)))throw new Error(`Share with Holioo people missing in ${f}`);
+for(const f of ['./pages/FilesPage.js','./pages/PdfViewerPage.js','./pages/SessionPage.js'])if(!/sharePdfWithPeople|shareSessionWithPeople/.test(read(f)))throw new Error(`Share with Holioo people missing in ${f}`);
 for(const f of ['./pages/FilesPage.js','./pages/PdfViewerPage.js'])if(!read(f).includes('sharePdf(meta,row)'))throw new Error(`Existing PDF share removed in ${f}`);
-for(const f of ['./pages/SessionPage.js','./pages/SessionDeskPage.js'])if(!read(f).includes('exportSessionImages'))throw new Error(`Existing export removed in ${f}`);
+for(const f of ['./pages/SessionPage.js'])if(!read(f).includes('exportSessionImages'))throw new Error(`Existing export removed in ${f}`);
 if(/create table if not exists public\.public_profiles \([^;]*email/i.test(mig))throw new Error('public_profiles must not hold an e-mail');
 for(const s of ["('shared-items', 'shared-items', false","shares_insert_owner","shared_items_select","connections_select_own"])if(!mig.includes(s))throw new Error(`Migration missing: ${s}`);
 if(/grant\s+(select|insert|update|delete)[^;]*\bto\s+anon/i.test(mig))throw new Error('No anonymous access to people / shares');
@@ -97,7 +97,7 @@ for(const f of ['./pages/PeoplePage.js','./pages/HolioSharesPage.js','./pages/Sh
 {const desk=read('./ui/desk-shell.js'),css=read('./styles.css');
 if(!desk.includes("matchMedia('(min-width:768px)')"))throw new Error('Desk layout must start at 768px');
 if(/bottomNav\.innerHTML|NAV_ITEMS\s*=/.test(desk))throw new Error('The desk layout must not touch the phone navigation');
-for(const s of ['renderSessionDesk','bindNoteField','notesDriveDocuments','pullSessionNotes','syncDesk'])if(!app.includes(s))throw new Error(`Desk / notes missing: ${s}`);
+for(const s of ['bindNoteField','notesDriveDocuments','pullSessionNotes','syncDesk'])if(!app.includes(s))throw new Error(`Desk / notes missing: ${s}`);
 const deskCss=css.slice(css.indexOf('TABLET & COMPUTER'));
 if(!deskCss||/@media\s*\((?!min-width:768px)/.test(deskCss.replace(/@media \(prefers-reduced-motion:reduce\)/g,'')))throw new Error('Desk styles must stay under @media (min-width:768px)');}
 // Live Capture: the phone uploads each photo at once only while a tablet listens (presence), then signals it.

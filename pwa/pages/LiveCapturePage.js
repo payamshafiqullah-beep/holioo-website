@@ -3,6 +3,20 @@
 // listening (presence, features/remote-sync.js `updatePresence`); the phone then sends each photo to Drive at
 // once and signals it. The screen follows the séance the phone is shooting into.
 
+// One photo with its typed note beside it (Live capture screen).
+function DeskPhotoRow(id,i,text){
+  return`<li class="desk-row" data-photo-id="${id}">
+    <figure class="desk-photo">
+      <button class="desk-photo-btn" type="button" data-open-photo="${id}" aria-label="Ouvrir la photo ${i+1}"><img alt="Photo ${i+1}" decoding="async"></button>
+      <span class="num">${i+1}</span>
+    </figure>
+    <label class="desk-note" data-note-state>
+      <span class="desk-note-label">Photo ${i+1}<i class="desk-note-saved" aria-hidden="true">${icon('check',{size:13})}</i></span>
+      <textarea data-note-photo="${id}" rows="4" placeholder="Vos notes sur cette photo…">${esc(text)}</textarea>
+    </label>
+  </li>`;
+}
+
 let liveSessionId=null;
 const liveArrivals=new Map();   // photo id → séance id: received, maybe not yet in the merged course structure
 let liveCleanup=null;

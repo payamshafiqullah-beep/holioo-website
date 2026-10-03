@@ -38,7 +38,7 @@ async function renderSession(){
       </div>`:'';
   const galleryView=n?`${SectionTitle('Galerie',{action:'Plein écran',id:'openFirstPhoto'})}
       <div class="thumbs" id="sessionThumbs"></div>
-      <p class="reorder-hint">${icon('more',{size:14})}Faites glisser la poignée pour changer l’ordre. Maintenez une photo pour la déplacer ou la supprimer.</p>`
+      <p class="reorder-hint">${icon('more',{size:14})}Maintenez une photo puis faites-la glisser pour changer l’ordre. Touchez la poignée pour la déplacer ou la supprimer.</p>`
     :EmptyState({iconName:'camera',title:'Aucune photo',text:'Cette séance ne contient pas encore de photos.'});
   const notebookView=active!=='notebook'?'':`${SectionTitle('Carnet',{action:'+ Page blanche',id:'addBlankPage'})}
       ${canWrite?`<div class="session-notebook-help">${icon('pencil',{size:15})}<span>${state.settings.drawWithFinger?'Écrivez au stylet ou au doigt.':'Écrivez au stylet. Le doigt sert à faire défiler la page.'}</span></div>`:''}

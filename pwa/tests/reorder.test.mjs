@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 const source=fs.readFileSync(new URL('../ui/reorder.js',import.meta.url),'utf8');
-function setup(){
+function setup(opts={}){
  const handlers=new Map(),timers=new Map(),frames=new Map();let serial=0,order,scrolls=0;
  const classes=()=>({add(){},remove(){}});
  const eventTarget=key=>({addEventListener:(n,fn)=>handlers.set(key+n,fn),removeEventListener:n=>handlers.delete(key+n)});
@@ -22,7 +22,7 @@ function setup(){
  for(const id of ['a','hidden','b']){const c=element();c.dataset.course=id;c.hidden=id==='hidden';host.appendChild(c)}
  const ctx={document:{...eventTarget('doc:'),createElement:element,body},window:{...eventTarget('win:'),scrollY:0,scrollX:0,innerHeight:900,scrollBy(){scrolls++}},navigator:{},Date,
  setTimeout:fn=>{timers.set(++serial,fn);return serial},clearTimeout:id=>timers.delete(id),requestAnimationFrame:fn=>{frames.set(++serial,fn);return serial},cancelAnimationFrame:id=>frames.delete(id)};
- vm.createContext(ctx);vm.runInContext(source,ctx);ctx.makeReorderable(host,{itemSelector:'[data-course]',idAttribute:'course',onChange:ids=>order=Array.from(ids)});
+ vm.createContext(ctx);vm.runInContext(source,ctx);ctx.makeReorderable(host,{itemSelector:'[data-course]',idAttribute:'course',onChange:ids=>order=Array.from(ids),...opts});
  const dispatch=(key,e={})=>handlers.get(key)?.({cancelable:true,preventDefault(){},stopPropagation(){},stopImmediatePropagation(){},...e});
  const touch=(type,y,target=host.children[0])=>dispatch(type==='touchstart'?'host:touchstart':`doc:${type}`,{target,touches:type==='touchend'?[]:[{identifier:1,clientX:100,clientY:y}],changedTouches:[{identifier:1,clientX:100,clientY:y}]});
  return{host,ctx,handlers,touch,dispatch,order:()=>order,scrolls:()=>scrolls,timer(){for(const [id,fn] of [...timers]){timers.delete(id);fn()}},frame(){for(const [id,fn] of [...frames]){frames.delete(id);fn()}}};
@@ -35,3 +35,21 @@ test('normal scrolling cancels pending long press without changing order',()=>{c
 test('canceled touch restores original positions and never saves a partial move',()=>{const s=setup();s.touch('touchstart',150);s.timer();s.touch('touchmove',250);s.frame();s.dispatch('doc:touchcancel');assert.equal(s.order(),undefined);assert.deepEqual(s.host.children.map(c=>c.dataset.course),['a','hidden','b'])});
 test('edge scrolling continues with a stationary finger and stops when detached',()=>{const s=setup();s.touch('touchstart',150);s.timer();s.touch('touchmove',850);s.frame();s.frame();assert.equal(s.scrolls(),2);s.host.isConnected=false;s.frame();assert.equal(s.handlers.has('doc:touchmove'),false)});
 test('handle moves immediately and keyboard reordering saves',()=>{const s=setup(),handle=s.host.children[0].querySelector('.reorder-handle');s.dispatch('host:keydown',{target:handle,key:'ArrowDown'});assert.deepEqual(s.order(),['b','hidden','a']);s.ctx.destroyReorderables();assert.equal(s.host._reorder,undefined)});
+test('menu grip: a tap calls onHandle and never starts a drag; the item body still lifts on a long press',()=>{
+ const taps=[],s=setup({onHandle:(card,grip)=>taps.push([card.dataset.course,grip.className])}),handle=s.host.children[0].querySelector('.reorder-handle');
+ s.touch('touchstart',150,handle);s.timer();s.touch('touchmove',250,handle);s.frame();s.touch('touchend',250,handle);
+ assert.equal(s.order(),undefined);assert.equal(s.handlers.has('doc:touchmove'),false);
+ let blocked=false;s.dispatch('host:click',{target:handle,stopImmediatePropagation(){blocked=true}});
+ assert.deepEqual(taps,[['a','reorder-handle']]);assert.equal(blocked,true);
+ s.touch('touchstart',150);s.timer();s.touch('touchmove',250);s.frame();s.frame();s.touch('touchend',250);
+ assert.deepEqual(s.order(),['b','hidden','a']);
+});
+test('a click right after a drag does not open the menu',()=>{
+ const taps=[],s=setup({onHandle:c=>taps.push(c)}),handle=s.host.children[0].querySelector('.reorder-handle');
+ s.touch('touchstart',150);s.timer();s.touch('touchmove',250);s.frame();s.frame();s.touch('touchend',250);
+ s.dispatch('host:click',{target:handle});assert.deepEqual(taps,[]);
+});
+test('Alt+arrow reorders a focused item even when the grip is a menu button',()=>{
+ const s=setup({onHandle:()=>{}});s.dispatch('host:keydown',{target:s.host.children[0],key:'ArrowDown',altKey:true});
+ assert.deepEqual(s.order(),['b','hidden','a']);
+});

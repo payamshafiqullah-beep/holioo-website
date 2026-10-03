@@ -78,6 +78,11 @@ test('screens that follow the selection stay; the others go where the choice fit
   assert.equal(N.navTargetView('session', 'session'), 'session');
   assert.equal(N.navTargetView('session', 'course'), 'gallery', 'the séance screen needs a séance');
   assert.equal(N.navTargetView('session', 'section'), 'gallery');
+  for (const view of ['home', 'files', 'library', 'profile', 'inbox', 'sync', 'live', 'session']) {
+    assert.equal(N.navTargetView(view, 'session', true), 'notes', 'tablet / computer: a séance always opens Notes');
+  }
+  assert.equal(N.navTargetView('gallery', 'session', true), 'gallery');
+  assert.equal(N.navTargetView('pdfBuilder', 'session', true), 'pdfBuilder');
   for (const view of ['home', 'files', 'library', 'profile', 'inbox', 'sync', 'live']) {
     assert.equal(N.navTargetView(view, 'course'), 'gallery');
     assert.equal(N.navTargetView(view, 'section'), 'gallery');

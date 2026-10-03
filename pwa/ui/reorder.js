@@ -5,7 +5,9 @@ const reorderControls=new Set();
 function destroyReorderables(){for(const control of [...reorderControls])control.destroy()}
 
 // handle:false = no grip on the items: press and hold to lift, or Alt+arrow keys on a focused item.
-function makeReorderable(host,{onChange,holdMs=320,itemSelector='[data-photo-id]',idAttribute='photoId',handle:withHandle=true}={}){
+// onHandle(item,handleEl) = the grip is a menu button: a tap calls it, dragging from it does nothing; press and hold
+// on the item itself lifts it (Alt+arrow keys on a focused item, or arrows on the grip, also reorder).
+function makeReorderable(host,{onChange,holdMs=320,itemSelector='[data-photo-id]',idAttribute='photoId',handle:withHandle=true,onHandle=null}={}){
   host._reorder?.destroy();
   let drag=null,frame=0,suppressUntil=0;
   const items=()=>[...host.children].filter(el=>el.matches(itemSelector));
@@ -15,7 +17,7 @@ function makeReorderable(host,{onChange,holdMs=320,itemSelector='[data-photo-id]
   const api={onChange,renumber:()=>renumber(),destroy};host._reorder=api;reorderControls.add(api);host.classList.add('reorder-grid');
   function renumber(){items().forEach((el,i)=>{
     const badge=el.querySelector('.num');if(badge)badge.textContent=String(i+1);
-    const handle=el.querySelector('.reorder-handle');if(handle)handle.setAttribute('aria-label',`Déplacer l’élément ${i+1}. Utilisez les flèches du clavier ou faites glisser.`);
+    const handle=el.querySelector('.reorder-handle');if(handle)handle.setAttribute('aria-label',onHandle?`Actions de l’élément ${i+1}. Utilisez les flèches du clavier pour le déplacer.`:`Déplacer l’élément ${i+1}. Utilisez les flèches du clavier ou faites glisser.`);
   })}
   if(withHandle)for(const el of items()){
     const handle=document.createElement('button');handle.type='button';handle.className='reorder-handle';handle.dataset.reorderHandle='';
@@ -73,7 +75,7 @@ function makeReorderable(host,{onChange,holdMs=320,itemSelector='[data-photo-id]
   function start(target,x,y,mode,id,immediate=false){
     if(drag)return;
     const card=target.closest(itemSelector);if(!card||card.parentElement!==host)return;
-    const button=target.closest('button');if(button&&button!==card&&!button.matches('[data-reorder-handle]'))return;
+    const button=target.closest('button');if(button&&button!==card&&(onHandle||!button.matches('[data-reorder-handle]')))return;
     const r=card.getBoundingClientRect();drag={card,mode,id,x,y,startX:x,startY:y,offsetX:x-r.left,offsetY:y-r.top,initial:ids().join(),original:items(),active:false};
     if(mode==='touch'){
       document.addEventListener('touchmove',touchMove,{passive:false});document.addEventListener('touchend',touchEnd);document.addEventListener('touchcancel',touchCancel);
@@ -111,10 +113,14 @@ function makeReorderable(host,{onChange,holdMs=320,itemSelector='[data-photo-id]
   }
   function touchEnd(e){if([...e.changedTouches].some(t=>t.identifier===drag?.id))finish()}
   function touchCancel(){finish(true)}
-  function click(e){if(Date.now()<suppressUntil||e.target.closest('[data-reorder-handle]')){e.preventDefault();e.stopImmediatePropagation()}}
+  function click(e){
+    const grip=e.target.closest('[data-reorder-handle]');
+    if(Date.now()<suppressUntil||grip){e.preventDefault();e.stopImmediatePropagation()}
+    if(grip&&onHandle&&Date.now()>=suppressUntil){const card=grip.closest(itemSelector);if(card)onHandle(card,grip)}
+  }
   function keydown(e){
     if(e.key==='Escape'&&drag){e.preventDefault();finish(true);return}
-    const handle=e.target.closest('[data-reorder-handle]')||(!withHandle&&e.altKey&&e.target.matches(itemSelector)?e.target:null);if(!handle)return;
+    const handle=e.target.closest('[data-reorder-handle]')||(e.altKey&&e.target.matches(itemSelector)?e.target:null);if(!handle)return;
     const delta={ArrowLeft:-1,ArrowUp:-1,ArrowRight:1,ArrowDown:1}[e.key];if(!delta)return;
     e.preventDefault();e.stopPropagation();const card=handle.closest(itemSelector),ordered=visible(),from=ordered.indexOf(card),to=from+delta;
     if(to<0||to>=ordered.length)return;

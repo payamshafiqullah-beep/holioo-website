@@ -38,13 +38,14 @@ function makeReorderable(host,{onChange,holdMs=320,itemSelector='[data-photo-id]
     window.removeEventListener('blur',cancelDrag);window.removeEventListener('resize',cancelDrag);
     if(!d.active)return;
     if(cancel)for(const el of d.original)host.appendChild(el);
-    d.ghost.remove();d.card.classList.remove('drag-placeholder');host.classList.remove('is-dragging');document.body.classList.remove('reorder-active');
+    d.ghost?.remove();d.card.classList.remove('drag-placeholder');host.classList.remove('is-dragging');document.body.classList.remove('reorder-active');
     suppressUntil=Date.now()+450;renumber();
     if(!cancel&&ids().join()!==d.initial){commit();announce.textContent=`Position ${visible().indexOf(d.card)+1} enregistrée.`}
     else announce.textContent=cancel?'Déplacement annulé.':'';
   }
   const cancelDrag=()=>finish(true);
   function lift(){
+    if(drag?.active)return;   // already lifted (the hold timer after an early lift): never a second ghost
     if(!drag||!host.isConnected)return finish(true);
     const d=drag,r=d.card.getBoundingClientRect();d.active=true;
     d.slots=visible().map(el=>{const b=el.getBoundingClientRect();return{x:b.left+b.width/2,y:b.top+b.height/2,width:b.width,height:b.height}});
@@ -90,7 +91,7 @@ function makeReorderable(host,{onChange,holdMs=320,itemSelector='[data-photo-id]
     drag.x=x;drag.y=y;
     if(drag.active){if(e.cancelable)e.preventDefault();return}
     if(Math.hypot(x-drag.startX,y-drag.startY)>10){
-      if(drag.mode==='touch')finish(true);else lift();
+      if(drag.mode==='touch')finish(true);else{clearTimeout(drag.timer);lift()}
     }
   }
   function pointerDown(e){

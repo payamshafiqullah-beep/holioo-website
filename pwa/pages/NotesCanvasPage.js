@@ -1,5 +1,5 @@
 // Notes on a tablet or computer (window ≥ 768 px, ui/desk-shell.js): one free page per séance, OneNote-style.
-// Second toolbar: select, pen, highlighter, stroke eraser, text box, arrow, rectangle | 4 colours | 3 sizes |
+// Second toolbar: select, pen, highlighter, stroke eraser, text box | 4 colours | 3 sizes |
 // background | stylus only | add space. Undo / redo and "Enregistrement… / Enregistré" are in the top bar (the spacer
 // of ui/desk-shell.js). A floating, collapsible tray on the left holds the séance's photos: drag one onto the page
 // (a tap places it in the middle of what is visible); new ones carry a badge, placed ones a check mark.
@@ -16,8 +16,7 @@ const CANVAS_MIN_STEP=.8;          // page units between two points of a stroke
 const CANVAS_SVG='http://www.w3.org/2000/svg';
 const CANVAS_TOOL_UI={
   select:['pointer','Sélection : déplacer, redimensionner'],pen:['penLine','Stylo'],highlighter:['highlighter','Surligneur'],
-  eraser:['eraser','Gomme : efface le trait entier ou seulement la partie touchée (voir le mode)'],text:['type','Zone de texte : touchez la page, double-cliquez pour modifier'],
-  arrow:['arrowUpRight','Flèche : glissez'],rect:['square','Rectangle : glissez']
+  eraser:['eraser','Gomme : efface le trait entier ou seulement la partie touchée (voir le mode)'],text:['type','Zone de texte : touchez la page, double-cliquez pour modifier']
 };
 const CANVAS_COLOR_NAMES={pen:['Noir','Bleu','Rouge','Vert'],highlighter:['Jaune','Vert','Rose','Bleu']};
 const canvasMeasureCtx=document.createElement('canvas').getContext('2d');
@@ -33,7 +32,7 @@ const canvasColor=(tool=canvasRuntime?.tool)=>{const k=canvasPaletteKind(tool);r
 
 // Called by the toolbar / pages / camera / presence.
 const canvasSessionId=()=>canvasRuntime?.root?.isConnected?canvasRuntime.session.id:null;
-const canvasBusy=()=>{const rt=canvasRuntime;return!!rt&&!!rt.root?.isConnected&&!!(rt.drawing||rt.drag||rt.editing||rt.erasing||rt.trayDrag||rt.shape||rt.exporting)};
+const canvasBusy=()=>{const rt=canvasRuntime;return!!rt&&!!rt.root?.isConnected&&!!(rt.drawing||rt.drag||rt.editing||rt.erasing||rt.trayDrag||rt.exporting)};
 function canvasCameraDestination(){const rt=canvasRuntime;return rt?{courseId:rt.course.id,sectionId:rt.section.id,sessionId:rt.session.id}:null}
 
 // ── Which séance ──
@@ -83,7 +82,7 @@ async function canvasCreateRuntime(course,section,session){
   if(!doc){doc=emptyCanvasDoc(session.id);doc.known=[...session.photoIds]}   // photos already there are not "new"
   if(!canvasHistories.has(session.id))canvasHistories.set(session.id,canvasHistory());
   const rt={course,section,session,store:canvasStore(doc),hist:canvasHistories.get(session.id),docStamp:doc.updatedAt,
-    tool:CANVAS_TOOLS.includes(canvasPrefs().tool)?canvasPrefs().tool:'pen',selected:null,editing:null,drawing:null,drag:null,erasing:null,shape:null,trayDrag:null,
+    tool:CANVAS_TOOLS.includes(canvasPrefs().tool)?canvasPrefs().tool:'pen',selected:null,editing:null,drawing:null,drag:null,erasing:null,trayDrag:null,
     touches:new Map(),pan:null,penUntil:0,lastTap:null,dirty:false,saveState:'saved',saveTimer:0,syncTimer:0,scale:1,
     itemEls:new Map(),inkEls:new Map(),urls:new Map(),arrivals:new Set(),guards:[],unsub:[],stale:false,exporting:false};
   return rt;
@@ -134,7 +133,7 @@ function canvasSetHeight(rt,h){
   rt.store.page.height=h;canvasLayout(rt);canvasDirty(rt);
 }
 
-// Photos, text and shapes: one element per item, kept in step with the document.
+// Photos and text: one element per item, kept in step with the document.
 async function canvasPhotoUrl(rt,id){
   if(!rt.urls.has(id))rt.urls.set(id,(async()=>{const row=await photoRow(id),blob=row&&photoBlob(row);return blob?URL.createObjectURL(blob):null})());
   return rt.urls.get(id);
@@ -169,11 +168,6 @@ function canvasUpdateItemEl(rt,it){
         el.replaceChildren(ta);
       }
     }else{el.replaceChildren();const pre=document.createElement('div');pre.className='cv-text-lines';pre.textContent=it.lines.join('\n');el.appendChild(pre)}
-  }else{
-    // Arrow, rectangle: an SVG over the item's box (a margin for the arrow head and the stroke), in page units.
-    const pad=40,box=it.type==='arrow'?canvasArrowBox(it.p):it,d=it.type==='arrow'?canvasArrowPath(it.p,it.size):canvasRectPath(it);
-    Object.assign(el.style,{left:`${box.x-pad}px`,top:`${box.y-pad}px`,width:`${box.w+2*pad}px`,height:`${box.h+2*pad}px`});
-    el.innerHTML=`<svg width="${box.w+2*pad}" height="${box.h+2*pad}" viewBox="${box.x-pad} ${box.y-pad} ${box.w+2*pad} ${box.h+2*pad}" aria-hidden="true"><path d="${d}" fill="none" stroke="${it.color}" stroke-width="${it.size}" stroke-linecap="round" stroke-linejoin="round"/><path class="hit" d="${d}" fill="none" stroke="transparent" stroke-width="${Math.max(22,it.size+16)}" stroke-linecap="round"/></svg>`;
   }
 }
 
@@ -193,10 +187,9 @@ function canvasSyncInk(rt){
 
 // Selection frame, resize handle and the little action bar. Drawn at screen size above the page (not scaled with it).
 function canvasItemBox(it){
-  if(it.type==='arrow'){const b=canvasArrowBox(it.p),m=Math.max(10,it.size*2.5);return{x:b.x-m,y:b.y-m,w:b.w+2*m,h:b.h+2*m}}
   return{x:it.x,y:it.y,w:it.w,h:it.h};
 }
-const canvasResizable=it=>it.type==='photo'||it.type==='rect'||it.type==='text';
+const canvasResizable=it=>it.type==='photo'||it.type==='text';
 function canvasRenderOverlay(rt){
   const it=rt.selected&&!rt.editing?canvasItem(rt,rt.selected):null,s=rt.scale,keep=rt.overlay.querySelector('.cv-eraser');
   rt.overlay.replaceChildren(...(keep?[keep]:[]));
@@ -319,7 +312,6 @@ function canvasCancelGesture(rt){
   if(rt.drawing){rt.drawing.path.remove();rt.drawing=null}
   if(rt.drag){rt.store.items.set(rt.drag.id,rt.drag.orig);rt.drag=null;canvasSyncItems(rt)}
   if(rt.erasing){for(const id of rt.erasing.created?.keys()||[])rt.store.strokes.delete(id);for(const s of rt.erasing.before)rt.store.strokes.set(s.id,s);rt.erasing=null;canvasSyncInk(rt)}
-  if(rt.shape){rt.shape.el.remove();rt.shape=null}
 }
 
 function canvasPlacePhotoAt(rt,photoId,center){
@@ -345,7 +337,7 @@ function canvasVisibleCenter(rt){
 
 function canvasSelectedChange(rt,make){
   const it=canvasItem(rt,rt.selected);if(!it)return;
-  const next=make({...it,p:it.p?[...it.p]:undefined});if(!next)return;
+  const next=make({...it});if(!next)return;
   rt.store.items.set(it.id,next);
   canvasCommit(rt,[canvasChangeUpdate('i',it,next)]);
   canvasSyncItems(rt);canvasRenderOverlay(rt);
@@ -359,7 +351,6 @@ function canvasDeleteSelected(rt){
 function canvasDuplicateSelected(rt){
   const it=canvasItem(rt,rt.selected);if(!it)return;
   const dx=Math.min(30,CANVAS_W-(it.x+it.w)),dup={...it,id:uid(),x:it.x+Math.max(0,dx),y:it.y+30,z:canvasNextZ([...rt.store.items.values()])};
-  if(it.p){dup.p=it.p.map((v,i)=>v+(i%2?30:Math.max(0,dx)));Object.assign(dup,canvasArrowBox(dup.p))}
   delete dup.deleted;
   canvasGrowFor(rt,dup.y+dup.h);
   rt.store.items.set(dup.id,dup);canvasCommit(rt,[canvasChangeCreate('i',dup)]);
@@ -495,7 +486,7 @@ function canvasToolsClick(rt,e){
       const size=CANVAS_SIZES.text[i];
       if(rt.editing){rt.editing.item.size=size;rt.editing.item.h=canvasTextHeight(1,size);canvasUpdateItemEl(rt,rt.editing.item)}
       else canvasSelectedChange(rt,o=>{const lines=canvasLayoutText(o.text,o.w-2*CANVAS_TEXT_PAD,canvasMeasure(size));return{...o,size,lines,h:canvasTextHeight(lines.length,size)}});
-    }else if(sel&&(sel.type==='arrow'||sel.type==='rect'))canvasSelectedChange(rt,o=>({...o,size:CANVAS_SIZES.shape[i]}));
+    }
     canvasRenderTools(rt);return;
   }
   if(d.cvSnap!==undefined){prefs.snap=!prefs.snap;saveState();canvasRenderTools(rt);showToast(prefs.snap?'Formes automatiques activées':'Formes automatiques désactivées');return}
@@ -547,7 +538,6 @@ function canvasDown(rt,e){
   if(rt.tool==='pen'||rt.tool==='highlighter')return canvasInkDown(rt,e,p);
   if(rt.tool==='eraser'){rt.erasing={pointerId:e.pointerId,before:[],created:new Map(),partial:canvasEraseMode()==='partial'};rt.sheet.setPointerCapture(e.pointerId);canvasEraseAt(rt,p,e);e.preventDefault();return}
   if(rt.tool==='text'){rt.pendingText={id:e.pointerId,x:e.clientX,y:e.clientY,p,hit:canvasHitItem([...rt.store.items.values()],p.x,p.y,canvasTol(rt))};return}
-  if(rt.tool==='arrow'||rt.tool==='rect')return canvasShapeDown(rt,e,p);
 }
 function avg(map,k){let s=0;for(const v of map.values())s+=v[k];return s/map.size}
 
@@ -576,7 +566,6 @@ function canvasMove(rt,e){
     e.preventDefault();return;
   }
   if(rt.erasing&&rt.erasing.pointerId===e.pointerId){canvasEraseAt(rt,p,e);e.preventDefault();return}
-  if(rt.shape&&rt.shape.pointerId===e.pointerId){canvasShapeMove(rt,p);e.preventDefault()}
 }
 function canvasUp(rt,e){
   rt.touches.delete(e.pointerId);
@@ -586,7 +575,6 @@ function canvasUp(rt,e){
   const d=rt.drawing;
   if(d&&d.pointerId===e.pointerId){canvasInkEnd(rt,d);e.preventDefault();return}
   if(rt.erasing&&rt.erasing.pointerId===e.pointerId){canvasEraseEnd(rt);return}
-  if(rt.shape&&rt.shape.pointerId===e.pointerId){canvasShapeEnd(rt,p);return}
   if(rt.pendingText&&rt.pendingText.id===e.pointerId){
     const pt=rt.pendingText;rt.pendingText=null;
     if(pt.hit?.type==='text')canvasEditText(rt,pt.hit,false);else canvasNewText(rt,pt.p);
@@ -600,7 +588,6 @@ function canvasCancel(rt,e){
   if(rt.drawing&&rt.drawing.pointerId===e.pointerId){rt.drawing.path.remove();rt.drawing=null}
   if(rt.drag&&rt.drag.pointerId===e.pointerId){const g=rt.drag;rt.store.items.set(g.id,g.orig);rt.drag=null;canvasSyncItems(rt);canvasRenderOverlay(rt)}
   if(rt.erasing&&rt.erasing.pointerId===e.pointerId)canvasEraseEnd(rt);
-  if(rt.shape&&rt.shape.pointerId===e.pointerId){rt.shape.el.remove();rt.shape=null}
 }
 
 // Select: move an item by dragging it, resize from the corner (a photo keeps its proportions).
@@ -616,7 +603,7 @@ function canvasSelectDown(rt,e,p){
   else it=canvasHitItem([...rt.store.items.values()],p.x,p.y,canvasTol(rt));
   if(!it){rt.pendingDeselect={id:e.pointerId,x:e.clientX,y:e.clientY};return}
   rt.selected=it.id;
-  rt.drag={mode,id:it.id,pointerId:e.pointerId,sx:p.x,sy:p.y,cx:e.clientX,cy:e.clientY,orig:{...it,p:it.p?[...it.p]:undefined},moved:false,tap:rt.lastTap};
+  rt.drag={mode,id:it.id,pointerId:e.pointerId,sx:p.x,sy:p.y,cx:e.clientX,cy:e.clientY,orig:{...it},moved:false,tap:rt.lastTap};
   canvasRenderOverlay(rt);
   rt.sheet.setPointerCapture(e.pointerId);e.preventDefault();
 }
@@ -624,20 +611,17 @@ function canvasDragMove(rt,e,p){
   const g=rt.drag;
   if(!g.moved&&Math.hypot(e.clientX-g.cx,e.clientY-g.cy)<4)return;
   g.moved=true;
-  const o=g.orig,dx=p.x-g.sx,dy=p.y-g.sy,it={...o,p:o.p?[...o.p]:undefined};
+  const o=g.orig,dx=p.x-g.sx,dy=p.y-g.sy,it={...o};
   if(g.mode==='move'){
-    const box=o.p?canvasArrowBox(o.p):o,nx=canvasClamp(box.x+dx,0,Math.max(0,CANVAS_W-box.w)),ny=Math.max(0,box.y+dy),mx=nx-box.x,my=ny-box.y;
-    if(o.p){it.p=o.p.map((v,i)=>v+(i%2?my:mx));Object.assign(it,canvasArrowBox(it.p))}else{it.x=canvasRound(nx);it.y=canvasRound(ny)}
+    it.x=canvasRound(canvasClamp(o.x+dx,0,Math.max(0,CANVAS_W-o.w)));it.y=canvasRound(Math.max(0,o.y+dy));
   }else if(o.type==='photo'){
     const ratio=o.w/o.h,w=canvasClamp(o.w+dx,CANVAS_PHOTO_MIN_W,CANVAS_W-o.x);it.w=canvasRound(w);it.h=canvasRound(w/ratio);
-  }else if(o.type==='rect'){
-    it.w=canvasRound(canvasClamp(o.w+dx,20,CANVAS_W-o.x));it.h=canvasRound(Math.max(20,o.h+dy));
   }else if(o.type==='text'){
     it.w=canvasRound(canvasClamp(o.w+dx,120,CANVAS_W-o.x));
     it.lines=canvasLayoutText(it.text,it.w-2*CANVAS_TEXT_PAD,canvasMeasure(it.size));it.h=canvasTextHeight(it.lines.length,it.size);
   }
   rt.store.items.set(it.id,it);
-  canvasGrowFor(rt,(it.p?canvasArrowBox(it.p).y+canvasArrowBox(it.p).h:it.y+it.h));
+  canvasGrowFor(rt,it.y+it.h);
   canvasUpdateItemEl(rt,it);canvasRenderOverlay(rt);
 }
 function canvasDragEnd(rt,e,p){
@@ -723,35 +707,6 @@ function canvasEraserCursor(rt,e){
   Object.assign(c.style,{display:'block',width:`${r*2}px`,height:`${r*2}px`,left:`${e.clientX-s.left}px`,top:`${e.clientY-s.top}px`});
 }
 
-// Arrow and rectangle: drag; a preview while dragging.
-function canvasShapeDown(rt,e,p){
-  rt.selected=null;canvasRenderOverlay(rt);
-  const el=document.createElementNS(CANVAS_SVG,'svg');el.setAttribute('class','cv-preview');el.setAttribute('width',CANVAS_W*rt.scale);el.setAttribute('height',rt.store.page.height*rt.scale);el.setAttribute('viewBox',`0 0 ${CANVAS_W} ${rt.store.page.height}`);
-  const path=document.createElementNS(CANVAS_SVG,'path');
-  const size=CANVAS_SIZES.shape[canvasPrefs().size],color=canvasColor('pen');
-  for(const[k,v]of Object.entries({fill:'none',stroke:color,'stroke-width':size,'stroke-linecap':'round','stroke-linejoin':'round'}))path.setAttribute(k,v);
-  el.appendChild(path);rt.overlay.appendChild(el);
-  rt.shape={pointerId:e.pointerId,type:rt.tool,start:p,end:p,el,path,size,color};
-  rt.sheet.setPointerCapture(e.pointerId);e.preventDefault();
-}
-const canvasShapeOf=sh=>sh.type==='arrow'?{p:[sh.start.x,sh.start.y,sh.end.x,sh.end.y]}:{x:Math.min(sh.start.x,sh.end.x),y:Math.min(sh.start.y,sh.end.y),w:Math.abs(sh.end.x-sh.start.x),h:Math.abs(sh.end.y-sh.start.y)};
-function canvasShapeMove(rt,p){
-  const sh=rt.shape;sh.end={x:canvasClamp(p.x,0,CANVAS_W),y:Math.max(0,p.y)};
-  const g=canvasShapeOf(sh);
-  sh.path.setAttribute('d',sh.type==='arrow'?canvasArrowPath(g.p,sh.size):canvasRectPath(g));
-  canvasGrowFor(rt,sh.end.y);
-}
-function canvasShapeEnd(rt,p){
-  const sh=rt.shape;rt.shape=null;sh.el.remove();
-  try{rt.sheet.releasePointerCapture(sh.pointerId)}catch{}
-  sh.end={x:canvasClamp(p.x,0,CANVAS_W),y:Math.max(0,p.y)};
-  const g=canvasShapeOf(sh);
-  if(Math.hypot(sh.end.x-sh.start.x,sh.end.y-sh.start.y)<12)return;     // a tap, not a drag
-  const base={id:uid(),type:sh.type,z:canvasNextZ([...rt.store.items.values()]),color:sh.color,size:sh.size,updatedAt:Date.now()};
-  const it=sh.type==='arrow'?{...base,...canvasArrowBox(g.p),p:g.p.map(v=>canvasRound(v))}:{...base,x:canvasRound(g.x),y:canvasRound(g.y),w:canvasRound(g.w),h:canvasRound(g.h)};
-  rt.store.items.set(it.id,it);canvasCommit(rt,[canvasChangeCreate('i',it)]);
-  canvasSyncItems(rt);canvasAfterGesture(rt);
-}
 // A remote change that arrived mid-gesture is drawn once the gesture is over.
 function canvasAfterGesture(rt){
   if(!rt.stale||canvasBusy())return;
@@ -777,7 +732,7 @@ function canvasRenderTray(rt,{flash=null}={}){
   if(!rt.tray||rt.trayDrag?.started)return;
   const ids=canvasTrayIds(rt),placed=new Set([...rt.store.items.values()].filter(i=>!i.deleted&&i.type==='photo').map(i=>i.photoId));
   const fresh=new Set(ids.filter(id=>!rt.store.known.has(id)&&!placed.has(id)));
-  const open=canvasPrefs().tray!=='closed';
+  const open=canvasPrefs().tray!=='closed',pdfs=state.files.filter(f=>f.sessionIds?.includes(rt.session.id));   // the séance's PDFs, as on the phone's séance screen
   rt.trayShown=new Set(ids);   // what the tray showed (the badge on the button counts as shown too): "seen" when the page is left
   rt.tray.className=`cv-tray ${open?'open':'closed'}`;
   if(!open){
@@ -786,10 +741,17 @@ function canvasRenderTray(rt,{flash=null}={}){
   }
   rt.tray.innerHTML=`<div class="cv-tray-panel">
     <header><strong>Photos</strong><span class="cv-tray-n">${ids.length}</span><button class="cv-tray-close" type="button" data-cv-tray-toggle aria-expanded="true" title="Réduire" aria-label="Réduire les photos">${icon('chevronLeft',{size:18})}</button></header>
+    ${pdfs.length?`<ul class="cv-pdf-list" aria-label="PDF de la séance">${pdfs.map(f=>`<li class="cv-pdf" data-pdf-id="${f.id}"><button class="cv-pdf-open" type="button" aria-label="Ouvrir ${esc(f.title)}">${icon('fileText',{size:18})}<span>${esc(f.title)}</span></button><button class="cv-pdf-more" type="button" aria-label="Plus d’actions pour ${esc(f.title)}">${icon('more',{size:16})}</button></li>`).join('')}</ul>`:''}
     ${ids.length?`<ul class="cv-tray-list">${ids.map((id,i)=>`<li><button class="cv-thumb${placed.has(id)?' placed':''}${fresh.has(id)?' is-new':''}" type="button" data-photo-id="${id}" aria-label="Photo ${i+1}${fresh.has(id)?', nouvelle':''}${placed.has(id)?', déjà placée':''} : toucher pour placer sur la page, ou glisser"><img alt="" draggable="false"><span class="cv-skel"></span>${fresh.has(id)?'<span class="cv-badge new">Nouveau</span>':placed.has(id)?`<span class="cv-badge check" aria-hidden="true">${icon('check',{size:13,stroke:3})}</span>`:''}</button></li>`).join('')}</ul>
     <p class="cv-tray-hint">Touchez une photo pour la placer, ou glissez-la sur la page.</p>`
       :`<p class="cv-tray-empty">Aucune photo dans cette séance. Prenez-en avec le téléphone : elles arrivent ici.</p>`}
   </div>`;
+  rt.tray.querySelectorAll('.cv-pdf').forEach(li=>{
+    const meta=state.files.find(f=>f.id===li.dataset.pdfId);if(!meta)return;
+    li.querySelector('.cv-pdf-open').onclick=()=>openPdfViewer(meta.id,'session');
+    attachItemMenu(li,pdfSessionMenu(meta),{press:false});   // Déplacer / Supprimer, same as on the phone
+    li.querySelector('.cv-pdf-more').onclick=()=>itemMenuFromHandle(li,li.querySelector('.cv-pdf-more'));
+  });
   rt.tray.querySelectorAll('.cv-thumb').forEach(b=>{
     const id=b.dataset.photoId,img=b.querySelector('img');
     photoThumbUrl(id).then(url=>{if(url&&img.isConnected){img.src=url;b.classList.add('loaded')}}).catch(()=>{});

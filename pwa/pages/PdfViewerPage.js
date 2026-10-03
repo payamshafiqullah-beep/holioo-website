@@ -13,6 +13,8 @@ async function renderPdfViewer(){
     </header>
     <div class="pdf-frame-wrap"><div class="pdf-pages" id="pdfPages"><p class="pdf-loading">Chargement du PDF…</p></div>
       <button class="pdf-fs-btn" id="pdfFullscreen" type="button" aria-label="Plein écran" aria-pressed="false">${icon('maximize',{size:20})}</button>
+      <button class="pdf-corner-back" id="pdfCornerBack" type="button" aria-label="Retour">${icon('chevronLeft',{size:20})}</button>
+      <output class="pdf-pill" id="pdfPill" aria-live="polite">1 / 1</output>
       <div class="pdf-pager" id="pdfPager" hidden>
         <button type="button" id="pdfPrev" aria-label="Page précédente">${icon('chevronLeft',{size:18})}</button>
         <output id="pdfPageNow" aria-live="polite">1 / 1</output>
@@ -40,28 +42,31 @@ async function renderPdfViewer(){
   // Last page, scroll position and zoom are kept per PDF on this device and restored on reopening.
   const posKey=`holioo.pdfpos.${meta.id}`;
   let saved={};try{saved=JSON.parse(localStorage.getItem(posKey)||'{}')||{}}catch{}
-  let ctl=null;
+  let ctl=null,ink=null;
   const savePos=()=>{if(!ctl||!host.isConnected)return;try{localStorage.setItem(posKey,JSON.stringify({page:ctl.page(),ratio:+ctl.pageRatio().toFixed(3),zoom:+ctl.zoom.toFixed(2)}))}catch{}};
   // Full screen: the real Fullscreen API where it exists, always the immersive layout (header and dock hidden; iPhone has no element fullscreen).
-  const setImmersive=on=>{viewer.classList.toggle('pdf-immersive',on);fsBtn.setAttribute('aria-pressed',String(on));fsBtn.setAttribute('aria-label',on?'Quitter le plein écran':'Plein écran');fsBtn.innerHTML=icon(on?'minimize':'maximize',{size:20});setTimeout(()=>host.dispatchEvent(new Event('scroll')),50)};
+  const setImmersive=on=>{viewer.classList.toggle('pdf-immersive',on);fsBtn.setAttribute('aria-pressed',String(on));fsBtn.setAttribute('aria-label',on?'Quitter le plein écran':'Plein écran');fsBtn.innerHTML=icon(on?'minimize':'maximize',{size:20});ink?.fullscreen(on);setTimeout(()=>host.dispatchEvent(new Event('scroll')),50)};
   const onFsChange=()=>{if(!document.fullscreenElement&&viewer.classList.contains('pdf-immersive'))setImmersive(false)};
   document.addEventListener('fullscreenchange',onFsChange);
   fsBtn.onclick=async()=>{
     const on=!viewer.classList.contains('pdf-immersive');setImmersive(on);
     try{if(on)await viewer.requestFullscreen?.();else if(document.fullscreenElement)await document.exitFullscreen()}catch{}
   };
-  const leave=()=>{savePos();document.removeEventListener('fullscreenchange',onFsChange);if(document.fullscreenElement)document.exitFullscreen?.().catch(()=>{})};
-  byId('pdfBack').onclick=()=>{leave();revokeViewerUrl();navigate(currentPdfReturnView||'files')};
-  window.addEventListener('pagehide',savePos,{once:true});
+  const leave=()=>{savePos();ink?.flush();document.removeEventListener('fullscreenchange',onFsChange);if(document.fullscreenElement)document.exitFullscreen?.().catch(()=>{})};
+  byId('pdfBack').onclick=byId('pdfCornerBack').onclick=()=>{leave();revokeViewerUrl();navigate(currentPdfReturnView||'files')};
+  window.addEventListener('pagehide',()=>{savePos();ink?.flush()},{once:true});
   try{
     ctl=await renderPdfPages(row.blob,host,{zoom:saved.zoom||1,page:saved.page||1,ratio:saved.ratio||0,
       onCount:n=>{byId('pdfPageCount')&&(byId('pdfPageCount').textContent=plural(n,'page'));if(meta.pages!==n){meta.pages=n;saveState()}},
       onPage:(n,total,info)=>{
-        const now=byId('pdfPageNow');if(!now)return;now.textContent=`${n} / ${total}`;
+        const now=byId('pdfPageNow');if(!now)return;now.textContent=`${n} / ${total}`;byId('pdfPill').textContent=`${n} / ${total}`;
         byId('pdfZoomNow').textContent=`${Math.round((ctl?.zoom??saved.zoom??1)*100)} %`;
         if(info?.settled||info?.zoom)savePos();
       }});
     if(!ctl||!host.isConnected)return;
+    try{ink=await createPdfInk({fileId:meta.id,host,boxes:ctl.boxes,aspects:ctl.aspects,viewer,frame:host.parentElement})}catch(err){console.warn(err)}   // no ink must never cost the reader
+    if(!host.isConnected){ink?.destroy();return}
+    ink?.fullscreen(viewer.classList.contains('pdf-immersive'));
     byId('pdfPager').hidden=false;
     byId('pdfZoomNow').textContent=`${Math.round(ctl.zoom*100)} %`;
     byId('pdfPrev').onclick=()=>ctl.goTo(Math.max(1,(ctl.pageRatio()>.05?ctl.page():ctl.page()-1)));

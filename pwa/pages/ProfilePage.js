@@ -12,7 +12,7 @@ function renderProfile(){
       </label>
       <span class="profile-card-copy">
         <strong>${esc(p.displayName)}</strong>
-        <small>${esc(p.email||currentUser?.email||'')}${p.holiooId?` · @${esc(p.holiooId)}`:''}</small>
+        <small class="profile-id-line">${esc(p.email||currentUser?.email||'')}${p.holiooId?` · <span class="profile-id-text">@${esc(p.holiooId)}</span><button class="copy-id-btn" id="copyHoliooId" type="button" aria-label="Copier l’identifiant Holioo" title="Copier l’identifiant">${icon('copy',{size:15})}</button>`:''}</small>
         ${Tag(p.publicProfile?'Profil public':'Profil privé',p.publicProfile?'sky':'mint')}
       </span>
     </div>
@@ -26,19 +26,19 @@ function renderProfile(){
         ${Field({label:'Filière / majeure',id:'pProgram',value:p.program})}
         <div class="field-row">${Field({label:'Niveau',id:'pLevel',value:p.level})}${Field({label:'Semestre',id:'pSemester',value:p.semester})}</div>
         ${Field({label:'Année universitaire',id:'pYear',value:p.academicYear})}
-        <label class="toggle-row"><span class="list-card-copy"><strong>Profil public facultatif</strong><small>Trouvable uniquement avec l’identifiant Holioo exact. Aucun chat ni abonnement.</small></span><input type="checkbox" id="pPublic" class="switch" ${p.publicProfile?'checked':''}></label>
+        <label class="toggle-row"><span class="list-card-copy"><strong>Profil public facultatif</strong><small>Affiche votre nom et votre identifiant sur le matériel que vous publiez dans la bibliothèque. Aucun chat ni abonnement.</small></span><input type="checkbox" id="pPublic" class="switch" ${p.publicProfile?'checked':''}></label>
         ${ActionButton({label:'Enregistrer',id:'saveProfile',iconName:'check'})}
       </div>
     </details>
     <div class="list-stack">
       <label class="list-card static toggle-row">${IconBadge('sparkles','lavender','md')}<span class="list-card-copy"><strong>Mode sombre</strong><small>Thème sombre pour toute l’application.</small></span><input type="checkbox" id="pDark" class="switch" ${document.documentElement.dataset.theme==='dark'?'checked':''}></label>
+      ${ListCard({iconName:'users',tone:'sky',title:'Personnes',meta:'Les personnes ajoutées et vos partages',attrs:'data-nav="people"'})}
       ${notebookCanEdit()?`<label class="list-card static toggle-row">${IconBadge('pencil','mint','md')}<span class="list-card-copy"><strong>Dessiner avec le doigt</strong><small>Désactivé par défaut pour éviter les marques avec la main.</small></span><input type="checkbox" id="pDrawFinger" class="switch" ${state.settings.drawWithFinger?'checked':''}></label>`:''}
       ${ListCard({iconName:'cloud',tone:'sky',title:'Google Drive & synchronisation',attrs:'data-nav="sync"'})}
       ${ListCard({iconName:'search',tone:'mint',title:'Rechercher un Holioo ID',attrs:'id="searchId"'})}
       ${currentRole==='admin'?ListCard({iconName:'users',tone:'lavender',title:'Administration des utilisateurs',attrs:'data-nav="admin"'}):''}
       ${ListCard({iconName:'arrowLeft',tone:'pink',title:guestMode?'Quitter le mode test':'Se déconnecter',attrs:'id="logoutBtn"',trailing:false})}
     </div>
-    <div id="idSearchResult"></div>
     <p class="legal-links"><a href="/confidentialite.html" target="_blank" rel="noopener">Politique de confidentialité</a> · <a href="/conditions.html" target="_blank" rel="noopener">Conditions d’utilisation</a></p>
   </section>`;
   byId('backBtn').onclick=()=>navigate('home');
@@ -69,5 +69,6 @@ function renderProfile(){
     }finally{e.target.value=''}
   };
   byId('saveProfile').onclick=async()=>{Object.assign(state.profile,{displayName:byId('pName').value.trim()||'Étudiant',university:byId('pUni').value.trim(),faculty:byId('pFaculty').value.trim(),program:byId('pProgram').value.trim(),level:byId('pLevel').value.trim(),semester:byId('pSemester').value.trim(),academicYear:byId('pYear').value.trim()||'2026–2027',publicProfile:byId('pPublic').checked});saveState();try{await syncProfile();showToast('Profil enregistré')}catch{showToast('Profil enregistré localement')}render()};
-  byId('searchId').onclick=()=>openSheet({title:'Rechercher un Holioo ID',subtitle:'Recherche exacte uniquement.',body:Field({label:'Identifiant',id:'holiooLookup',placeholder:'Ex. h1234567890'}),confirmText:'Rechercher',onConfirm:async close=>{const id=byId('holiooLookup').value.trim().replace(/^@/,'');if(!id||!sb){showToast('Connexion Internet nécessaire');return false}const{data}=await sb.from('profiles').select('holioo_id,name,display_name,university,program,level,semester,public_profile,is_public').eq('holioo_id',id).maybeSingle();close();byId('idSearchResult').innerHTML=data&&(data.public_profile||data.is_public)?`<div class="list-card static">${IconBadge('user','sky','md')}<span class="list-card-copy"><strong>${esc(data.name||data.display_name||'Étudiant')}</strong><small>@${esc(data.holioo_id)} · ${esc([data.university,data.program,data.level,data.semester].filter(Boolean).join(' · '))}</small><small>Consultation uniquement — aucun bouton de contact.</small></span></div>`:Notice('Profil introuvable ou privé.','peach');return false}});
+  byId('copyHoliooId')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();copyHoliooId(p.holiooId).then(ok=>{if(!ok)return;const b=byId('copyHoliooId');if(b){b.innerHTML=icon('check',{size:15});setTimeout(()=>{if(byId('copyHoliooId'))byId('copyHoliooId').innerHTML=icon('copy',{size:15})},1500)}})});
+  byId('searchId').onclick=()=>{if(guestMode||!currentUser){showToast('Connectez-vous avec Google pour ajouter des personnes');return}openPeopleSearchSheet(()=>navigate('people'))};
 }

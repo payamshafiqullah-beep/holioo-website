@@ -1298,6 +1298,71 @@ body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
 }
 
 /* =====================================================================
+   PEOPLE + HOLIOO SHARES — avatars, people list, "share with people" sheet, Holioo Shares groups, copy-ID button.
+   Token-based (light + dark). The compact Épuré sizes (≥720px) are in the media block at the end of this section.
+   ===================================================================== */
+.profile-id-line{display:flex;flex-wrap:wrap;align-items:center;gap:2px 4px;min-width:0}
+.profile-id-text{overflow-wrap:anywhere}
+.copy-id-btn{position:relative;display:inline-grid;place-items:center;width:28px;height:28px;flex:none;border-radius:50%;color:var(--accent);background:transparent;transition:background .15s var(--ease),transform .15s var(--ease)}
+.copy-id-btn::after{content:"";position:absolute;inset:-8px}
+.copy-id-btn:active{transform:scale(.92);background:var(--accent-soft)}
+.copy-id-btn:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+.ppl-avatar{display:grid;place-items:center;flex:none;width:44px;height:44px;border-radius:50%;overflow:hidden;background:linear-gradient(145deg,#8C95FF,var(--accent));color:#fff;font-weight:700;font-size:17px}
+.ppl-avatar img{width:100%;height:100%;object-fit:cover;display:block;-webkit-touch-callout:none;user-select:none}
+.ppl-avatar.sm{width:28px;height:28px;font-size:13px}
+.ppl-avatar.lg{width:52px;height:52px;font-size:20px}
+.ppl-list{display:flex;flex-direction:column;gap:var(--s2);margin:var(--s3) 0}
+.ppl-list-sheet{max-height:42dvh;overflow:auto;margin:var(--s3) 0 var(--s2);-webkit-overflow-scrolling:touch}
+.ppl-row{display:flex;align-items:center;gap:var(--s3);min-height:60px;padding:var(--s2) var(--s3);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-sm)}
+.ppl-pick{cursor:pointer}
+.ppl-copy{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
+.ppl-copy strong{font-size:16px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ppl-copy small{font-size:13px;color:var(--muted);line-height:1.35}
+.ppl-meta{font-weight:600;letter-spacing:.01em}
+.ppl-note{margin:var(--s3) 0;color:var(--muted);font-size:14px}
+.ppl-found{min-height:8px;margin-top:var(--s2)}
+.ppl-found .ppl-row{box-shadow:none;border:1px solid var(--line)}
+.ppl-tag{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:99px;background:var(--accent-soft);color:var(--accent);font-size:13px;font-weight:600;white-space:nowrap}
+.action-btn.ppl-add{width:auto;flex:none;min-height:40px;padding:0 var(--s4)}
+.action-btn.ppl-revoke{width:auto;flex:none;min-height:36px;padding:0 var(--s3);font-size:13px}
+.ppl-sent .ppl-copy strong{font-size:15px}
+.ppl-remove{color:#b4233a}
+
+.hs-group{margin:var(--s4) 0 var(--s5)}
+.hs-sender{display:flex;align-items:center;gap:var(--s2);min-width:0;margin-bottom:var(--s2)}
+.hs-sender strong{font-size:15px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hs-doc{margin-bottom:var(--s3)}
+.hs-meta{margin:0 0 4px var(--s1);font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hs-doc-row{display:flex;align-items:center;gap:var(--s2)}
+.hs-doc-row .hs-open{flex:1;min-width:0}
+.hs-remove{flex:none}
+.shared-viewer .viewer-title small{white-space:normal}
+.shared-photo{margin:0 0 var(--s3)}
+.shared-photo img{display:block;width:100%;height:auto;border-radius:var(--r-md);-webkit-touch-callout:none;user-select:none}
+.shared-photo figcaption{margin-top:4px;text-align:center;font-size:12px;color:var(--muted)}
+@media (max-width:359px){.ppl-row{padding:var(--s2)}.action-btn.ppl-revoke{font-size:12px;padding:0 var(--s2)}}
+
+/* Épuré (tablet / computer): 6px radius, 1px borders, compact sizes; a transparent layer keeps finger targets ≥ 40px. */
+@media (min-width:720px) and (min-height:521px),(min-width:960px){
+  .ppl-row{min-height:44px;gap:var(--s3);padding:var(--s2) var(--s3);border:1px solid var(--line);border-radius:6px;box-shadow:none}
+  .ppl-avatar{width:32px;height:32px;font-size:13px}
+  .ppl-avatar.sm{width:24px;height:24px;font-size:11px}
+  .ppl-avatar.lg{width:40px;height:40px;font-size:15px}
+  .ppl-copy strong,.ppl-sent .ppl-copy strong{font-size:13px}
+  .ppl-copy small,.ppl-note,.hs-meta{font-size:12px}
+  .ppl-tag{padding:2px 8px;font-size:12px;border-radius:6px}
+  .action-btn.ppl-add,.action-btn.ppl-revoke{min-height:28px;padding:0 var(--s3);font-size:12px;border-radius:6px}
+  .hs-sender strong{font-size:13px}
+  .hs-doc-row .hs-open{min-height:40px}
+  .shared-photo img{border-radius:6px}
+  .copy-id-btn{width:22px;height:22px}
+  .ppl-remove,.hs-remove{width:28px;height:28px;position:relative}
+  .ppl-remove::after,.hs-remove::after,.action-btn.ppl-add::after,.action-btn.ppl-revoke::after{content:"";position:absolute;inset:-6px -2px}
+  .action-btn.ppl-add,.action-btn.ppl-revoke{position:relative}
+}
+
+/* =====================================================================
    TABLET & COMPUTER (window ≥ 768px) — icon toolbar on top, course navigator on the left, breadcrumb, wide canvas.
    Every rule is scoped to .desk, which ui/desk-shell.js puts on #appShell only at that width:
    phones and the 720–767px rail never match anything below. The navigator is docked; the toolbar's sidebar

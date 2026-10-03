@@ -1,4 +1,4 @@
-const VIEWS={login:()=>renderLogin(),blocked:()=>renderBlocked(),admin:()=>renderAdmin(),academicSetup:()=>renderAcademicSetup(),home:()=>renderHome(),courses:()=>renderCourses(),course:()=>renderCourse(),section:()=>renderSection(),session:()=>renderSession(),capture:()=>renderCapture(),scanReview:()=>renderScanReview(),captureComplete:()=>renderCaptureComplete(),split:()=>renderSplit(),organize:()=>renderOrganize(),inbox:()=>renderInbox(),photoViewer:()=>renderPhotoViewer(),pdfBuilder:()=>renderPdfBuilder(),pdfViewer:()=>renderPdfViewer(),files:()=>renderFiles(),library:()=>renderLibrary(),profile:()=>renderProfile(),sync:()=>renderSync(),live:()=>renderLiveCapture(),gallery:()=>renderGallery(),notes:()=>renderNotesCanvas()};
+const VIEWS={login:()=>renderLogin(),blocked:()=>renderBlocked(),admin:()=>renderAdmin(),academicSetup:()=>renderAcademicSetup(),home:()=>renderHome(),courses:()=>renderCourses(),course:()=>renderCourse(),section:()=>renderSection(),session:()=>renderSession(),capture:()=>renderCapture(),scanReview:()=>renderScanReview(),captureComplete:()=>renderCaptureComplete(),split:()=>renderSplit(),organize:()=>renderOrganize(),inbox:()=>renderInbox(),photoViewer:()=>renderPhotoViewer(),pdfBuilder:()=>renderPdfBuilder(),pdfViewer:()=>renderPdfViewer(),files:()=>renderFiles(),library:()=>renderLibrary(),profile:()=>renderProfile(),sync:()=>renderSync(),live:()=>renderLiveCapture(),gallery:()=>renderGallery(),notes:()=>renderNotesCanvas(),people:()=>renderPeople(),holiooShares:()=>renderHolioShares(),sharedViewer:()=>renderSharedViewer()};
 // Tablet / computer: the course navigator replaces the course page, the type page and the course list — those screens
 // (still the phone's own) open the Galerie on what they were about.
 const DESK_REDIRECT={courses:'gallery',course:'gallery',section:'gallery'};
@@ -17,7 +17,7 @@ async function render(){
     if(currentView!=='section')currentSectionId=null;
     currentSessionId=null;currentView=DESK_REDIRECT[currentView];
   }
-  setChrome(['login','blocked','academicSetup','photoViewer','pdfViewer','capture','scanReview','admin'].includes(currentView));
+  setChrome(['login','blocked','academicSetup','photoViewer','pdfViewer','capture','scanReview','admin','sharedViewer'].includes(currentView));
   if(typeof flushNoteSaves==='function')flushNoteSaves();
   if(typeof liveCleanup==='function'){liveCleanup();liveCleanup=null}
   if(typeof galleryCleanup==='function'){galleryCleanup();galleryCleanup=null}

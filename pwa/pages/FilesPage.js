@@ -108,6 +108,7 @@ async function openFileMenu(fileId){
   openActionSheet(meta.title,[
     {label:'Ouvrir',iconName:'maximize',onClick:()=>openPdfViewer(fileId,'files')},
     {label:'Partager',iconName:'share',tone:'sky',onClick:()=>sharePdf(meta,row)},
+    {label:'Partager avec des personnes Holioo',iconName:'users',tone:'lavender',onClick:()=>sharePdfWithPeople(meta,row)},
     {label:'Publier dans la bibliothèque',iconName:'globe',tone:'mint',onClick:()=>publishPdfToLibrary(meta,row)},
     {label:'Enregistrer une copie',iconName:'download',tone:'mint',onClick:()=>downloadPdf(meta,row)},
     {label:row.driveFileId?'Déjà dans Google Drive':'Synchroniser vers Drive',iconName:'cloud',tone:'peach',onClick:()=>syncPdfNow(meta,row)}

@@ -7,13 +7,13 @@ const pageFiles=[
   './pages/CourseDetailPage.js','./pages/SectionPage.js','./pages/SessionPage.js','./pages/GalleryDeskPage.js','./pages/NotesCanvasPage.js','./pages/LiveCapturePage.js','./pages/CapturePage.js','./pages/ScanReviewPage.js',
   './pages/CaptureCompletePage.js','./pages/SplitBatchPage.js','./pages/OrganizeBatchPage.js','./pages/InboxPage.js',
   './pages/PhotoViewerPage.js','./pages/PdfBuilderPage.js','./pages/PdfViewerPage.js','./pages/FilesPage.js',
-  './pages/AcademicLibraryPage.js','./pages/ProfilePage.js','./pages/SyncPage.js'
+  './pages/AcademicLibraryPage.js','./pages/ProfilePage.js','./pages/SyncPage.js','./pages/PeoplePage.js','./pages/HolioSharesPage.js','./pages/SharedViewerPage.js'
 ];
 const uiFiles=['./ui/icons.js','./ui/components.js','./ui/reorder.js','./ui/shell.js','./ui/desk-shell.js','./ui/course-navigator.js','./ui/camera-picker.js','./ui/radial-menu.js','./ui/photo-editor.js'];
 const featureFiles=[
   './features/media-viewer.js','./features/course-actions.js','./features/image-pipeline.js','./features/photo-edits.js','./features/thumbs.js','./features/camera-i18n.js','./features/camera-destination.js','./features/gallery-logic.js','./features/navigator-logic.js','./features/canvas-doc.js','./features/canvas-render.js','./features/canvas-sync.js','./features/canvas-export.js',
   './features/camera-queue.js','./features/scan-core.js','./features/scanner.js','./features/scan-ml.js','./features/ocr.js','./features/text-actions.js','./features/capture-actions.js','./features/quick-capture.js','./features/item-menu.js',
-  './features/pdf-actions.js','./features/cloud-sync.js','./features/community-actions.js','./features/state-merge.js','./features/remote-sync.js','./features/notes.js'
+  './features/pdf-actions.js','./features/cloud-sync.js','./features/community-actions.js','./features/state-merge.js','./features/remote-sync.js','./features/notes.js','./features/people.js'
 ];
 
 const app=[
@@ -28,7 +28,7 @@ const drive=read('./drive.js');
 const html=read('./index.html');
 const sw=read('./sw.js');
 const manifest=JSON.parse(read('./manifest.webmanifest'));
-if(!html.includes('20261003-epure-v7'))throw new Error('Asset cache-bust version missing');
+if(!html.includes('20261003-epure-v8'))throw new Error('Asset cache-bust version missing');
 
 const required=[
   'Diviser le lot','Organiser les photos','Captures à trier','Section personnalisée','Nouvelle séance',
@@ -79,6 +79,20 @@ for(const s of ['syncStructure','applyPendingRemote','ensurePhotoLocal','syncSta
 for(const s of ['readState','writeState','downloadFile','forgetToken'])if(!drive.includes(s))throw new Error(`Drive state sync missing: ${s}`);
 if(html.indexOf('features/state-merge.js')>html.indexOf('src="./core.js'))throw new Error('state-merge.js must load before core.js (saveState stamps from the first save)');
 if(/from\('sync_signals'\)\.insert\(\{[^}]*(title|name|text|blob)/.test(read('./sync-signals.js')))throw new Error('Sync signals must carry ids only');
+// People + Holioo Shares: exact-ID lookup through one RPC, private connections, view-only shares in a private bucket.
+{const people=read('./features/people.js'),mig=fs.readFileSync(new URL('../supabase/migrations/20261004120000_people_and_shares.sql',import.meta.url),'utf8');
+for(const s of ['find_holioo_person','loadPeople','addPerson','removePerson','shareWithPeople','revokeShare','loadReceivedShares','copyHoliooId'])if(!people.includes(s))throw new Error(`People feature missing: ${s}`);
+if(/from\('profiles'\)/.test(people+read('./pages/PeoplePage.js')+read('./pages/HolioSharesPage.js')))throw new Error('People screens must never read the private profiles table');
+if(/\.from\('public_profiles'\)\.select\([^)]*email/.test(people))throw new Error('Public profiles carry no e-mail');
+if(!read('./pages/ProfilePage.js').includes('data-nav="people"')||!read('./pages/AcademicLibraryPage.js').includes('holiooSharesBtn'))throw new Error('People entry / Holioo Shares icon missing');
+for(const f of ['./pages/FilesPage.js','./pages/PdfViewerPage.js','./pages/SessionPage.js'])if(!/sharePdfWithPeople|shareSessionWithPeople/.test(read(f)))throw new Error(`Share with Holioo people missing in ${f}`);
+for(const f of ['./pages/FilesPage.js','./pages/PdfViewerPage.js'])if(!read(f).includes('sharePdf(meta,row)'))throw new Error(`Existing PDF share removed in ${f}`);
+for(const f of ['./pages/SessionPage.js'])if(!read(f).includes('exportSessionImages'))throw new Error(`Existing export removed in ${f}`);
+if(/create table if not exists public\.public_profiles \([^;]*email/i.test(mig))throw new Error('public_profiles must not hold an e-mail');
+for(const s of ["('shared-items', 'shared-items', false","shares_insert_owner","shared_items_select","connections_select_own"])if(!mig.includes(s))throw new Error(`Migration missing: ${s}`);
+if(/grant\s+(select|insert|update|delete)[^;]*\bto\s+anon/i.test(mig))throw new Error('No anonymous access to people / shares');
+if(/for update/i.test(mig.split('shares_delete')[0].split('create table if not exists public.shares')[1]||''))throw new Error('A share is never updated');
+for(const f of ['./pages/PeoplePage.js','./pages/HolioSharesPage.js','./pages/SharedViewerPage.js','./features/people.js'])if(!sw.includes(f.slice(1)))throw new Error(`Offline cache missing: ${f}`);}
 // Tablet / computer layout: built only at ≥768px, phones keep their own DOM; typed notes beside the photos.
 {const desk=read('./ui/desk-shell.js'),css=read('./styles.css');
 if(!desk.includes("matchMedia('(min-width:768px)')"))throw new Error('Desk layout must start at 768px');

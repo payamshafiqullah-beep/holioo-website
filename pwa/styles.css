@@ -1327,7 +1327,7 @@ body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
 .action-btn.ppl-add{width:auto;flex:none;min-height:40px;padding:0 var(--s4)}
 .action-btn.ppl-revoke{width:auto;flex:none;min-height:36px;padding:0 var(--s3);font-size:13px}
 .ppl-sent .ppl-copy strong{font-size:15px}
-.ppl-remove{color:#b4233a}
+.ppl-remove{color:var(--danger,#b4233a)}
 
 .hs-group{margin:var(--s4) 0 var(--s5)}
 .hs-sender{display:flex;align-items:center;gap:var(--s2);min-width:0;margin-bottom:var(--s2)}
@@ -1343,6 +1343,30 @@ body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
 .shared-photo figcaption{margin-top:4px;text-align:center;font-size:12px;color:var(--muted)}
 @media (max-width:359px){.ppl-row{padding:var(--s2)}.action-btn.ppl-revoke{font-size:12px;padding:0 var(--s2)}}
 
+.ppl-avatar[data-tone="1"]{background:linear-gradient(145deg,#FF9E7A,#E8563F)}
+.ppl-avatar[data-tone="2"]{background:linear-gradient(145deg,#4FD1A5,#1F9D78)}
+.ppl-avatar[data-tone="3"]{background:linear-gradient(145deg,#FFC857,#E0962B)}
+.ppl-avatar[data-tone="4"]{background:linear-gradient(145deg,#5BC0FF,#1689F5)}
+.ppl-avatar[data-tone="5"]{background:linear-gradient(145deg,#F58AC0,#C94C93)}
+.ppl-skel .ppl-avatar{background:var(--line)}
+.ppl-skel .ppl-copy{gap:6px}
+.ppl-skel i{display:block;height:12px;width:62%;border-radius:6px;background:var(--line)}
+.ppl-skel i.short{width:34%}
+.ppl-skel .ppl-avatar,.ppl-skel i{animation:ppl-pulse 1.2s ease-in-out infinite}
+@keyframes ppl-pulse{50%{opacity:.5}}
+@media (prefers-reduced-motion:reduce){.ppl-skel .ppl-avatar,.ppl-skel i{animation:none}}
+.ppl-error{display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap;margin:var(--s3) 0;padding:var(--s3) var(--s4);border-radius:var(--r-md);background:var(--surface);border:1px solid var(--line);color:var(--ink)}
+.ppl-error span{flex:1;min-width:160px;font-size:14px}
+.action-btn.ppl-retry{width:auto;flex:none;min-height:36px;padding:0 var(--s3);font-size:13px}
+.hs-badge{position:absolute;top:-2px;right:-2px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#E8563F;color:#fff;font-style:normal;font-size:11px;font-weight:700;line-height:18px;text-align:center;box-shadow:0 0 0 2px var(--bg)}
+.hs-new{padding:2px 8px;border-radius:99px;background:var(--accent-soft);color:var(--accent);font-size:11px;font-weight:700;white-space:nowrap}
+.hs-sender .hs-block{margin-left:auto;flex:none;width:32px;height:32px;color:var(--muted)}
+.ppl-qr-wrap{display:flex;flex-direction:column;align-items:center;gap:var(--s3);margin:var(--s3) 0}
+.ppl-qr{width:min(260px,70vw);height:auto;border-radius:var(--r-md);border:1px solid var(--line);background:#fff}
+.ppl-qr-id{margin:0;font-weight:600;overflow-wrap:anywhere;text-align:center}
+:root[data-theme="dark"] .ppl-error,:root[data-theme="dark"] .ppl-row{background:var(--surface)}
+:root[data-theme="dark"] .hs-badge{box-shadow:0 0 0 2px var(--bg)}
+
 /* Épuré (tablet / computer): 6px radius, 1px borders, compact sizes; a transparent layer keeps finger targets ≥ 40px. */
 @media (min-width:720px) and (min-height:521px),(min-width:960px){
   .ppl-row{min-height:44px;gap:var(--s3);padding:var(--s2) var(--s3);border:1px solid var(--line);border-radius:6px;box-shadow:none}
@@ -1357,6 +1381,16 @@ body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
   .hs-doc-row .hs-open{min-height:40px}
   .shared-photo img{border-radius:6px}
   .copy-id-btn{width:22px;height:22px}
+  .hs-badge{min-width:14px;height:14px;line-height:14px;font-size:10px;padding:0 3px;border-radius:7px}
+  .hs-new{font-size:10px;padding:1px 6px;border-radius:6px}
+  .hs-sender .hs-block{width:28px;height:28px;position:relative}
+  .hs-sender .hs-block::after{content:"";position:absolute;inset:-6px -2px}
+  .ppl-error{border-radius:6px;padding:var(--s2) var(--s3)}
+  .ppl-error span{font-size:12px}
+  .action-btn.ppl-retry{min-height:28px;font-size:12px;border-radius:6px}
+  .ppl-qr{width:200px;border-radius:6px}
+  .ppl-row .icon-btn.flat{width:28px;height:28px;position:relative}
+  .ppl-row .icon-btn.flat::after{content:"";position:absolute;inset:-6px -2px}
   .ppl-remove,.hs-remove{width:28px;height:28px;position:relative}
   .ppl-remove::after,.hs-remove::after,.action-btn.ppl-add::after,.action-btn.ppl-revoke::after{content:"";position:absolute;inset:-6px -2px}
   .action-btn.ppl-add,.action-btn.ppl-revoke{position:relative}

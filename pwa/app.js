@@ -96,4 +96,4 @@ async function recoverOrphanPhotos(){
   }catch(e){console.warn('Orphan photo check failed',e)}
 }
 
-(async()=>{await DB.open();try{await navigator.storage?.persist?.()}catch{}await bootstrapCloud();await recoverOrphanPhotos();await refreshSyncIndicator();await render()})();
+(async()=>{await DB.open();try{await navigator.storage?.persist?.()}catch{}await bootstrapCloud();await recoverOrphanPhotos();await refreshSyncIndicator();await render();if(typeof consumePendingAdd==='function')consumePendingAdd()})();

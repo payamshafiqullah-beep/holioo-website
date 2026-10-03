@@ -28,7 +28,7 @@ const drive=read('./drive.js');
 const html=read('./index.html');
 const sw=read('./sw.js');
 const manifest=JSON.parse(read('./manifest.webmanifest'));
-if(!html.includes('20261003-epure-v8'))throw new Error('Asset cache-bust version missing');
+if(!html.includes('20261003-epure-v9'))throw new Error('Asset cache-bust version missing');
 
 const required=[
   'Diviser le lot','Organiser les photos','Captures à trier','Section personnalisée','Nouvelle séance',
@@ -92,6 +92,14 @@ if(/create table if not exists public\.public_profiles \([^;]*email/i.test(mig))
 for(const s of ["('shared-items', 'shared-items', false","shares_insert_owner","shared_items_select","connections_select_own"])if(!mig.includes(s))throw new Error(`Migration missing: ${s}`);
 if(/grant\s+(select|insert|update|delete)[^;]*\bto\s+anon/i.test(mig))throw new Error('No anonymous access to people / shares');
 if(/for update/i.test(mig.split('shares_delete')[0].split('create table if not exists public.shares')[1]||''))throw new Error('A share is never updated');
+{const mig2=fs.readFileSync(new URL('../supabase/migrations/20261004130000_people_polish.sql',import.meta.url),'utf8'),verify=fs.readFileSync(new URL('../supabase/verify/people_shares_check.sql',import.meta.url),'utf8');
+for(const s of ['blockPerson','unblockPerson','loadBlocked','refreshSharesBadge','markSharesSeen','openMyQrSheet','captureAddLink','consumePendingAdd','peopleErrorText','peopleSkeleton','initialsOf'])if(!people.includes(s))throw new Error(`People polish missing: ${s}`);
+for(const s of ['create table if not exists public.blocks','blocked_by','rate_limited','private.lookup_log','interval \'1 minute\''])if(!mig2.includes(s))throw new Error(`Polish migration missing: ${s}`);
+if(!/\nrollback;/i.test(verify))throw new Error('The real-database check must end with ROLLBACK');
+if(/\bcommit\s*;/i.test(verify))throw new Error('The real-database check must never COMMIT');
+if(!read('./pages/PeoplePage.js').includes('pplQrBtn')||!read('./pages/HolioSharesPage.js').includes('markSharesSeen')||!read('./pages/AcademicLibraryPage.js').includes('refreshSharesBadge'))throw new Error('QR / unread badge wiring missing');
+if(!sw.includes('./vendor/qrcode.js')||!html.includes('vendor/qrcode.js'))throw new Error('QR generator must be loaded and cached offline');
+if(/https?:\/\/[^'"]*qr[^'"]*\.(png|svg)|api\.qrserver|chart\.googleapis/i.test(people))throw new Error('The QR code is drawn locally: no third-party QR service');}
 for(const f of ['./pages/PeoplePage.js','./pages/HolioSharesPage.js','./pages/SharedViewerPage.js','./features/people.js'])if(!sw.includes(f.slice(1)))throw new Error(`Offline cache missing: ${f}`);}
 // Tablet / computer layout: built only at ≥768px, phones keep their own DOM; typed notes beside the photos.
 {const desk=read('./ui/desk-shell.js'),css=read('./styles.css');

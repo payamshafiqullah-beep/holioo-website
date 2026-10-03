@@ -27,7 +27,8 @@ function notebookToolbar(){
 async function renderSession(){
   const ctx=findSessionContext();if(!ctx){navigate('courses');return}
   const{course,section,session}=ctx,n=session.photoIds.length,pub=session.visibility==='public';
-  const active=state.settings?.sessionView==='notebook'?'notebook':'gallery',canWrite=active==='notebook'&&notebookCanEdit();
+  // The phone has no Carnet (the toggle is gone, the Galerie is the only view); the tablet / computer keeps both.
+  const phone=!isDesk(),active=!phone&&state.settings?.sessionView==='notebook'?'notebook':'gallery',canWrite=active==='notebook'&&notebookCanEdit();
   const actions=n||active==='notebook'?`<div class="button-stack">
         ${ActionButton({label:'Créer un PDF',id:'buildPdf',iconName:'fileText'})}
         ${n?`${ActionButton({label:pub?'Publiée dans la bibliothèque':'Publier dans la bibliothèque',id:'publishSession',variant:pub?'soft':'ghost',iconName:pub?'checkCircle':'globe'})}
@@ -36,10 +37,13 @@ async function renderSession(){
         ${ActionButton({label:'Partager avec des personnes Holioo',id:'shareSessionPeople',variant:'ghost',iconName:'users'})}`:''}
         ${ActionButton({label:'Renommer la séance',id:'renameSession',variant:'ghost',iconName:'pencil'})}
       </div>`:'';
-  const galleryView=n?`${SectionTitle('Galerie',{action:'Plein écran',id:'openFirstPhoto'})}
+  const pdfs=state.files.filter(f=>f.sessionIds?.includes(session.id));
+  const pdfRow=pdfs.length?`${SectionTitle('PDF',{count:pdfs.length})}
+      <div class="pdf-row" id="sessionPdfs">${pdfs.map(f=>`<div class="thumb pdf-thumb" data-pdf-id="${f.id}" role="button" tabindex="0" aria-label="Ouvrir ${esc(f.title)}"><span class="pdf-thumb-icon">${icon('fileText',{size:30})}</span><strong>${esc(f.title)}</strong><small>${f.pages?esc(plural(f.pages,'page')):'PDF'}</small></div>`).join('')}</div>`:'';
+  const galleryView=pdfRow+(n?`${SectionTitle('Galerie',{action:'Plein écran',id:'openFirstPhoto'})}
       <div class="thumbs" id="sessionThumbs"></div>
       <p class="reorder-hint">${icon('more',{size:14})}Maintenez une photo puis faites-la glisser pour changer l’ordre. Touchez la poignée pour la déplacer ou la supprimer.</p>`
-    :EmptyState({iconName:'camera',title:'Aucune photo',text:'Cette séance ne contient pas encore de photos.'});
+    :pdfs.length?'':EmptyState({iconName:'camera',title:'Aucune photo',text:'Cette séance ne contient pas encore de photos.'}));
   const notebookView=active!=='notebook'?'':`${SectionTitle('Carnet',{action:'+ Page blanche',id:'addBlankPage'})}
       ${canWrite?`<div class="session-notebook-help">${icon('pencil',{size:15})}<span>${state.settings.drawWithFinger?'Écrivez au stylet ou au doigt.':'Écrivez au stylet. Le doigt sert à faire défiler la page.'}</span></div>`:''}
       <div class="notebook" id="sessionNotebook"></div>
@@ -48,7 +52,7 @@ async function renderSession(){
     ${PageHeader({back:true,title:`${course.name} · ${section.name}`})}
     ${PageIntro({eyebrow:'SÉANCE',title:session.title,subtitle:`${plural(n,'photo')} · ${fmtDate(session.createdAt)}`})}
     ${ActionButton({label:n?'Ajouter des photos':'Prendre des photos',id:'addSessionPhotos',variant:'capture',iconName:'camera',attrs:'data-nav="capture"'})}
-    ${sessionViewToggle(active)}
+    ${phone?'':sessionViewToggle(active)}
     <div class="session-gallery-view ${active==='gallery'?'':'hidden'}">${galleryView}</div>
     <div class="session-notebook-view ${active==='notebook'?'':'hidden'}">${notebookView}</div>
     ${actions}
@@ -60,6 +64,20 @@ async function renderSession(){
     state.settings.sessionView=next;saveState();
     await render();
   });
+  if(pdfs.length){
+    const row=byId('sessionPdfs'),open=id=>openPdfViewer(id,'session');
+    row.querySelectorAll('[data-pdf-id]').forEach(card=>{
+      const meta=state.files.find(f=>f.id===card.dataset.pdfId);if(!meta)return;
+      card.onclick=e=>{if(!e.target.closest('[data-reorder-handle]'))open(meta.id)};
+      card.onkeydown=e=>{if((e.key==='Enter'||e.key===' ')&&e.target===card){e.preventDefault();open(meta.id)}};
+      attachItemMenu(card,pdfSessionMenu(meta),{press:false});
+    });
+    // Same ⋯ grip as the photos (Déplacer / Supprimer); dragging a card only changes the order of this row.
+    makeReorderable(row,{itemSelector:'[data-pdf-id]',idAttribute:'pdfId',onHandle:itemMenuFromHandle,onChange:ids=>{
+      const slots=state.files.map((f,i)=>ids.includes(f.id)?i:-1).filter(i=>i>=0),byIdMap=new Map(state.files.map(f=>[f.id,f]));
+      ids.forEach((id,k)=>{state.files[slots[k]]=byIdMap.get(id)});saveState();queueSync();showToast('Ordre enregistré');
+    }});
+  }
   if(active==='gallery'&&n){
     await fillSessionThumbs(session);
     byId('openFirstPhoto').onclick=()=>openPhotoViewer(session.photoIds,0,{title:session.title,source:'session',sourceId:session.id,editable:true,returnView:'session',courseId:course.id,sectionId:section.id,sessionId:session.id});

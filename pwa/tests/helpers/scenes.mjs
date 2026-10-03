@@ -91,6 +91,24 @@ export function whiteboardScene(){
   return{img,quad:norm(q)};
 }
 
+// Low-contrast classroom whiteboard: the board itself is almost the same colour as the wall, and
+// the useful signal is its long aluminium frame. The four frame strips do not touch at the corners,
+// so contour-only detection cannot rely on one closed rectangle.
+export function boardFrameOnlyScene(){
+  const img=makeImage(W,H,[222,222,217]);noise(img,4,12);
+  const q=[[48,82],[486,56],[474,284],[62,310]];
+  const strip=(u0,v0,u1,v1,color)=>fillPoly(img,[inQuad(q,u0,v0),inQuad(q,u1,v0),inQuad(q,u1,v1),inQuad(q,u0,v1)],color);
+  strip(.06,-.035,.94,.005,[145,149,154]);
+  strip(.06,.995,.94,1.035,[145,149,154]);
+  strip(-.035,.08,.005,.92,[145,149,154]);
+  strip(.995,.08,1.035,.92,[145,149,154]);
+  fillPoly(img,[inQuad(q,.02,.02),inQuad(q,.98,.02),inQuad(q,.98,.98),inQuad(q,.02,.98)],[225,226,222],.45);
+  textLines(img,q,[38,78,160],{lines:4,u0:.12,u1:.78,v0:.18,v1:.48,seed:32});
+  textLines(img,q,[170,40,42],{lines:2,u0:.18,u1:.62,v0:.58,v1:.76,seed:34});
+  glare(img,360,130,58,.55);noise(img,3,35);
+  return{img,quad:norm([inQuad(q,-.035,-.035),inQuad(q,1.035,-.035),inQuad(q,1.035,1.035),inQuad(q,-.035,1.035)])};
+}
+
 export function blackboardScene(){
   const img=makeImage(W,H,[196,186,164]);
   const q=[[60,60],[455,48],[470,300],[50,285]];
@@ -274,4 +292,124 @@ export function matScene(){
   fillPoly(img,q,[244,242,234]);textLines(img,q,[40,40,56],{lines:10,seed:29});
   noise(img,4,163);
   return{img,quad:norm(q),pageOnMat:true};
+}
+
+// ─── Boards: every board / wall colour, light and angle ───────────────────────────────────────
+// `quad` is the outer edge of the frame when the board has one (that is what the camera should crop).
+const frameOf=(q,a)=>[inQuad(q,-a,-a),inQuad(q,1+a,-a),inQuad(q,1+a,1+a),inQuad(q,-a,1+a)];
+function framedBoard(img,q,{board,frame,chalk,thick=.016,lines=6,seed=40}){
+  fillPoly(img,frameOf(q,thick),frame);fillPoly(img,q,board);
+  textLines(img,q,chalk,{lines,seed,u0:.1,u1:.85,v0:.12,v1:.8});
+  return norm(frameOf(q,thick));
+}
+
+// Black board on a black wall: ~16 grey levels between the two, only a thin aluminium frame shows.
+export function blackOnBlackBoardScene(){
+  const img=makeImage(W,H,[40,42,44]);noise(img,4,171);
+  const quad=framedBoard(img,[[70,62],[452,50],[462,298],[60,306]],{board:[16,18,17],frame:[74,76,78],chalk:[206,210,204],thick:.012,seed:41});
+  noise(img,3,173);
+  return{img,quad};
+}
+
+// Green chalkboard with a wooden frame on a cream wall.
+export function greenBoardScene(){
+  const img=makeImage(W,H,[226,218,198]);noise(img,5,181);
+  const quad=framedBoard(img,[[66,66],[450,54],[462,300],[56,310]],{board:[42,96,70],frame:[150,110,70],chalk:[232,236,228],thick:.02,seed:43});
+  noise(img,4,183);
+  return{img,quad};
+}
+
+// Green board on a purple wall of the same brightness: only the colour tells them apart.
+export function greenBoardOnColoredWallScene(){
+  const img=makeImage(W,H,[140,115,160]);noise(img,4,191);
+  const q=[[70,64],[448,54],[458,298],[60,306]];
+  fillPoly(img,q,[70,150,90]);textLines(img,q,[236,238,230],{lines:6,seed:45,u0:.1,u1:.85,v0:.12,v1:.8});
+  noise(img,3,193);
+  return{img,quad:norm(q)};
+}
+
+// Brown board on a brown-ish wall.
+export function brownBoardScene(){
+  const img=makeImage(W,H,[150,120,92]);noise(img,5,201);
+  const q=[[74,66],[446,52],[456,300],[64,308]];
+  fillPoly(img,q,[128,92,64]);textLines(img,q,[236,226,206],{lines:6,seed:47,u0:.1,u1:.85,v0:.12,v1:.8});
+  noise(img,4,203);
+  return{img,quad:norm(q)};
+}
+
+// Glossy white board: a wide window reflection, a second glare spot and a bright diagonal band.
+export function glossyBoardScene(){
+  const img=makeImage(W,H,[196,192,184]);noise(img,4,211);
+  const q=[[64,62],[452,48],[464,300],[56,310]];
+  const quad=framedBoard(img,q,{board:[238,240,242],frame:[130,134,140],chalk:[34,64,150],thick:.014,seed:49});
+  glare(img,300,120,115,.9);glare(img,150,240,60,.7);
+  const{data}=img;
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){const d=Math.abs((x-y*.9)-120);if(d<26){const a=.45*(1-d/26),i=(y*W+x)*4;for(let c=0;c<3;c++)data[i+c]=data[i+c]*(1-a)+255*a}}
+  noise(img,3,213);
+  return{img,quad};
+}
+
+// Close-up: the board fills most of the picture.
+export function closeUpBoardScene(){
+  const img=makeImage(W,H,[206,202,194]);noise(img,4,221);
+  const q=[[34,28],[480,22],[488,350],[28,358]];
+  fillPoly(img,q,[236,238,240]);textLines(img,q,[34,64,150],{lines:8,seed:51,u0:.08,u1:.9,v0:.1,v1:.85});
+  noise(img,3,223);
+  return{img,quad:norm(q)};
+}
+
+// Two boards in the picture: the big central one is the one to scan, a smaller one stands at the right.
+export function multiBoardScene(){
+  const img=makeImage(W,H,[210,206,198]);noise(img,4,231);
+  const big=[[96,60],[360,52],[368,292],[90,300]];
+  fillPoly(img,[[394,86],[504,80],[506,262],[396,268]],[40,70,56]);
+  const quad=framedBoard(img,big,{board:[236,238,240],frame:[140,144,150],chalk:[34,64,150],thick:.016,seed:53});
+  noise(img,3,233);
+  return{img,quad};
+}
+
+// Seen from the side (~45°): the near edge is much taller than the far one.
+export function angledBoardScene(){
+  const img=makeImage(W,H,[200,196,190]);noise(img,4,241);
+  const q=[[60,40],[340,100],[334,296],[54,352]];
+  const quad=framedBoard(img,q,{board:[236,238,240],frame:[140,144,150],chalk:[34,64,150],thick:.012,seed:55});
+  noise(img,3,243);
+  return{img,quad};
+}
+
+// Dark classroom: a white board that looks grey, a lot of sensor noise.
+export function poorLightBoardScene(){
+  const img=makeImage(W,H,[48,46,42]);noise(img,9,251);
+  const q=[[78,64],[440,54],[450,296],[68,304]];
+  const quad=framedBoard(img,q,{board:[104,106,108],frame:[78,80,82],chalk:[40,52,90],thick:.014,seed:57});
+  noise(img,9,253);
+  return{img,quad};
+}
+
+// Sunny room: bright wall, white board, a hard window shadow across both.
+export function sunnyBoardScene(){
+  const img=makeImage(W,H,[246,242,230]);noise(img,3,261);
+  const q=[[72,62],[446,52],[456,298],[62,306]];
+  const quad=framedBoard(img,q,{board:[248,250,252],frame:[158,160,164],chalk:[34,64,150],thick:.016,seed:59});
+  fillPoly(img,[[0,150],[512,90],[512,200],[0,262]],[0,0,0],.38);
+  noise(img,3,263);
+  return{img,quad};
+}
+
+// Faint black board on a black wall (8 grey levels) lit from one side: the dark half has almost no edge.
+export function faintBlackBoardScene(){
+  const img=makeImage(W,H,[44,45,46]);
+  const q=[[70,62],[452,50],[462,298],[60,306]];
+  fillPoly(img,q,[34,35,34]);textLines(img,q,[120,124,118],{lines:6,seed:61,u0:.1,u1:.85,v0:.12,v1:.8});
+  shade(img,1.5,.55);noise(img,3,271);
+  return{img,quad:norm(q)};
+}
+
+// White board on a light wall (~18 grey levels), strong light fall-off from left to right (1.1 → 0.45).
+export function gradientBoardScene(){
+  const img=makeImage(W,H,[212,208,200]);noise(img,4,281);
+  const q=[[70,62],[452,50],[462,298],[60,306]];
+  fillPoly(img,q,[232,232,230]);textLines(img,q,[34,64,150],{lines:6,seed:63,u0:.1,u1:.85,v0:.12,v1:.8});
+  shade(img,1.1,.45);noise(img,4,283);
+  return{img,quad:norm(q)};
 }

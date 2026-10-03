@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Board detector — label and evaluate real photos</title>
+<style>
+  body{font:14px/1.45 system-ui,sans-serif;margin:16px;max-width:1000px;color:#1d2140}
+  h1{font-size:20px;margin:0 0 8px} code{background:#eef;padding:1px 4px;border-radius:4px}
+  .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0}
+  button{padding:6px 12px;border:1px solid #99a;border-radius:8px;background:#fff;cursor:pointer}
+  button.on{background:#1d2140;color:#fff}
+  canvas{max-width:100%;border:1px solid #ccd;border-radius:8px;cursor:crosshair;touch-action:none}
+  pre{background:#f6f6fb;padding:10px;border-radius:8px;overflow:auto;max-height:340px}
+  table{border-collapse:collapse;width:100%} td,th{border-bottom:1px solid #e3e3ee;padding:3px 6px;text-align:left}
+  .bad{color:#b4233a} .ok{color:#1b7f55}
+</style>
+</head>
+<body>
+<h1>Board detector — label and evaluate real photos</h1>
+<p>
+  <b>1. Label</b> a few hundred classroom photos (click the 4 corners of the board; <code>N</code> = no board in the picture),
+  save <code>labels.json</code>. <b>2. Evaluate</b> runs the app's detector (<code>pwa/features/scan-detect.js</code>, same code as in
+  the camera) on those photos and reports how many outlines overlap the true board by at least 90 % (IoU), how reliable the
+  confidence score is, and how many empty pictures get a false board. Serve the repository root
+  (<code>npx http-server .</code>) and open <code>/tools/board-corners/eval.html</code>. The same <code>labels.json</code> trains the model (<code>train.py</code>).
+</p>
+<div class="bar">
+  Photos <input type="file" id="photos" accept="image/*" multiple>
+  labels.json <input type="file" id="labelsFile" accept=".json,application/json">
+</div>
+<div class="bar">
+  <button id="modeLabel" class="on">Label</button><button id="modeEval">Evaluate</button>
+  <button id="prev">◀</button><span id="pos">0 / 0</span><button id="next">▶</button>
+  <button id="noBoard">No board (N)</button><button id="undo">Undo corner (⌫)</button><button id="save">Save labels.json</button>
+</div>
+<canvas id="view" width="900" height="560"></canvas>
+<pre id="log">Choose photos to start.</pre>
+<div id="report"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.10.0-release.1/dist/opencv.js"></script>
+<script src="../../pwa/features/scan-core.js"></script>
+<script src="../../pwa/features/scan-refine.js"></script>
+<script src="../../pwa/features/scan-detect.js"></script>
+<script>
+'use strict';
+const $=id=>document.getElementById(id),view=$('view'),g=view.getContext('2d'),log=m=>{$('log').textContent=m};
+let files=[],labels={},index=0,mode='label',corners=[],bitmap=null,cvReady=false;
+const key=f=>f.name;
+const keyOf=f=>f.webkitRelativePath||f.name;
+
+// ─── geometry: IoU of two convex quads (Sutherland–Hodgman) ───
+function clip(subject,clipper){
+  let out=subject;
+  for(let i=0;i<clipper.length;i++){
+    const a=clipper[i],b=clipper[(i+1)%clipper.length],input=out;out=[];
+    const side=p=>(b[0]-a[0])*(p[1]-a[1])-(b[1]-a[1])*(p[0]-a[0]);
+    const cut=(p,q)=>{const d1=side(p),d2=side(q),t=d1/(d1-d2);return[p[0]+(q[0]-p[0])*t,p[1]+(q[1]-p[1])*t]};
+    for(let j=0;j<input.length;j++){const p=input[j],q=input[(j+1)%input.length];if(side(p)>=0){out.push(p);if(side(q)<0)out.push(cut(p,q))}else if(side(q)>=0)out.push(cut(p,q))}
+    if(!out.length)break;
+  }
+  return out;
+}
+const area=p=>{let a=0;for(let i=0;i<p.length;i++){const[x1,y1]=p[i],[x2,y2]=p[(i+1)%p.length];a+=x1*y2-x2*y1}return Math.abs(a)/2};
+const iou=(a,b)=>{const A=area(a),B=area(b),I=area(clip(a,b));return I/(A+B-I)};
+
+// ─── loading ───
+$('photos').onchange=e=>{files=[...e.target.files].filter(f=>f.type.startsWith('image/')).sort((a,b)=>keyOf(a).localeCompare(keyOf(b)));index=0;corners=[];show();log(`${files.length} photos. ${Object.keys(labels).length} labelled.`)};
+$('labelsFile').onchange=async e=>{labels=JSON.parse(await e.target.files[0].text());log(`${Object.keys(labels).length} labels loaded.`);show()};
+async function load(i){
+  if(bitmap?.close)bitmap.close();
+  bitmap=files[i]?await createImageBitmap(files[i]):null;return bitmap;
+}
+async function show(){
+  $('pos').textContent=`${files.length?index+1:0} / ${files.length}`;
+  g.clearRect(0,0,view.width,view.height);
+  if(!files.length)return;
+  const bmp=await load(index);if(!bmp)return;
+  const k=Math.min(view.width/bmp.width,view.height/bmp.height);view.width=Math.round(bmp.width*k);view.height=Math.round(bmp.height*k);
+  g.drawImage(bmp,0,0,view.width,view.height);
+  const lab=labels[keyOf(files[index])];
+  const draw=(pts,color)=>{g.strokeStyle=color;g.lineWidth=2;g.beginPath();pts.forEach(([x,y],i)=>i?g.lineTo(x*view.width,y*view.height):g.moveTo(x*view.width,y*view.height));if(pts.length===4)g.closePath();g.stroke();for(const[x,y]of pts){g.fillStyle=color;g.beginPath();g.arc(x*view.width,y*view.height,4,0,7);g.fill()}};
+  if(lab?.quad)draw(lab.quad,'#00c070');
+  if(corners.length)draw(corners.map(([x,y])=>[x/view.width,y/view.height]),'#ffb020');
+  if(lab&&lab.present===false){g.fillStyle='#fff';g.fillRect(8,8,150,24);g.fillStyle='#000';g.fillText('labelled: no board',14,24)}
+}
+
+// ─── labelling ───
+view.addEventListener('pointerdown',e=>{
+  if(mode!=='label'||!files.length)return;
+  const r=view.getBoundingClientRect();
+  corners.push([(e.clientX-r.left)*view.width/r.width,(e.clientY-r.top)*view.height/r.height]);
+  if(corners.length===4)accept();else show();
+});
+function accept(){
+  const q=ScanCore.orderQuad(corners.map(([x,y])=>[x/view.width,y/view.height]));
+  labels[keyOf(files[index])]={present:true,quad:q};corners=[];next(1);
+}
+function next(d){index=Math.max(0,Math.min(files.length-1,index+d));corners=[];show()}
+$('prev').onclick=()=>next(-1);$('next').onclick=()=>next(1);
+$('undo').onclick=()=>{corners.pop();show()};
+$('noBoard').onclick=()=>{if(!files.length)return;labels[keyOf(files[index])]={present:false};next(1)};
+$('save').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(labels,null,1)],{type:'application/json'}));a.download='labels.json';a.click()};
+addEventListener('keydown',e=>{
+  if(e.key==='n'||e.key==='N')$('noBoard').click();else if(e.key==='Backspace'){e.preventDefault();$('undo').click()}
+  else if(e.key==='ArrowRight')next(1);else if(e.key==='ArrowLeft')next(-1);
+});
+$('modeLabel').onclick=()=>{mode='label';$('modeLabel').classList.add('on');$('modeEval').classList.remove('on')};
+$('modeEval').onclick=async()=>{mode='eval';$('modeEval').classList.add('on');$('modeLabel').classList.remove('on');await evaluate()};
+
+// ─── evaluation: the same frame size and the same function as the live camera ───
+if(typeof cv!=='undefined'){const ready=()=>{if(typeof cv.then==='function')delete cv.then;cvReady=true};if(cv.Mat)ready();else cv.onRuntimeInitialized=ready}
+async function frameOf(file){
+  const bmp=await createImageBitmap(file),k=Math.min(1,512/Math.max(bmp.width,bmp.height));
+  const c=document.createElement('canvas');c.width=Math.round(bmp.width*k);c.height=Math.round(bmp.height*k);
+  const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(bmp,0,0,c.width,c.height);bmp.close?.();
+  return x.getImageData(0,0,c.width,c.height);
+}
+async function evaluate(){
+  if(!cvReady){log('OpenCV is still loading…');return}
+  const rows=[];let ms=0;
+  const todo=files.filter(f=>labels[keyOf(f)]);
+  if(!todo.length){log('Label some photos first (or load labels.json).');return}
+  for(let n=0;n<todo.length;n++){
+    const f=todo[n],lab=labels[keyOf(f)],img=await frameOf(f),t=performance.now();
+    const r=scanDetect(cv,img,'board');ms+=performance.now()-t;
+    const found=!!r.quad,score=found&&lab.present?iou(r.quad,lab.quad):0;
+    rows.push({name:keyOf(f),present:lab.present,found,iou:score,conf:r.confidence,ok:lab.present?score>=.9:!found,source:r.source});
+    if(n%5===0){log(`Evaluating ${n+1} / ${todo.length}…`);await new Promise(r=>setTimeout(r))}
+  }
+  const withBoard=rows.filter(r=>r.present),empty=rows.filter(r=>!r.present);
+  const ok=withBoard.filter(r=>r.ok).length,sure=withBoard.filter(r=>r.found&&r.conf>=.8),doubt=withBoard.filter(r=>r.found&&r.conf<.8);
+  const pct=(a,b)=>b?(100*a/b).toFixed(1)+' %':'–';
+  log([
+    `Photos with a board: ${withBoard.length}   correct (IoU ≥ 0.90): ${ok} = ${pct(ok,withBoard.length)}   mean ${(ms/rows.length).toFixed(0)} ms / frame`,
+    `Confidence ≥ 80 %: ${sure.length} detections, ${sure.filter(r=>r.ok).length} correct (${pct(sure.filter(r=>r.ok).length,sure.length)})`,
+    `Confidence < 80 %: ${doubt.length} detections, ${doubt.filter(r=>r.ok).length} correct anyway`,
+    `Not found: ${withBoard.filter(r=>!r.found).length}`,
+    `Pictures without a board: ${empty.length}   falsely given a board: ${empty.filter(r=>r.found).length}`
+  ].join('\n'));
+  $('report').innerHTML='<table><tr><th>photo</th><th>IoU</th><th>confidence</th><th>source</th></tr>'+
+    rows.filter(r=>!r.ok).map(r=>`<tr class="bad"><td>${r.name}</td><td>${r.present?(r.found?r.iou.toFixed(3):'not found'):'false board'}</td><td>${r.found?Math.round(r.conf*100)+' %':'–'}</td><td>${r.source||''}</td></tr>`).join('')+'</table>';
+}
+</script>
+</body>
+</html>

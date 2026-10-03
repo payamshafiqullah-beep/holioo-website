@@ -22,7 +22,7 @@ async function renderSync(){
       ${connected?`${ActionButton({label:'Synchroniser maintenant',id:'syncNow',iconName:'refresh'})}${ActionButton({label:'Déconnecter Google Drive',id:'disconnectDrive',variant:'ghost',iconName:'x'})}`:ActionButton({label:'Connecter mon Google Drive',id:'connectDrive',iconName:'cloud'})}
       ${ActionButton({label:'Installer Holioo sur l’écran d’accueil',id:'installPwa',variant:'soft',iconName:'phone'})}
     </div>
-    ${Notice(`${icon('checkCircle',{size:18})}<span>Les fichiers synchronisés restent accessibles depuis Google Drive sur un ordinateur même si le téléphone est éteint.</span>`,'mint')}
+    ${Notice(`${icon('checkCircle',{size:18})}<span>Tous vos appareils connectés au même compte Google voient les mêmes cours, séances, photos et PDF : ce que vous ajoutez, déplacez ou supprimez sur l’un arrive sur les autres. Les fichiers restent aussi accessibles depuis Google Drive.</span>`,'mint')}
   </section>`;
   byId('backBtn').onclick=()=>navigate('profile');
   byId('autoSync').onchange=()=>{state.settings.autoDriveSync=byId('autoSync').checked;saveState()};

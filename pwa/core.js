@@ -48,12 +48,18 @@ function loadState(){
   }catch(e){console.warn(e);return defaultState()}
 }
 let state=loadState();
-// What the last save looked like, to stamp what changed for the other devices (features/state-merge.js).
+// The part of the state other devices of the account share (features/cloud-sync.js). A change in it stamps
+// `lastModified`, which decides who wins when two devices changed the same thing; `saveState.quiet` is for saves
+// made by the sync itself.
+const structSigOf=()=>JSON.stringify([state.courses,state.inbox,state.files,state.favorites,state.timetable]);
+let structSig=structSigOf();
+// Baseline for Supabase signal diffing (features/state-merge.js); null before the first save.
 let syncBaseline=null;
-// {remote:true}: the change came from another device (features/remote-sync.js), nothing to stamp or send back.
 function saveState({remote=false}={}){
+  const sig=structSigOf();
+  if(sig!==structSig){structSig=sig;if(!saveState.quiet)state.lastModified=Date.now()}
   let changed=false;
-  try{if(remote)syncBaseline=syncFlatten(state);else{const r=syncStamp(state,syncBaseline);syncBaseline=r.flat;changed=r.changed}}catch(e){console.warn(e)}
+  try{if(remote)syncBaseline=typeof syncFlatten==='function'?syncFlatten(state):null;else if(typeof syncStamp==='function'){const r=syncStamp(state,syncBaseline);syncBaseline=r.flat;changed=r.changed}}catch(e){console.warn(e)}
   try{localStorage.setItem(stateKey(),JSON.stringify(state))}
   catch(e){console.warn(e);if(!saveState.warned){saveState.warned=true;showToast('Stockage plein : libérez de l’espace sur l’appareil');setTimeout(()=>saveState.warned=false,10000)}}
   // The camera sends its photos once it is left (capture-actions.js); everything else goes to Drive soon.
@@ -66,7 +72,7 @@ function switchStateOwner(uid){
   if(guestData)localStorage.setItem(`${STORE_KEY}:${uid}`,guestData);
   guestMode=uid===GUEST;
   stateOwner=uid;if(uid)localStorage.setItem('holioo_last_uid',uid);else localStorage.removeItem('holioo_last_uid');
-  state=loadState();syncBaseline=null;saveState();
+  state=loadState();structSig=structSigOf();syncBaseline=null;saveState();
   if(uid){localStorage.removeItem(STORE_KEY);localStorage.removeItem(LEGACY_KEY)}
 }
 // CM / TD / TP are created once per course (defaultSectionsSeeded); after that a deleted section is not brought back.
@@ -166,13 +172,19 @@ async function runDriveSync(reason='manual'){
   syncBusy=true;await refreshSyncIndicator();
   try{
     driveStatus=await Drive.status(sb,currentUser.id);if(!driveStatus.connected){if(reason==='manual')showToast('Connectez Google Drive d’abord');return}
-    // What the other devices changed comes first, so files land in the folders they have now.
-    if(typeof syncStructure==='function')await syncStructure({push:false}).catch(e=>console.warn('Structure pull',e));
-    const result=await Drive.syncAll({sb,user:currentUser,state,db:DB,documents:driveDocuments(),onDocument:(d,files)=>{if(typeof notesDocumentSent==='function')notesDocumentSent(d,files)},onProgress:({checked,total})=>{syncIndicator={cls:'pending',text:`Synchronisation… ${checked}/${total}`};applyChromeStatus()}});
-    if(typeof syncStructure==='function')await syncStructure({push:true}).catch(e=>console.warn('Structure push',e));
-    if(result.failed){console.warn('Drive sync:',result.lastError);showToast(`${result.failed} élément(s) non synchronisé(s) — nouvel essai plus tard`)}
-    else if(reason==='manual'||result.synced)showToast(result.synced?`${result.synced} élément(s) synchronisé(s)`:'Tout est déjà synchronisé');
-  }catch(e){console.error(e);syncIndicator={cls:'error',text:'Erreur de synchronisation'};applyChromeStatus();if(e?.code==='DRIVE_FULL')showToast('Google Drive est plein : libérez de l’espace pour continuer la sauvegarde');else if(reason==='manual')showToast(`Sync impossible : ${e.message||e}`)}finally{syncBusy=false;await refreshSyncIndicator();if(currentView==='sync')render();const again=runDriveSync.again;runDriveSync.again=null;if(again)queueSync(again==='manual'?'auto':again)}
+    const result=await Drive.syncAll({sb,user:currentUser,state,db:DB,documents:driveDocuments(),
+      save:()=>{saveState.quiet=true;try{saveState()}finally{saveState.quiet=false}},
+      onDocument:(d,files)=>{if(typeof notesDocumentSent===’function’)notesDocumentSent(d,files)},
+      onProgress:({checked,total,phase})=>{syncIndicator={cls:’pending’,text:`${phase===’pull’?’Réception’:’Synchronisation’}… ${checked}/${total}`};applyChromeStatus()}});
+    // What the account’s other devices added or removed is now here: show it where that is safe (not in the camera,
+    // the photo viewer, a notebook being written in, a form being filled).
+    const news=(result.received||0)+(result.changed?1:0);
+    if(news&&[‘home’,’courses’,’course’,’section’,’files’,’inbox’,’sync’,’library’,’profile’].includes(currentView))render();
+    if(result.failed){console.warn(‘Drive sync:’,result.lastError);showToast(`${result.failed} élément(s) non synchronisé(s) — nouvel essai plus tard`)}
+    else if(result.receivedFailed)showToast(`${result.receivedFailed} élément(s) de vos autres appareils n’ont pas pu être reçus — nouvel essai plus tard`);
+    else if(result.received)showToast(`${result.received} élément(s) reçu(s) de vos autres appareils`);
+    else if(reason===’manual’||result.synced)showToast(result.synced?`${result.synced} élément(s) synchronisé(s)`:result.changed?’Vos autres appareils sont à jour ici’:’Tout est déjà synchronisé’);
+  }catch(e){console.error(e);syncIndicator={cls:’error’,text:’Erreur de synchronisation’};applyChromeStatus();if(e?.code===’DRIVE_FULL’)showToast(‘Google Drive est plein : libérez de l’espace pour continuer la sauvegarde’);else if(reason===’manual’)showToast(`Sync impossible : ${e.message||e}`)}finally{syncBusy=false;await refreshSyncIndicator();if(currentView===’sync’)render();const again=runDriveSync.again;runDriveSync.again=null;if(again)queueSync(again===’manual’?’auto’:again)}
 }
 
 function bindCourseCards(){document.querySelectorAll('[data-course]').forEach(b=>b.onclick=()=>{currentCourseId=b.dataset.course;navigate('course')})}

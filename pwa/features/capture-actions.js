@@ -486,8 +486,17 @@ function applyCameraMode(mode,{initial=false}={}){
 function renderScanTools(){
   const tools=byId('scanTools');if(!tools)return;
   tools.classList.toggle('hidden',!isScanMode(camMode));
+  const corners=byId('scanCornersBtn');
+  if(corners){corners.classList.toggle('hidden',camMode==='qr'||camMode==='id');corners.classList.remove('on');corners.setAttribute('aria-pressed','false')}
   const auto=state.scanAuto!==false&&camMode!=='id',b=byId('scanAutoBtn');
   if(b){b.textContent=auto?camT('scanAuto'):camT('scanManual');b.classList.toggle('on',auto);b.setAttribute('aria-pressed',String(auto));b.setAttribute('aria-label',camT('scanAutoLabel',{state:auto?camT('on'):camT('off')}));b.disabled=camMode==='id'}
+}
+// Corners by hand: the fallback when the detector is unsure (see Scanner.setManual).
+function toggleScanCorners(){
+  const b=byId('scanCornersBtn'),on=Scanner.setManual(!b?.classList.contains('on'));
+  b?.classList.toggle('on',on);b?.setAttribute('aria-pressed',String(on));
+  b?.setAttribute('aria-label',camT('scanCornersLabel',{state:on?camT('on'):camT('off')}));
+  if(on)showToast(camT('cornersToast'));
 }
 function toggleScanAuto(){state.scanAuto=state.scanAuto===false;saveState();renderScanTools();showToast(camT('scanAutoLabel',{state:state.scanAuto?camT('on'):camT('off')}))}
 function toggleCameraGrid(){
@@ -499,20 +508,23 @@ function toggleCameraGrid(){
 // One short line above the preview: what to do, or what is wrong.
 function renderScanHint(s){
   const el=byId('scanHint');if(!el)return;
+  byId('scanCornersBtn')?.classList.toggle('on',!!s?.manual);byId('scanCornersBtn')?.setAttribute('aria-pressed',String(!!s?.manual));   // stays in step with the scanner (a restart ends the hand mode)
   if(!s||camMode==='photo'){el.classList.add('hidden');return}
   let text='',warn=false;
   const search={document:'searchDocument',board:'searchBoard',book:'searchBook',id:camIdFront?'searchIdBack':'searchId',qr:'qrAim'}[camMode];
   if(camRetakeId)text=camT('retakeHint');
   if(s.state==='loading')text=camT('scanLoading',{p:Math.round((Scanner.progress||0)*100)});
   else if(s.state==='manual')text=camT('scanFailed');
+  else if(s.manual)text=camT('cornersHint');
   else if(s.warn){
     warn=s.warn!=='find'; // "find" is a tip, not a problem: neutral chip
     const board=camMode==='board';
-    text=camT({dark:'warnDark',blur:'warnBlur',tilt:board?'warnTiltBoard':'warnTilt',far:board?'warnFarBoard':'warnFar',cutoff:board?'warnCutBoard':'warnCut',glare:'warnGlare',find:board?'warnFindBoard':'warnFind'}[s.warn]);
+    text=camT({dark:'warnDark',blur:'warnBlur',tilt:board?'warnTiltBoard':'warnTilt',far:board?'warnFarBoard':'warnFar',cutoff:board?'warnCutBoard':'warnCut',glare:'warnGlare',find:board?'warnFindBoard':'warnFind',lowconf:'warnLowConf'}[s.warn],{p:s.conf});
     if(camMode==='id'&&camIdFront)text=`${camT('idBackShort')} — ${text}`;
   }
   // ID card: always say which side is expected.
   else if(camMode==='id'&&(s.state==='stable'||s.state==='tracking'))text=camT(camIdFront?'idBackReady':'idFrontReady');
+  else if(camMode==='board'&&s.conf!=null&&s.conf<80&&(s.state==='stable'||s.state==='tracking'))text=camT('confLow',{p:s.conf});   // under 80 %: say so
   else if(s.state==='stable'||s.state==='tracking')text=s.auto?camT('pageLocked'):camT('ready');
   else if(!text)text=camT(search);
   el.textContent=text;el.classList.toggle('warn',warn);el.classList.remove('hidden');
@@ -556,7 +568,7 @@ function copyText(t){navigator.clipboard?.writeText(t).then(()=>showToast(camT('
 
 // Capture for a scan mode: the page outline found live becomes the crop of the stored photo.
 function queueScanCapture(canvas,dest){
-  const cur=Scanner.current(),quad=cur?.quad||null,W=canvas.width,H=canvas.height;
+  const cur=Scanner.current(),quad=cur?.quad||null,W=canvas.width,H=canvas.height,exact=!!cur?.manual;   // hand-set corners: trusted as they are
   const blob=new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',0.93));
   const thumb=canvasToJpeg(scaleCanvas(canvas,W,H));
   const stored=id=>scanRenderQueue.add(id);
@@ -592,7 +604,7 @@ function queueScanCapture(canvas,dest){
     return ids;
   }
   const id=uid();ids.push(id);
-  cameraQueue.add({id,blob,thumb,dest,createdAt:now(),edit:scanEdit(mode,quad,W,H),extra:{scanMode:mode,...live},onStored:stored});
+  cameraQueue.add({id,blob,thumb,dest,createdAt:now(),edit:scanEdit(mode,quad,W,H,{refined:exact}),extra:{scanMode:mode,...live},onStored:stored});
   return ids;
 }
 

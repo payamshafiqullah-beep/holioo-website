@@ -67,6 +67,21 @@ function openQuickCamera(dest,{courseId=null}={}){
   if(!dest)openCameraPicker({current:courseId?{courseId}:camDest,onPick:d=>setCameraDestination(d)});
 }
 
+// Tablet / computer, Note Srieh: same gesture, but the page of the chosen séance opens (today's, or a new one).
+// "Plus…" (no destination) opens the notes of the current selection.
+function openQuickNotes(dest,{courseId=null}={}){
+  closeQuickCaptureBubble();
+  if(!dest){navigate('notes',courseId?{courseId}:{});return}
+  const course=getCourse(dest.courseId),section=course&&getSection(course,dest.sectionId);
+  let sessionId=dest.sessionId;
+  if(!sessionId&&section){
+    const n=navNewSession(section);
+    section.sessions.push({id:uid(),number:n.number,title:n.title,photoIds:[],createdAt:now(),visibility:'private'});
+    sessionId=section.sessions[section.sessions.length-1].id;saveState();queueSync();
+  }
+  navigate('notes',{courseId:dest.courseId,sectionId:dest.sectionId,sessionId});
+}
+
 // Makes any element a Quick Capture trigger: courses → sections → camera, in one gesture.
 function attachQuickCapture(trigger,onPick=openQuickCamera){
   if(!trigger||trigger.dataset.quickCapture)return null;

@@ -122,5 +122,6 @@ async function renderGallery(){
     });
     galleryCleanup=galleryLoadThumbs(box);
   }
-  byId('galleryFab').addEventListener('click',()=>navigate('notes',{courseId:course.id,sectionId:sel.section?.id,sessionId:sel.session?.id}));
+  // Press, drag to a course then a section, release: the notes of that séance (same gesture as Capture rapide).
+  attachQuickCapture(byId('galleryFab'),openQuickNotes);
 }

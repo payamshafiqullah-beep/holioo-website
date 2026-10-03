@@ -10,8 +10,6 @@
 //   item   photo  {id, type:'photo', photoId, x, y, w, h, z}
 //          text   {id, type:'text',  x, y, w, h, z, text, lines, color, size}   lines = the wrapped text, kept
 //                 so that every device and the PDF break the lines exactly where the author's screen did
-//          arrow  {id, type:'arrow', x, y, w, h, z, p:[x1,y1,x2,y2], color, size}   (x,y,w,h = bounding box)
-//          rect   {id, type:'rect',  x, y, w, h, z, color, size}
 //   stroke {id, tool:'pen'|'highlighter', color, size, pts:[[x,y,pressure]…], sp, at}   sp = pressure simulated
 //   Every item and stroke has updatedAt (ms) and, once removed, deleted:true (a tombstone, so a deletion
 //   travels to the other devices); `known` = photo ids the tray has already shown (the others carry a "New" badge).
@@ -29,11 +27,11 @@ const CANVAS_ADD_SPACE=700;                         // "Ajouter de l'espace"
 const CANVAS_LINE=44;                               // spacing of the ruled / grid background
 const CANVAS_TOMBSTONE_MS=60*864e5;
 const CANVAS_HISTORY_MAX=300;
-const CANVAS_TOOLS=['select','pen','highlighter','eraser','text','arrow','rect'];
+const CANVAS_TOOLS=['select','pen','highlighter','eraser','text'];
 const CANVAS_BGS=['lines','grid','blank'];
 // Four colours per kind of tool, three sizes (thin / medium / thick) per kind; one choice is remembered per kind.
 const CANVAS_COLORS={pen:['#111827','#2563EB','#E5484D','#16A34A'],highlighter:['#FACC15','#4ADE80','#F472B6','#60A5FA']};
-const CANVAS_SIZES={pen:[2.5,4.5,8],highlighter:[14,24,38],eraser:[10,22,44],shape:[2.5,4.5,8],text:[24,32,46]};
+const CANVAS_SIZES={pen:[2.5,4.5,8],highlighter:[14,24,38],eraser:[10,22,44],text:[24,32,46]};
 const CANVAS_HIGHLIGHT_ALPHA=.4;
 const CANVAS_TEXT_PAD=10;
 const CANVAS_TEXT_W=360;                            // width of a new text box
@@ -43,7 +41,7 @@ const canvasKey=sessionId=>`canvas:${sessionId}`;
 const canvasNum=(v,d=0)=>Number.isFinite(+v)&&v!==null&&v!==''?+v:d;
 const canvasClamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const canvasRound=(v,n=1)=>{const k=10**n;return Math.round(v*k)/k};
-const canvasKindOf=tool=>tool==='highlighter'?'highlighter':tool==='eraser'?'eraser':tool==='arrow'||tool==='rect'?'shape':tool==='text'?'text':'pen';
+const canvasKindOf=tool=>tool==='highlighter'?'highlighter':tool==='eraser'?'eraser':tool==='text'?'text':'pen';
 
 function emptyCanvasDoc(sessionId=''){
   return{version:1,sessionId,height:CANVAS_PAGE_H,bg:'lines',bgAt:0,items:[],strokes:[],known:[],updatedAt:0};
@@ -59,11 +57,6 @@ function _item(raw){
   if(raw.deleted)base.deleted=true;
   if(type==='photo'){if(typeof raw.photoId!=='string')return null;return{...base,photoId:raw.photoId}}
   if(type==='text')return{...base,text:_str(raw.text),lines:Array.isArray(raw.lines)?raw.lines.map(_str):_str(raw.text).split('\n'),color:_color(raw.color),size:canvasClamp(canvasNum(raw.size,CANVAS_SIZES.text[1]),8,120)};
-  if(type==='arrow'){
-    const p=Array.isArray(raw.p)&&raw.p.length===4?raw.p.map(v=>canvasNum(v)):null;if(!p)return null;
-    return{...base,...canvasArrowBox(p),p,color:_color(raw.color),size:canvasClamp(canvasNum(raw.size,CANVAS_SIZES.shape[1]),1,40)};
-  }
-  if(type==='rect')return{...base,color:_color(raw.color),size:canvasClamp(canvasNum(raw.size,CANVAS_SIZES.shape[1]),1,40)};
   return null;
 }
 function _stroke(raw){
@@ -102,14 +95,10 @@ const canvasLive=list=>list.filter(o=>!o.deleted);
 const canvasIsEmpty=doc=>!canvasLive(doc.items).length&&!canvasLive(doc.strokes).length;
 
 // ── Geometry ──
-function canvasArrowBox(p){
-  const x=Math.min(p[0],p[2]),y=Math.min(p[1],p[3]);
-  return{x,y,w:Math.abs(p[2]-p[0]),h:Math.abs(p[3]-p[1])};
-}
 // Where the page ends for the PDF: the lowest edge of anything on it.
 function canvasContentBottom(doc){
   let b=0;
-  for(const it of canvasLive(doc.items))b=Math.max(b,it.y+it.h+(it.type==='arrow'||it.type==='rect'?it.size:0));
+  for(const it of canvasLive(doc.items))b=Math.max(b,it.y+it.h);
   for(const s of canvasLive(doc.strokes))for(const p of s.pts)b=Math.max(b,p[1]+s.size/2);
   return b;
 }
@@ -132,29 +121,14 @@ function canvasStrokeHit(stroke,x,y,r=0){
   for(let i=1;i<pts.length;i++)if(canvasSegDist(x,y,pts[i-1][0],pts[i-1][1],pts[i][0],pts[i][1])<=reach)return true;
   return false;
 }
-// The topmost item at a point. Photos and text: anywhere inside; an arrow: near its line; a rectangle: near its edge
-// (so a big frame never hides what is inside it). `tol` in page units.
+// The topmost item at a point (photos and text: anywhere inside). `tol` in page units.
 function canvasHitItem(items,x,y,tol=10){
   const live=canvasLive(items).sort((a,b)=>b.z-a.z);
   for(const it of live){
     if(it.type==='photo'||it.type==='text'){if(x>=it.x-tol/2&&x<=it.x+it.w+tol/2&&y>=it.y-tol/2&&y<=it.y+it.h+tol/2)return it}
-    else if(it.type==='arrow'){if(canvasSegDist(x,y,it.p[0],it.p[1],it.p[2],it.p[3])<=tol+it.size/2)return it}
-    else if(it.type==='rect'){
-      const r=tol+it.size/2,inOuter=x>=it.x-r&&x<=it.x+it.w+r&&y>=it.y-r&&y<=it.y+it.h+r;
-      const inInner=x>it.x+r&&x<it.x+it.w-r&&y>it.y+r&&y<it.y+it.h-r;
-      if(inOuter&&!inInner)return it;
-    }
   }
   return null;
 }
-// SVG path data (page units), used by the screen and — through Path2D — by the PDF, so both draw the same shape.
-function canvasArrowPath(p,size=4.5){
-  const[x1,y1,x2,y2]=p,ang=Math.atan2(y2-y1,x2-x1),head=Math.max(18,size*4.5),spread=Math.PI/7;
-  const a=[x2-head*Math.cos(ang-spread),y2-head*Math.sin(ang-spread)],b=[x2-head*Math.cos(ang+spread),y2-head*Math.sin(ang+spread)];
-  const f=n=>canvasRound(n,1);
-  return`M${f(x1)} ${f(y1)}L${f(x2)} ${f(y2)}M${f(a[0])} ${f(a[1])}L${f(x2)} ${f(y2)}L${f(b[0])} ${f(b[1])}`;
-}
-const canvasRectPath=it=>{const f=n=>canvasRound(n,1);return`M${f(it.x)} ${f(it.y)}H${f(it.x+it.w)}V${f(it.y+it.h)}H${f(it.x)}Z`};
 // Perfect-freehand outline → path data (quadratic through the midpoints).
 function canvasOutlinePath(outline){
   if(!outline.length)return'';
@@ -372,7 +346,7 @@ function canvasPhotoSize(ratio){
 }
 
 if(typeof module!=='undefined')module.exports={CANVAS_W,CANVAS_PAGE_H,CANVAS_MAX_H,CANVAS_GROW_MARGIN,CANVAS_GROW_STEP,CANVAS_ADD_SPACE,CANVAS_LINE,CANVAS_TOOLS,CANVAS_BGS,CANVAS_COLORS,CANVAS_SIZES,CANVAS_HIGHLIGHT_ALPHA,CANVAS_TEXT_PAD,CANVAS_TEXT_W,CANVAS_PHOTO_MIN_W,
-  canvasKey,canvasKindOf,emptyCanvasDoc,normalizeCanvasDoc,canvasPrune,canvasLive,canvasIsEmpty,canvasArrowBox,canvasContentBottom,canvasGrownHeight,canvasNextZ,canvasSegDist,canvasStrokeHit,canvasHitItem,
-  canvasArrowPath,canvasRectPath,canvasOutlinePath,canvasStrokeOptions,canvasEraseSplit,canvasSnapShape,canvasRdp,canvasLineHeight,canvasTextHeight,canvasLayoutText,
+  canvasKey,canvasKindOf,emptyCanvasDoc,normalizeCanvasDoc,canvasPrune,canvasLive,canvasIsEmpty,canvasContentBottom,canvasGrownHeight,canvasNextZ,canvasSegDist,canvasStrokeHit,canvasHitItem,
+  canvasOutlinePath,canvasStrokeOptions,canvasEraseSplit,canvasSnapShape,canvasRdp,canvasLineHeight,canvasTextHeight,canvasLayoutText,
   canvasStore,canvasSerialize,canvasChangeCreate,canvasChangeRemove,canvasChangeUpdate,canvasChangePage,canvasApplyChanges,canvasHistory,canvasHistoryPush,canvasUndo,canvasRedo,
   canvasMerge,canvasContentJson,canvasSameContent,canvasPdfPageCount,canvasPdfSlices,canvasPlacedPhotoIds,canvasNewPhotoIds,canvasPhotoSize};

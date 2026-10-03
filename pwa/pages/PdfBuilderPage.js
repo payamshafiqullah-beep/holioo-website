@@ -9,7 +9,10 @@ async function renderPdfBuilder(){
   const{course,session}=ctx;
   const everySession=course.sections.flatMap(s=>s.sessions.map(q=>({section:s,session:q})));
   const written=new Set();
-  for(const x of everySession)if(!x.session.photoIds.length&&await sessionHasNotebookInk(x.session))written.add(x.session.id);
+  // Tablet / computer: the Notes pages (free canvas) can be in the PDF too; phones keep the builder as it is.
+  const desk=typeof isDesk==='function'&&isDesk()&&typeof canvasSessionHasContent==='function',canvasSessions=new Set();
+  if(desk)for(const x of everySession)if(await canvasSessionHasContent(x.session.id))canvasSessions.add(x.session.id);
+  for(const x of everySession)if(!x.session.photoIds.length&&(await sessionHasNotebookInk(x.session)||canvasSessions.has(x.session.id)))written.add(x.session.id);
   const allSessions=everySession.filter(x=>x.session.photoIds.length||written.has(x.session.id));
   const photoContext=new Map();
   for(const entry of allSessions)for(const id of entry.session.photoIds)photoContext.set(id,entry);
@@ -35,6 +38,7 @@ async function renderPdfBuilder(){
       ${toggle('pdfToc','Table des matières','Liste des séances, sans photo',false)}
       ${toggle('pdfNumbers','Numéroter les pages','« 3 / 12 » en bas de chaque page')}
       ${toggle('pdfSearchable','Texte recherchable','Le texte est lu sur chaque photo à la création du PDF (quelques secondes par photo) et ajouté, invisible : recherche et copie dans le PDF')}
+      ${canvasSessions.size?toggle('pdfCanvas','Pages de notes','Les pages libres de la séance (photos placées, écriture, texte, formes) telles qu’elles sont, après ses photos'):''}
     </div>
     ${SectionTitle('Export')}
     <div class="form-card">
@@ -94,6 +98,7 @@ async function renderPdfBuilder(){
       toc:byId('pdfToc').checked,
       numbers:byId('pdfNumbers').checked,
       searchable:byId('pdfSearchable').checked,
+      canvasPages:desk&&(byId('pdfCanvas')?.checked??true),
       pageSize:byId('pdfPageSize').value,
       quality:byId('pdfQuality').value,
       photoOrder:[...photoOrder]

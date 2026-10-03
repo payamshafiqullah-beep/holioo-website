@@ -115,6 +115,7 @@ async function purgeSessionInk(sessionIds){
   if(sessionIds.includes(notebookRuntime?.doc.sessionId))cleanupNotebookRuntime();
   await Promise.all(sessionIds.flatMap(id=>[DB.del('kv',inkKey(id)),DB.del('kv',`drive:${inkKey(id)}`)]));
   sessionIds.forEach(id=>notebookHistory.delete(id));
+  if(typeof purgeSessionCanvas==='function')await purgeSessionCanvas(sessionIds);   // the Notes page (features/canvas-sync.js) goes with it
 }
 
 function addBlankNotebookBlock(doc,afterId=notebookSelectedBlockId){

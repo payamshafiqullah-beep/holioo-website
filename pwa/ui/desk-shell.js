@@ -23,7 +23,7 @@ const DESK_TAB_OF={gallery:'gallery',courses:'gallery',course:'gallery',section:
 const DESK_TABS=[
   {id:'gallery',label:'Galerie',iconName:'images',attrs:'data-nav="gallery"',title:'Galerie : les photos du cours'},
   {id:'capture',label:'Caméra',iconName:'camera',attrs:'data-nav="capture"',cls:'desk-capture',title:'Prendre des photos'},
-  {id:'notes',label:'Notes',iconName:'penLine',attrs:'data-nav="notes"',title:'Notes : page libre pour écrire, dessiner et placer les photos'},
+  {id:'notes',label:'Notes',iconName:'penLine',attrs:'data-desk-act="notes"',title:'Notes : page libre pour écrire, dessiner et placer les photos'},
   {id:'pdf',label:'PDF',iconName:'fileText',attrs:'data-desk-act="pdf"',title:'Créer un PDF'},
   {id:'sync',label:'Drive',iconName:'cloud',attrs:'data-desk-act="sync"',title:'Synchroniser avec Google Drive',dot:true}
 ];
@@ -95,7 +95,7 @@ function deskMount(){
   bar.addEventListener('click',e=>{
     if(e.target.closest('#deskSideToggle')){deskToggleSidebar();return}
     const act=e.target.closest('[data-desk-act]')?.dataset.deskAct;
-    if(act==='pdf')deskPdf();else if(act==='sync')deskSync();else if(act==='settings')deskToggleMenu();
+    if(act==='pdf')deskPdf();else if(act==='sync')deskSync();else if(act==='settings')deskToggleMenu();else if(act==='notes')deskNotes();
   });
   scrim.addEventListener('click',()=>deskSetDrawer(false));
   byId('deskFilter').addEventListener('input',e=>{deskFilterText=e.target.value;deskFillTree()});

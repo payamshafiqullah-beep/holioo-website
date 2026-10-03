@@ -4,14 +4,14 @@ const read=p=>fs.readFileSync(new URL(p,import.meta.url),'utf8');
 
 const pageFiles=[
   './pages/LoginPage.js','./pages/AdminPage.js','./pages/AcademicSetupPage.js','./pages/HomePage.js','./pages/CoursesPage.js',
-  './pages/CourseDetailPage.js','./pages/SectionPage.js','./pages/SessionPage.js','./pages/SessionDeskPage.js','./pages/GalleryDeskPage.js','./pages/LiveCapturePage.js','./pages/CapturePage.js','./pages/ScanReviewPage.js',
+  './pages/CourseDetailPage.js','./pages/SectionPage.js','./pages/SessionPage.js','./pages/SessionDeskPage.js','./pages/GalleryDeskPage.js','./pages/NotesCanvasPage.js','./pages/LiveCapturePage.js','./pages/CapturePage.js','./pages/ScanReviewPage.js',
   './pages/CaptureCompletePage.js','./pages/SplitBatchPage.js','./pages/OrganizeBatchPage.js','./pages/InboxPage.js',
   './pages/PhotoViewerPage.js','./pages/PdfBuilderPage.js','./pages/PdfViewerPage.js','./pages/FilesPage.js',
   './pages/AcademicLibraryPage.js','./pages/ProfilePage.js','./pages/SyncPage.js'
 ];
 const uiFiles=['./ui/icons.js','./ui/components.js','./ui/reorder.js','./ui/shell.js','./ui/desk-shell.js','./ui/camera-picker.js','./ui/radial-menu.js','./ui/photo-editor.js'];
 const featureFiles=[
-  './features/media-viewer.js','./features/course-actions.js','./features/image-pipeline.js','./features/photo-edits.js','./features/thumbs.js','./features/camera-i18n.js','./features/camera-destination.js','./features/gallery-logic.js',
+  './features/media-viewer.js','./features/course-actions.js','./features/image-pipeline.js','./features/photo-edits.js','./features/thumbs.js','./features/camera-i18n.js','./features/camera-destination.js','./features/gallery-logic.js','./features/canvas-doc.js','./features/canvas-render.js','./features/canvas-sync.js','./features/canvas-export.js',
   './features/camera-queue.js','./features/scan-core.js','./features/scanner.js','./features/scan-ml.js','./features/ocr.js','./features/text-actions.js','./features/capture-actions.js','./features/quick-capture.js','./features/item-menu.js',
   './features/pdf-actions.js','./features/cloud-sync.js','./features/community-actions.js','./features/state-merge.js','./features/remote-sync.js','./features/notes.js'
 ];

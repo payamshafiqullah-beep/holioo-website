@@ -17,7 +17,8 @@ function loadPdfLib(){
   return pdfLibPromise;
 }
 
-// Builds the PDF bytes. `pages`: [{blob, words?, label}] in order; returns {bytes, total, withText}.
+// Builds the PDF bytes. `pages`: [{blob, words?, label, bleed?}] in order; returns {bytes, total, withText}.
+// `bleed`: the picture fills an A4 sheet exactly, with no margin, label or number (Notes pages, features/canvas-export.js).
 async function buildPdfDocument(lib,{pages,title,subject,keywords=[],author='',cover=null,toc=null,pageSize='a4',quality='standard',numbers=true,encode}){
   const{PDFDocument,StandardFonts,rgb,setTextRenderingMode,TextRenderingMode}=lib;
   const q=PDF_QUALITY[quality]||PDF_QUALITY.standard;
@@ -30,8 +31,8 @@ async function buildPdfDocument(lib,{pages,title,subject,keywords=[],author='',c
   for(const p of pages){
     const{bytes,width:iw,height:ih}=await encode(p.blob,q,quality);
     const img=await doc.embedJpg(bytes);
-    const[pw,ph]=pdfPageSize(pageSize,iw,ih),page=doc.addPage([pw,ph]);
-    const box=pdfFit(iw,ih,{x:24,y:34,w:pw-48,h:ph-24-34});
+    const[pw,ph]=p.bleed?[595.28,841.89]:pdfPageSize(pageSize,iw,ih),page=doc.addPage([pw,ph]);
+    const box=p.bleed?{x:0,y:0,width:pw,height:ph}:pdfFit(iw,ih,{x:24,y:34,w:pw-48,h:ph-24-34});
     page.drawImage(img,box);
     // Invisible text over the photo (text rendering mode 3): searchable and selectable, not visible.
     if(p.words?.length){
@@ -71,6 +72,7 @@ async function buildPdfDocument(lib,{pages,title,subject,keywords=[],author='',c
     }
   }
   photoPages.forEach(({page,p},i)=>{
+    if(p.bleed)return;
     const w=page.getWidth(),num=`${i+offset+1} / ${total}`;
     if(p.label)page.drawText(safe(p.label),{x:24,y:14,size:8,font,color:gray,maxWidth:w-120});
     if(numbers)page.drawText(num,{x:w-24-font.widthOfTextAtSize(num,8),y:14,size:8,font,color:gray});
@@ -120,6 +122,15 @@ async function generatePdfFile(course,sessionIds,opts){
     for(const e of entries)for(const c of inkPages.get(e.session.id))if(!c.photoId){
       const page={id:`ink:${c.blockId}`,blob:c.blob,words:null,label:pageLabel(e),e},at=pages.map(p=>p.e.session.id).lastIndexOf(e.session.id);
       at<0?pages.push(page):pages.splice(at+1,0,page);
+    }
+    // Notes pages (free canvas, tablet / computer) of each séance, as placed, after that séance's photos.
+    if(opts.canvasPages===true&&typeof canvasExportPages==='function')for(const e of entries){
+      let sheets=[];
+      try{sheets=await canvasExportPages(e.session)}catch(err){console.warn(err);showToast('Page de notes non incluse (erreur de rendu)')}
+      for(const c of sheets){
+        const page={id:`canvas:${e.session.id}:${pages.length}`,blob:c.blob,words:null,label:`${pageLabel(e)} · Notes`,e,bleed:true},at=pages.map(p=>p.e.session.id).lastIndexOf(e.session.id);
+        at<0?pages.push(page):pages.splice(at+1,0,page);
+      }
     }
     if(!pages.length){showToast('Aucune photo à mettre dans le PDF');return}
 

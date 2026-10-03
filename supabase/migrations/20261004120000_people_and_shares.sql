@@ -85,11 +85,20 @@ create index if not exists connections_person_idx on public.connections (person_
 alter table public.connections enable row level security;
 revoke all on public.connections from anon, authenticated;
 grant select, insert, delete on public.connections to authenticated;
+-- A person you have not added yet is invisible through public_profiles' own policy, so "does this person exist?" is a
+-- tiny security-definer check (returns only true/false) used by the connections insert policy.
+create or replace function public.person_exists(p_uid uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.public_profiles where uid = p_uid)
+$$;
+revoke all on function public.person_exists(uuid) from public, anon;
+grant execute on function public.person_exists(uuid) to authenticated;
+
 drop policy if exists connections_select_own on public.connections;
 create policy connections_select_own on public.connections for select to authenticated using (owner_id = auth.uid());
 drop policy if exists connections_insert_own on public.connections;
 create policy connections_insert_own on public.connections for insert to authenticated
-  with check (owner_id = auth.uid() and person_id <> auth.uid() and exists (select 1 from public.public_profiles pp where pp.uid = person_id));
+  with check (owner_id = auth.uid() and person_id <> auth.uid() and public.person_exists(person_id));
 drop policy if exists connections_delete_own on public.connections;
 create policy connections_delete_own on public.connections for delete to authenticated using (owner_id = auth.uid());
 
@@ -133,8 +142,8 @@ create policy shares_delete on public.shares for delete to authenticated
 drop policy if exists public_profiles_select on public.public_profiles;
 create policy public_profiles_select on public.public_profiles for select to authenticated using (
   uid = auth.uid()
-  or exists (select 1 from public.connections c where c.owner_id = auth.uid() and c.person_id = uid)
-  or exists (select 1 from public.shares s where s.recipient_id = auth.uid() and s.owner_id = uid)
+  or exists (select 1 from public.connections c where c.owner_id = auth.uid() and c.person_id = public_profiles.uid)
+  or exists (select 1 from public.shares s where s.recipient_id = auth.uid() and s.owner_id = public_profiles.uid)
 );
 
 -- 4) Exact-match lookup: the ONLY way to find someone you have not added yet --------------------------------------

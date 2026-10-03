@@ -1298,6 +1298,37 @@ body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
 }
 
 /* =====================================================================
+   LECTURE RAPIDE — the paper-page trigger on Accueil and the stacked rings of its radial menu (features/quick-reading.js).
+   Only menus created with `stack` get data-depth / .blurred / .gone: Capture rapide and the item menus never match.
+   ===================================================================== */
+.radial[data-depth] .radial-item{transition:transform .15s var(--ease),opacity .15s var(--ease),filter .15s var(--ease),background .12s,color .12s,box-shadow .12s}
+.radial.open .radial-item.blurred{filter:blur(3px);opacity:.55}
+.radial.open .radial-item.blurred.hot,.radial.open .radial-item.blurred.lensed{filter:none;opacity:1}
+.radial.open .radial-item.gone{opacity:0;pointer-events:none;transform:translate(-50%,-50%) translate(var(--dx),var(--dy)) scale(.6)}
+.radial-dot.has-icon{display:grid;place-items:center;max-width:none;overflow:visible}
+@media (prefers-reduced-motion:reduce){.radial[data-depth] .radial-item{transition:none}}
+
+.qr-row{gap:var(--s3);align-items:center;padding-top:var(--s3);padding-bottom:var(--s3)}
+.qr-trigger{position:relative;flex:none;display:flex;flex-direction:column;align-items:center;gap:6px;width:84px;padding:2px 0 0;color:var(--accent)}
+.qr-trigger:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:10px}
+.qr-page{display:block;width:46px;height:59px;overflow:visible;filter:drop-shadow(0 8px 14px rgba(91,103,241,.28));transition:transform .15s var(--ease)}
+.qr-sheet{fill:var(--surface);stroke:var(--accent);stroke-width:2.2;stroke-linejoin:round}
+.qr-fold{fill:var(--accent-soft);stroke:var(--accent);stroke-width:2.2;stroke-linejoin:round}
+.qr-line{fill:var(--muted);opacity:.45}
+.qr-line.head{fill:var(--accent);opacity:1}
+.qr-trigger small{font-size:11px;font-weight:700;line-height:1.1;color:var(--muted);white-space:nowrap}
+.qr-trigger.radial-active .qr-page{transform:scale(1.08) rotate(-2deg)}
+
+/* Épuré (tablet / computer): smaller page, 1px-style strokes, no shadow. */
+@media (min-width:720px) and (min-height:521px),(min-width:960px){
+  .qr-trigger{width:96px;gap:var(--s2)}
+  .qr-page{width:34px;height:44px;filter:none}
+  .qr-sheet,.qr-fold{stroke-width:2}
+  .qr-trigger small{font-size:12px}
+  .radial.open .radial-item.blurred{filter:blur(2px)}
+}
+
+/* =====================================================================
    PEOPLE + HOLIOO SHARES — avatars, people list, "share with people" sheet, Holioo Shares groups, copy-ID button.
    Token-based (light + dark). The compact Épuré sizes (≥720px) are in the media block at the end of this section.
    ===================================================================== */

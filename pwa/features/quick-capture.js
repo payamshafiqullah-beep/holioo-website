@@ -130,15 +130,18 @@ function showQuickCaptureBubble(kind,trigger){
   el.className=`qc-bubble ${kind}${below?' below':''}`;el.id='qcBubble';el.setAttribute('role','status');
   el.innerHTML=kind==='empty'
     ?`<p>${esc(camT('qcNoCourses'))}</p><button type="button" class="qc-bubble-btn" id="qcCreateCourse">${icon('plus',{size:16,stroke:2.4})}${esc(camT('qcCreateCourse'))}</button>`
+    :kind==='readEmpty'   // Lecture rapide with no PDF yet (features/quick-reading.js)
+    ?`<p>${esc(camT('rdNoPdf'))}</p><button type="button" class="qc-bubble-btn" id="qcGoCourses">${icon('book',{size:16,stroke:2.4})}${esc(camT('rdGoCourses'))}</button>`
     :`<p>${esc(camT('qcHint'))}</p>`;
   document.body.appendChild(el);
   const w=el.offsetWidth,left=Math.min(Math.max(cx,w/2+12),window.innerWidth-w/2-12);
   el.style.left=`${left}px`;el.style.setProperty('--ax',`${cx-left}px`);
   if(below)el.style.top=`${r.bottom+14}px`;else el.style.bottom=`${window.innerHeight-r.top+14}px`;
   byId('qcCreateCourse')?.addEventListener('click',()=>{closeQuickCaptureBubble();navigate('courses');openNewCourseSheet()});
-  if(keyboard)byId('qcCreateCourse')?.focus({preventScroll:true});
+  byId('qcGoCourses')?.addEventListener('click',()=>{closeQuickCaptureBubble();navigate('courses')});
+  if(keyboard)(byId('qcCreateCourse')||byId('qcGoCourses'))?.focus({preventScroll:true});
   el._off=e=>{if(!el.contains(e.target))closeQuickCaptureBubble()};
-  el._t=setTimeout(closeQuickCaptureBubble,kind==='empty'?9000:8000);
+  el._t=setTimeout(closeQuickCaptureBubble,kind==='empty'||kind==='readEmpty'?9000:8000);
   setTimeout(()=>{if(el.isConnected)document.addEventListener('pointerdown',el._off,true)},0);
 }
 function closeQuickCaptureBubble(){

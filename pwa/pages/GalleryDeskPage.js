@@ -110,7 +110,7 @@ async function renderGallery(){
       <div class="gallery-meta"><span class="gallery-filter-chip">${esc(scope)}</span><span class="gallery-count">${esc(plural(n,'photo'))}</span></div>
     </header>
     ${n?`<ul class="gallery-grid" id="galleryGrid">${tiles}</ul>`:empty}
-    <button class="gallery-fab" type="button" id="galleryFab" title="Note Srieh" aria-label="Note Srieh : ouvrir les notes de ${esc(course.name)}, ${esc(scope)}">${icon('pencil',{size:28,stroke:2})}</button>
+    <button class="gallery-fab" type="button" id="galleryFab" title="Note rapide" aria-label="Note rapide : ouvrir les notes de ${esc(course.name)}, ${esc(scope)}">${icon('penLine',{size:28,stroke:2})}</button>
   </section>`;
   const box=byId('galleryGrid');
   if(box){

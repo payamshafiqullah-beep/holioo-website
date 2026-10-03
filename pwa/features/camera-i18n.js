@@ -90,8 +90,8 @@ const CAMERA_STRINGS={
     rdCourseAria:'{name} : afficher les sections',rdSectionAria:'{course}, {section} : afficher les séances',
     rdSessionOneAria:'{session} : ouvrir le PDF',rdSessionManyAria:'{session} : afficher les PDF',rdPdfAria:'Ouvrir {title}',
     rdNoPdf:'Aucun PDF à relire pour l’instant. Créez-en un depuis une séance.',rdGoCourses:'Voir mes cours',
-    rdSummary:'{n} document(s) à relire',rdSummaryNone:'Aucun PDF pour le moment',
-    rdHint:'Maintenez la page, glissez : cours › section › séance › PDF, puis relâchez.'
+    rdSummary:'{n} documents à relire',rdSummaryNone:'Aucun PDF pour le moment',
+    rdResume:'Reprendre',rdResumeAria:'Reprendre la dernière lecture'
   }
 };
 const cameraLang='fr';

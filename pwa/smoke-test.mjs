@@ -28,7 +28,7 @@ const drive=read('./drive.js');
 const html=read('./index.html');
 const sw=read('./sw.js');
 const manifest=JSON.parse(read('./manifest.webmanifest'));
-if(!html.includes('20261003-epure-v11'))throw new Error('Asset cache-bust version missing');
+if(!html.includes('20261003-epure-v12'))throw new Error('Asset cache-bust version missing');
 
 const required=[
   'Diviser le lot','Organiser les photos','Captures à trier','Section personnalisée','Nouvelle séance',
@@ -107,7 +107,7 @@ if(home.includes('Relire mes PDF')||!home.includes('QuickReadingTrigger')||!home
 for(const s of ['quickReadingItems','quickReadingSelect','maxDepth:4,stack:true','openPdfViewer(item.pdfId,\'home\')','readingTree','qr-page'])if(!rd.includes(s))throw new Error(`Lecture rapide missing: ${s}`);
 for(const s of ['radialHitN','radialRadius','applyStack','maxDepth'])if(!radial.includes(s))throw new Error(`Radial menu missing: ${s}`);
 if(/maxDepth|stack:/.test(read('./features/quick-capture.js')+read('./features/item-menu.js')))throw new Error('Capture rapide / item menus must keep the plain two-ring menu');
-for(const s of ['.radial.open .radial-item.blurred','.radial.open .radial-item.gone','.qr-sheet','.qr-line'])if(!css.includes(s))throw new Error(`Lecture rapide style missing: ${s}`);
+for(const s of ['.radial.open .radial-item.blurred','.radial.open .radial-item.gone','.qr-ring','.qr-resume'])if(!css.includes(s))throw new Error(`Lecture rapide style missing: ${s}`);
 if(html.indexOf('features/reading-logic.js')>html.indexOf('features/quick-reading.js')||html.indexOf('features/quick-reading.js')<html.indexOf('features/quick-capture.js'))throw new Error('reading-logic.js, then quick-reading.js, must load after quick-capture.js');}
 // Tablet / computer layout: built only at ≥768px, phones keep their own DOM; typed notes beside the photos.
 {const desk=read('./ui/desk-shell.js'),css=read('./styles.css');

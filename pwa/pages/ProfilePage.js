@@ -31,6 +31,7 @@ function renderProfile(){
       </div>
     </details>
     <div class="list-stack">
+      <label class="list-card static toggle-row">${IconBadge('sparkles','lavender','md')}<span class="list-card-copy"><strong>Mode sombre</strong><small>Thème sombre pour toute l’application.</small></span><input type="checkbox" id="pDark" class="switch" ${document.documentElement.dataset.theme==='dark'?'checked':''}></label>
       ${notebookCanEdit()?`<label class="list-card static toggle-row">${IconBadge('pencil','mint','md')}<span class="list-card-copy"><strong>Dessiner avec le doigt</strong><small>Désactivé par défaut pour éviter les marques avec la main.</small></span><input type="checkbox" id="pDrawFinger" class="switch" ${state.settings.drawWithFinger?'checked':''}></label>`:''}
       ${ListCard({iconName:'cloud',tone:'sky',title:'Google Drive & synchronisation',attrs:'data-nav="sync"'})}
       ${ListCard({iconName:'search',tone:'mint',title:'Rechercher un Holioo ID',attrs:'id="searchId"'})}
@@ -42,6 +43,7 @@ function renderProfile(){
   </section>`;
   byId('backBtn').onclick=()=>navigate('home');
   byId('pDrawFinger')?.addEventListener('change',e=>{state.settings.drawWithFinger=e.target.checked;saveState();showToast(e.target.checked?'Dessin au doigt activé':'Dessin au doigt désactivé')});
+  byId('pDark')?.addEventListener('change',e=>{const on=e.target.checked;if(on)document.documentElement.setAttribute('data-theme','dark');else document.documentElement.removeAttribute('data-theme');try{localStorage.setItem('holioo-theme',on?'dark':'light')}catch{}document.querySelector('meta[name=theme-color]')?.setAttribute('content',on?'#0F1020':'#1689F5')});
   byId('guestToGoogle')?.addEventListener('click',()=>startGoogleLogin());
   byId('logoutBtn').onclick=guestMode?()=>openSheet({title:'Quitter le mode test ?',subtitle:'Vos cours de test restent sur cet appareil et réapparaîtront si vous revenez en mode test.',confirmText:'Quitter',onConfirm:()=>{signOut();return true}}):()=>openSheet({title:'Se déconnecter ?',subtitle:'Vos cours restent enregistrés sur cet appareil et réapparaîtront à votre prochaine connexion.',confirmText:'Se déconnecter',onConfirm:()=>{signOut();return true}});
   byId('avatarInput').onchange=async e=>{

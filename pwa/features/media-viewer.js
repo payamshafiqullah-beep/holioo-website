@@ -110,7 +110,7 @@ function viewerDeleteCurrent(){
   });
 }
 async function removeLocalPdf(id){
-  await DB.del('files',id);state.files=state.files.filter(f=>f.id!==id);saveState();queueSync();
+  await DB.del('files',id);DB.del('kv',`pdfink:${id}`).catch(()=>{});state.files=state.files.filter(f=>f.id!==id);saveState();queueSync();
 }
 function confirmDeletePdf(id,returnView=currentView){
   const meta=state.files.find(f=>f.id===id);if(!meta)return;
@@ -181,7 +181,7 @@ async function renderPdfPages(blob,host,{onCount,onPage,zoom=1,page:startPage=1,
       const vp=pages[i].pg.getViewport({scale:w/pages[i].pg.getViewport({scale:1}).width*dpr});
       const c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;
       await pages[i].pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
-      f.box.replaceChildren(c);f.drawnAt=w;
+      const old=f.box.querySelector(':scope>canvas');old?old.replaceWith(c):f.box.prepend(c);f.drawnAt=w;   // the ink layer (pdf-ink.js) stays on top
     }catch(e){console.warn(e)}
     f.drawing=false;
     if(Math.abs(f.drawnAt-baseWidth*z)>=1&&f.visible)draw(i);
@@ -213,5 +213,5 @@ async function renderPdfPages(blob,host,{onCount,onPage,zoom=1,page:startPage=1,
   sizeAll();
   await new Promise(r=>requestAnimationFrame(r));
   goTo(startPage,startRatio);last=cur();onPage?.(last,pdf.numPages);
-  return{get zoom(){return z},setZoom,page:cur,pageRatio,goTo,count:pdf.numPages};
+  return{get zoom(){return z},setZoom,page:cur,pageRatio,goTo,count:pdf.numPages,boxes:figs.map(f=>f.box),aspects:pages.map(p=>p.aspect)};
 }

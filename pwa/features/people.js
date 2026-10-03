@@ -11,9 +11,25 @@ const SHARE_MAX_BYTES=25*1024*1024;
 let peopleCache=null; // [{uid,holioo_id,display_name,avatar_url,since}] — filled by loadPeople()
 
 const personName=p=>p?.display_name||'Étudiant';
+// Initials (first letters of the first two words) on a colour that depends on the person, so two people without a photo differ.
+function initialsOf(name){const w=String(name||'?').trim().split(/\s+/).filter(Boolean);return((w[0]?.[0]||'?')+(w.length>1?w[w.length-1][0]:'')).toUpperCase()}
+function avatarTone(key){let h=0;for(const c of String(key||''))h=(h*31+c.charCodeAt(0))>>>0;return h%6}
 function peopleAvatar(p,cls=''){
-  return`<span class="ppl-avatar ${cls}">${p?.avatar_url?`<img src="${esc(p.avatar_url)}" alt="" loading="lazy" draggable="false" referrerpolicy="no-referrer">`:esc(iconLetter(personName(p)))}</span>`;
+  const ini=esc(initialsOf(personName(p)));
+  return`<span class="ppl-avatar ${cls}" data-tone="${avatarTone(p?.uid||personName(p))}" data-initials="${ini}">${p?.avatar_url?`<img src="${esc(p.avatar_url)}" alt="" loading="lazy" draggable="false" referrerpolicy="no-referrer">`:ini}</span>`;
 }
+// A photo that fails to load falls back to the initials (capture phase: image errors do not bubble).
+document.addEventListener('error',e=>{const i=e.target;if(i?.tagName==='IMG'&&i.parentElement?.classList.contains('ppl-avatar'))i.parentElement.textContent=i.parentElement.dataset.initials||'?'},true);
+// What to tell the user for a failed call: offline, rate limit, or a server that does not have the feature yet.
+function peopleErrorText(e){
+  const m=String(e?.message||'')+' '+String(e?.code||'');
+  if(!navigator.onLine)return'Connexion Internet nécessaire.';
+  if(/rate_limited/.test(m))return'Trop de recherches. Réessayez dans une minute.';
+  if(/PGRST20[25]|42P01|42883|does not exist|schema cache/i.test(m))return'Cette fonction sera disponible dès que le serveur sera mis à jour.';
+  return'Une erreur est survenue. Réessayez.';
+}
+const peopleErrorHtml=(e,retryId='pplRetry')=>`<div class="ppl-error" role="alert">${icon('info',{size:18})}<span>${esc(peopleErrorText(e))}</span><button class="action-btn ghost ppl-retry" type="button" id="${retryId}">Réessayer</button></div>`;
+const peopleSkeleton=(n=3)=>`<div class="ppl-list" aria-busy="true" aria-label="Chargement">${Array.from({length:n},()=>'<div class="ppl-row ppl-skel"><span class="ppl-avatar"></span><span class="ppl-copy"><i></i><i class="short"></i></span></div>').join('')}</div>`;
 const peopleReady=()=>!!(sb&&currentUser&&navigator.onLine);
 function needOnline(){if(!peopleReady()){showToast('Connexion Internet nécessaire');return false}return true}
 
@@ -63,9 +79,9 @@ async function removePerson(person){
 }
 
 // Exact-ID search sheet: shows ONLY name + photo + Add. `after` runs when the list changed.
-function openPeopleSearchSheet(after=()=>{}){
+function openPeopleSearchSheet(after=()=>{},{prefill='',autoSearch=false}={}){
   const close=openSheet({title:'Ajouter une personne',subtitle:'Saisissez son identifiant Holioo exact.',
-    body:`<div class="field"><label for="holiooLookup">Identifiant Holioo</label><input id="holiooLookup" type="text" inputmode="text" autocapitalize="none" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Ex. h1234567890" maxlength="41"></div><div id="pplFound" class="ppl-found" aria-live="polite"></div>`,
+    body:`<div class="field"><label for="holiooLookup">Identifiant Holioo</label><input id="holiooLookup" type="text" inputmode="text" autocapitalize="none" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Ex. h1234567890" maxlength="41" value="${esc(prefill)}"></div><div id="pplFound" class="ppl-found" aria-live="polite"></div>`,
     confirmText:'Rechercher',secondaryText:'Fermer',
     onConfirm:async()=>{
       const box=byId('pplFound');if(!needOnline())return false;
@@ -82,10 +98,10 @@ function openPeopleSearchSheet(after=()=>{}){
           try{await addPerson(p.uid);showToast(`${personName(p)} ajouté(e)`);close();after()}
           catch(err){console.error(err);b.disabled=false;showToast('Ajout impossible')}
         });
-      }catch(err){console.error(err);box.innerHTML='<p class="ppl-note">Recherche impossible pour le moment.</p>'}
+      }catch(err){console.error(err);box.innerHTML=`<p class="ppl-note">${esc(peopleErrorText(err))}</p>`}
       return false; // the sheet stays open to show the result
     }});
-  setTimeout(()=>byId('holiooLookup')?.focus(),50);
+  setTimeout(()=>{byId('holiooLookup')?.focus();if(autoSearch&&prefill)byId('sheetConfirm')?.click()},50);
   byId('holiooLookup')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();byId('sheetConfirm')?.click()}});
   return close;
 }
@@ -195,3 +211,77 @@ async function mySentShares(){
   if(error)throw error;
   return data||[];
 }
+
+// ---------- block a person ----------
+async function loadBlocked(){
+  const{data:rows,error}=await sb.from('blocks').select('blocked_id,created_at').order('created_at',{ascending:false});
+  if(error)throw error;
+  if(!rows?.length)return[];
+  const{data}=await sb.from('public_profiles').select('uid,holioo_id,display_name,avatar_url').in('uid',rows.map(r=>r.blocked_id));
+  const by=new Map((data||[]).map(p=>[p.uid,p]));
+  return rows.map(r=>by.get(r.blocked_id)||{uid:r.blocked_id,display_name:'Étudiant'});
+}
+// Blocking: they vanish from my list, what I shared with them is withdrawn, what they shared with me is removed,
+// and they can no longer find me, add me or share with me (they are not told).
+async function blockPerson(p){
+  const{error}=await sb.from('blocks').insert({blocked_id:p.uid});
+  if(error&&error.code!=='23505')throw error;
+  await removePerson(p).catch(e=>console.warn('Block cleanup',e));
+  await sb.from('shares').delete().eq('recipient_id',currentUser.id).eq('owner_id',p.uid);
+  peopleCache=null;
+}
+async function unblockPerson(uidToUnblock){
+  const{error}=await sb.from('blocks').delete().eq('blocker_id',currentUser.id).eq('blocked_id',uidToUnblock);
+  if(error)throw error;
+}
+
+// ---------- unread badge on Holioo Shares ----------
+const sharesSeenKey=()=>`holioo-shares-seen:${currentUser?.id||''}`;
+function sharesSeenAt(){try{return localStorage.getItem(sharesSeenKey())||'1970-01-01T00:00:00Z'}catch{return'1970-01-01T00:00:00Z'}}
+function markSharesSeen(){try{localStorage.setItem(sharesSeenKey(),new Date().toISOString())}catch{}}
+async function countUnreadShares(){
+  if(!peopleReady())return 0;
+  const{count,error}=await sb.from('shares').select('id',{count:'exact',head:true}).eq('recipient_id',currentUser.id).gt('created_at',sharesSeenAt());
+  return error?0:(count||0);
+}
+async function refreshSharesBadge(){
+  const btn=byId('holiooSharesBtn');if(!btn)return;
+  let n=0;try{n=await countUnreadShares()}catch{}
+  if(!btn.isConnected)return;
+  btn.querySelector('.hs-badge')?.remove();
+  if(n>0){btn.insertAdjacentHTML('beforeend',`<i class="hs-badge" aria-hidden="true">${n>9?'9+':n}</i>`);btn.setAttribute('aria-label',`Holioo Shares, ${n} nouveau${n>1?'x':''}`)}
+  else btn.setAttribute('aria-label','Holioo Shares');
+}
+
+// ---------- my QR code → opens the Add sheet on the other phone ----------
+const holiooAddLink=id=>`${location.origin}${location.pathname}#add=${encodeURIComponent(id)}`;
+function qrSvg(text){
+  const q=window.HolioQR.matrix(text),n=q.size,m=2; // 2-module quiet zone is enough on a white tile
+  let d='';for(let y=0;y<n;y++)for(let x=0;x<n;x++)if(q.data[y*n+x])d+=`M${x+m} ${y+m}h1v1h-1z`;
+  return`<svg class="ppl-qr" viewBox="0 0 ${n+2*m} ${n+2*m}" role="img" aria-label="QR code de votre identifiant Holioo" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="#fff"/><path d="${d}" fill="#111"/></svg>`;
+}
+function openMyQrSheet(){
+  const id=state.profile.holiooId;
+  if(!id){showToast('Identifiant indisponible');return}
+  openSheet({title:'Mon code Holioo',subtitle:'Faites-le scanner avec l’appareil photo : l’ajout s’ouvre directement.',
+    body:`<div class="ppl-qr-wrap">${qrSvg(holiooAddLink(id))}<p class="ppl-qr-id">@${esc(id)}</p><button class="action-btn ghost" type="button" id="pplQrCopy">${icon('copy',{size:18})}<span>Copier l’identifiant</span></button></div>`,confirmText:'Fermer',secondaryText:'',onConfirm:()=>true});
+  byId('pplQrCopy')?.addEventListener('click',()=>copyHoliooId(id));
+}
+// A scanned link (#add=<id>) is kept until the user is signed in (the Google round trip drops the address), then opens the Add sheet.
+const PENDING_ADD_KEY='holioo-pending-add';
+function captureAddLink(){
+  try{
+    const id=new URLSearchParams(location.hash.slice(1)).get('add');
+    if(!id||!/^[a-z0-9]{4,40}$/i.test(id))return;
+    sessionStorage.setItem(PENDING_ADD_KEY,id);
+    const rest=new URLSearchParams(location.hash.slice(1));rest.delete('add');
+    history.replaceState(null,'',location.pathname+location.search+(rest.toString()?`#${rest}`:''));
+  }catch{}
+}
+function consumePendingAdd(){
+  let id=null;try{id=sessionStorage.getItem(PENDING_ADD_KEY)}catch{}
+  if(!id||!currentUser||guestMode||sheetRoot.innerHTML)return;
+  try{sessionStorage.removeItem(PENDING_ADD_KEY)}catch{}
+  openPeopleSearchSheet(()=>{if(currentView==='people')render()},{prefill:id,autoSearch:true});
+}
+captureAddLink();

@@ -76,6 +76,7 @@ async function renderLibrary(){
   </section>`;
 
   byId('holiooSharesBtn').onclick=()=>navigate('holiooShares');
+  if(currentUser&&!guestMode)refreshSharesBadge();
   bindListFilter({searchId:'librarySearch',chipsId:'libraryFilters',scope:'#libraryContent',onChange:({shown})=>byId('libraryEmpty').hidden=!!shown});
   document.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>document.querySelector(`#libraryFilters [data-chip="${b.dataset.pick}"]`)?.click());
   document.querySelectorAll('[data-year]').forEach(b=>b.onclick=()=>{currentLibrary={step:'courses',year:b.dataset.year};render()});

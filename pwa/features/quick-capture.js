@@ -118,9 +118,10 @@ function lastCapturedSession(){
   return shot?{course:shot.course,section:shot.section,session:shot.session}:latestSession();
 }
 
-// Reprendre: the camera opens straight into that séance.
+// Reprendre: the camera opens straight into that séance; on a tablet / computer its Notes page opens instead.
 function resumeQuickCapture(latest){
-  openQuickCamera({courseId:latest.course.id,sectionId:latest.section.id,sessionId:latest.session.id,source:'quick'});
+  const dest={courseId:latest.course.id,sectionId:latest.section.id,sessionId:latest.session.id,source:'quick'};
+  if(typeof isDesk==='function'&&isDesk())openQuickNotes(dest);else openQuickCamera(dest);
 }
 
 // Accueil's Capture rapide card: rings + trigger (the radial menu), title, Reprendre (the last séance) and its caption.

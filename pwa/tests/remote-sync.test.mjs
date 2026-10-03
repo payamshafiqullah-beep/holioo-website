@@ -12,8 +12,8 @@ const sbStub={functions:{invoke:async()=>({data:{access_token:'token',expires_in
 const plain=x=>JSON.parse(JSON.stringify(x));
 
 function device(drive,clock,courses){
-  const db=fakeDb(),storage=new Map(),sent=[];
-  const window={HoliooSignals:{send:async(_sb,f)=>{sent.push(f)},start(){},stop(){}}};
+  const db=fakeDb(),storage=new Map(),sent=[],peers=[];
+  const window={HoliooSignals:{send:async(_sb,f)=>{sent.push(f)},start(){},stop(){},track(){},peers:()=>peers}};
   const ctx=vm.createContext({window,fetch:drive.fetch,Headers,Blob,Response,TextEncoder,URL,URLSearchParams,console,crypto,structuredClone,
     navigator:{onLine:true},setTimeout,clearTimeout,clock,DB:db,sbStub,
     localStorage:{getItem:k=>storage.has(k)?storage.get(k):null,setItem:(k,v)=>storage.set(k,String(v)),removeItem:k=>storage.delete(k)}});
@@ -39,7 +39,7 @@ function device(drive,clock,courses){
   vm.runInContext(src('../features/remote-sync.js'),ctx);
   vm.runInContext(src('../features/notes.js'),ctx);
   const run=code=>vm.runInContext(code,ctx);
-  return{db,sent,run,ctx,
+  return{db,sent,peers,run,ctx,
     state:()=>plain(run('state')),
     edit:fn=>{fn(run('state'));run('saveState()')},
     sync:()=>run('fullSync()'),
@@ -159,4 +159,22 @@ test('notes merge note by note: the newer text of each note wins',async()=>{
   const m=plain(phone.run(`mergeNotes({session:{text:'a',updatedAt:5},photos:{x:{text:'old',updatedAt:1},y:{text:'only a',updatedAt:3}}},{session:{text:'b',updatedAt:4},photos:{x:{text:'new',updatedAt:2},z:{text:'only b',updatedAt:1}}})`));
   assert.equal(m.session.text,'a');
   assert.deepEqual(Object.fromEntries(Object.entries(m.photos).map(([k,v])=>[k,v.text])),{x:'new',y:'only a',z:'only b'});
+});
+
+// ── Live Capture ──
+test('live: with a tablet listening, a stored photo is sent at once and appears on the tablet',async()=>{
+  const{drive,phone,tablet}=setup();
+  await phone.sync();await tablet.sync();
+  const N='33333333-aaaa-4aaa-8aaa-000000000001';
+  photo(phone.db,N);phone.edit(s=>s.courses[0].sections[0].sessions[0].photoIds.push(N));
+  assert.equal(await phone.run(`onPhotoStoredForLive('${N}')`),null,'nobody listening: nothing sent now');
+  phone.peers.push({device:'tablet',desk:true,live:true});
+  const fileId=await phone.run(`onPhotoStoredForLive('${N}')`);
+  assert.ok(fileId&&drive.files.has(fileId),'uploaded right away');
+  const sig=phone.sent.find(x=>x.kind==='photo');
+  assert.deepEqual({ref:sig.refId,session:sig.sessionId,file:sig.driveFileId},{ref:N,session:null,file:fileId},'séance id only when it is a uuid');
+  assert.equal(await tablet.run(`receiveRemotePhoto(${JSON.stringify(sig)})`),true);
+  assert.equal(await tablet.db.stores.photos.get(N).blob.text(),`jpeg-${N}`);
+  await phone.sync();
+  assert.equal([...drive.files.values()].filter(f=>f.name.endsWith('-33333333.jpg')).length,1,'the later full sync does not upload it again');
 });

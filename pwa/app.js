@@ -1,4 +1,4 @@
-const VIEWS={login:()=>renderLogin(),blocked:()=>renderBlocked(),admin:()=>renderAdmin(),academicSetup:()=>renderAcademicSetup(),home:()=>renderHome(),courses:()=>renderCourses(),course:()=>renderCourse(),section:()=>renderSection(),session:()=>typeof isDesk==='function'&&isDesk()?renderSessionDesk():renderSession(),capture:()=>renderCapture(),scanReview:()=>renderScanReview(),captureComplete:()=>renderCaptureComplete(),split:()=>renderSplit(),organize:()=>renderOrganize(),inbox:()=>renderInbox(),photoViewer:()=>renderPhotoViewer(),pdfBuilder:()=>renderPdfBuilder(),pdfViewer:()=>renderPdfViewer(),files:()=>renderFiles(),library:()=>renderLibrary(),profile:()=>renderProfile(),sync:()=>renderSync()};
+const VIEWS={login:()=>renderLogin(),blocked:()=>renderBlocked(),admin:()=>renderAdmin(),academicSetup:()=>renderAcademicSetup(),home:()=>renderHome(),courses:()=>renderCourses(),course:()=>renderCourse(),section:()=>renderSection(),session:()=>typeof isDesk==='function'&&isDesk()?renderSessionDesk():renderSession(),capture:()=>renderCapture(),scanReview:()=>renderScanReview(),captureComplete:()=>renderCaptureComplete(),split:()=>renderSplit(),organize:()=>renderOrganize(),inbox:()=>renderInbox(),photoViewer:()=>renderPhotoViewer(),pdfBuilder:()=>renderPdfBuilder(),pdfViewer:()=>renderPdfViewer(),files:()=>renderFiles(),library:()=>renderLibrary(),profile:()=>renderProfile(),sync:()=>renderSync(),live:()=>renderLiveCapture()};
 async function render(){
   destroyReorderables();
   // Sign-in is mandatory. Offline, the last signed-in account on this device keeps working locally.
@@ -11,11 +11,13 @@ async function render(){
   setChrome(['login','blocked','academicSetup','photoViewer','pdfViewer','capture','scanReview','admin'].includes(currentView));
   if(typeof flushNoteSaves==='function')flushNoteSaves();
   if(typeof deskSessionCleanup==='function'){deskSessionCleanup();deskSessionCleanup=null}
+  if(typeof liveCleanup==='function'){liveCleanup();liveCleanup=null}
   releaseThumbUrls();
   // Changes made on another device are merged here, just before the screen is drawn again.
   if(typeof applyPendingRemote==='function')await applyPendingRemote().catch(e=>console.warn('Remote merge',e));
   await VIEWS[currentView]?.();
   if(typeof syncDesk==='function')syncDesk();
+  if(typeof updatePresence==='function')updatePresence();
   applyChromeStatus();
   if(typeof syncQuickCapture==='function')syncQuickCapture();
 }

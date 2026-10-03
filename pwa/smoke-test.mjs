@@ -28,7 +28,7 @@ const drive=read('./drive.js');
 const html=read('./index.html');
 const sw=read('./sw.js');
 const manifest=JSON.parse(read('./manifest.webmanifest'));
-if(!html.includes('20261003-desk-canvas-v1'))throw new Error('Asset cache-bust version missing');
+if(!html.includes('20261003-desk-canvas-v2'))throw new Error('Asset cache-bust version missing');
 
 const required=[
   'Diviser le lot','Organiser les photos','Captures à trier','Section personnalisée','Nouvelle séance',
@@ -102,6 +102,12 @@ if(!fs.existsSync(new URL('../supabase/migrations/20261003120000_sync_signals_ca
 if(/\(\?<[=!]/.test(read('./features/canvas-doc.js')+read('./features/canvas-render.js')+read('./pages/NotesCanvasPage.js')))throw new Error('No regex look-behind: iPads before Safari 16.4 could not load the file');
 // The phone's own nav and builder are untouched: the Notes option exists only when the desk layout is on.
 if(!read('./pages/PdfBuilderPage.js').includes("typeof isDesk==='function'&&isDesk()"))throw new Error('The PDF builder must offer Notes pages on tablet / computer only');}
+// One way into a séance's notes on tablet / computer: the free page. The Carnet stays on SessionPage.js (phones).
+{const d=read('./pages/SessionDeskPage.js'),css=read('./styles.css'),deskCss=css.slice(css.indexOf('TABLET & COMPUTER'));
+if(/renderSessionNotebook|notebookView|sessionViewToggle|session-view-toggle|notebookCanEdit/.test(d))throw new Error('The desk séance page must not offer the Carnet');
+if(!d.includes("navigate('notes'"))throw new Error('The desk séance page must open the free Notes page');
+for(const t of['--desk-btn:32px','--desk-ico:18px','--desk-side-ico:16px'])if(!deskCss.includes(t))throw new Error(`Desk size token missing: ${t}`);
+if(!/\.desk-toolbar \.ico[^{]*\{width:var\(--desk-ico/.test(deskCss)||!/\.desk-sidebar \.ico\{width:var\(--desk-side-ico/.test(deskCss))throw new Error('Desk icons must be sized by the shared rules');}
 console.log(`Holioo modular smoke test: PASS (${pageFiles.length} page files)`);
 
 for(const s of ['HOLIOO UI v2','--bg:#F7F7FB','--accent:#5B67F1','.bottom-nav','.capture-orb','.shutter','.cam-dest','.cam-sheet'])if(!read('./styles.css').includes(s))throw new Error(`UI v2 style missing: ${s}`);

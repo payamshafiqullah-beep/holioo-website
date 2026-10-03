@@ -51,7 +51,8 @@ function canvasPickSession({fresh=false}={}){
 }
 // Toolbar "Notes" (ui/desk-shell.js).
 function deskNotes(){
-  const q=canvasPickSession({fresh:true});
+  const shown=currentView==='session'&&currentSessionId?findSessionContext(currentSessionId):null;   // on a séance: its own page
+  const q=shown||canvasPickSession({fresh:true});
   if(!q)currentSessionId=null;
   navigate('notes',q?{courseId:q.course.id,sectionId:q.section.id,sessionId:q.session.id}:{});
 }
@@ -226,7 +227,7 @@ function canvasRenderOverlay(rt){
 // The action bar stays inside what is visible: above the item, else below it, else inside its top edge.
 function canvasPlaceBar(rt){
   const bar=rt.overlay.querySelector('.cv-bar'),it=canvasItem(rt,rt.selected);if(!bar||!it)return;
-  const b=canvasItemBox(it),s=rt.scale,barH=56,sr=rt.sheet.getBoundingClientRect(),vr=rt.viewport.getBoundingClientRect();
+  const b=canvasItemBox(it),s=rt.scale,barH=44,sr=rt.sheet.getBoundingClientRect(),vr=rt.viewport.getBoundingClientRect();
   const visTop=vr.top-sr.top,visBottom=vr.bottom-sr.top,top=b.y*s,bottom=(b.y+b.h)*s;
   const above=top-barH-12,below=bottom+12;
   bar.style.top=`${above>=visTop+8?above:below+barH<=visBottom-8?below:canvasClamp(top+12,visTop+8,Math.max(visTop+8,visBottom-barH-8))}px`;

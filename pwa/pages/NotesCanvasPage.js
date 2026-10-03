@@ -35,26 +35,17 @@ const canvasBusy=()=>{const rt=canvasRuntime;return!!rt&&!!rt.root?.isConnected&
 function canvasCameraDestination(){const rt=canvasRuntime;return rt?{courseId:rt.course.id,sectionId:rt.section.id,sessionId:rt.session.id}:null}
 
 // ── Which séance ──
-// Asked for (currentSessionId, valid), else — from the toolbar, `fresh` — the one of the course and filter on screen:
-// the open one if it fits the filter, else today's of that section, else the latest.
-function canvasPickSession({fresh=false}={}){
-  const cur=currentSessionId&&findSessionContext(currentSessionId);
-  if(!fresh)return cur||canvasPickSession({fresh:true});
-  const course=galleryCourse();if(!course)return null;
-  const filter=galleryFilter();
-  if(cur&&cur.course.id===course.id&&gallerySectionMatches(cur.section,filter))return cur;
-  const section=galleryCaptureSection(course,filter,null);
-  const today=section&&todaySession(section);
-  if(today)return{course,section,session:today};
-  const latest=galleryLatestSession(course,filter);
-  return latest?{course,section:latest.section,session:latest.session}:null;
+// The one the course navigator has selected is the one the notes are saved in. With only a course or a type selected,
+// today's séance of it, else the latest (the navigator then shows which one it is); none → the "create a séance" screen.
+function canvasPickSession(){
+  const sel=navResolve(state.courses,{courseId:currentCourseId,sectionId:currentSectionId,sessionId:currentSessionId});
+  if(sel.session)return sel;
+  const course=sel.course||galleryCourse();if(!course)return null;
+  const q=navPickSession(course,sel.section);
+  return q?{course,section:q.section,session:q.session}:null;
 }
-// Toolbar "Notes" (ui/desk-shell.js).
-function deskNotes(){
-  const q=canvasPickSession({fresh:true});
-  if(!q)currentSessionId=null;
-  navigate('notes',q?{courseId:q.course.id,sectionId:q.section.id,sessionId:q.session.id}:{});
-}
+// Toolbar "Notes" (ui/desk-shell.js): the page of what is selected.
+const deskNotes=()=>navigate('notes');
 
 async function renderNotesCanvas(){
   if(!isDesk()){navigate('home');return}
@@ -75,14 +66,13 @@ async function renderNotesCanvas(){
   canvasCleanup=()=>canvasLeave(rt);
 }
 function canvasRenderEmpty(){
-  const course=galleryCourse();
-  app.innerHTML=`<section class="canvas-screen cv-empty">${EmptyState({iconName:'penLine',title:course?`Aucune séance dans ${course.name}`:'Aucun cours',text:course?'Les notes se rangent par séance : créez-en une, ou prenez une photo, et la page libre s’ouvre ici.':'Ajoutez d’abord un cours dans la Galerie.',action:course?ActionButton({label:'Créer une séance',id:'cvNewSession',iconName:'plus',full:false}):ActionButton({label:'Ouvrir la Galerie',attrs:'data-nav="gallery"',full:false})})}</section>`;
+  const course=galleryCourse(),sel=course&&gallerySelection(),where=sel?.section?`${course.name} · ${sel.section.name}`:course?.name;
+  app.innerHTML=`<section class="canvas-screen cv-empty">${EmptyState({iconName:'penLine',title:course?`Aucune séance dans ${where}`:'Aucun cours',text:course?'Les notes se rangent par séance : choisissez-en une dans la liste des cours, ou créez-en une.':'Ajoutez d’abord un cours dans la liste des cours.',action:course?ActionButton({label:'Créer une séance',id:'cvNewSession',iconName:'plus',full:false}):ActionButton({label:'Ajouter un cours',id:'cvNewCourse',iconName:'plus',full:false})})}</section>`;
+  byId('cvNewCourse')?.addEventListener('click',navigatorAddCourse);
   byId('cvNewSession')?.addEventListener('click',()=>{
     const section=galleryCaptureSection(course,galleryFilter(),null);
     if(!section){showToast('Ce cours n’a pas de section');return}
-    const num=(section.sessions.at(-1)?.number||0)+1,q={id:uid(),number:num,title:`${section.name} ${num}`,photoIds:[],createdAt:now(),visibility:'private'};
-    section.sessions.push(q);saveState();queueSync();
-    navigate('notes',{courseId:course.id,sectionId:section.id,sessionId:q.id});
+    navigatorAddSession(course.id,section.id);
   });
 }
 
@@ -236,10 +226,7 @@ function canvasPlaceBar(rt){
 function canvasToolsHtml(rt){
   const p=canvasPrefs(),pk=canvasPaletteKind(rt.tool),palette=CANVAS_COLORS[pk],ci=p.ci[pk]??0,stylus=canvasStylusOnly();
   const btn=(attrs,label,inner,active,cls='')=>`<button class="cv-btn${cls?` ${cls}`:''}${active?' active':''}" type="button" ${attrs} title="${esc(label)}" aria-label="${esc(label)}"${active===undefined?'':` aria-pressed="${!!active}"`}>${inner}</button>`;
-  const sessions=rt.course.sections.map(s=>`<optgroup label="${esc(s.name)}">${s.sessions.map(q=>`<option value="${q.id}"${q.id===rt.session.id?' selected':''}>${esc(q.title)}</option>`).join('')}</optgroup>`).join('');
-  return`<label class="cv-session" title="Séance">${icon('layers',{size:16})}<select id="cvSession" aria-label="Séance">${sessions}</select></label>
-    <span class="cv-sep"></span>
-    <div class="cv-group" role="group" aria-label="Outils">${CANVAS_TOOLS.map(t=>btn(`data-cv-tool="${t}"`,CANVAS_TOOL_UI[t][1],icon(CANVAS_TOOL_UI[t][0],{size:20}),rt.tool===t)).join('')}</div>
+  return`<div class="cv-group" role="group" aria-label="Outils">${CANVAS_TOOLS.map(t=>btn(`data-cv-tool="${t}"`,CANVAS_TOOL_UI[t][1],icon(CANVAS_TOOL_UI[t][0],{size:20}),rt.tool===t)).join('')}</div>
     <span class="cv-sep"></span>
     <div class="cv-group" role="group" aria-label="Couleur">${palette.map((c,i)=>`<button class="cv-color${i===ci?' active':''}" type="button" data-cv-color="${i}" style="--c:${c}" title="${CANVAS_COLOR_NAMES[pk][i]}" aria-label="${CANVAS_COLOR_NAMES[pk][i]}" aria-pressed="${i===ci}"></button>`).join('')}</div>
     <span class="cv-sep"></span>
@@ -250,11 +237,7 @@ function canvasToolsHtml(rt){
     ${btn('data-cv-stylus',stylus?'Stylet seul : le stylet dessine, le doigt fait défiler (cliquez pour dessiner aussi au doigt)':'Dessin au doigt activé (cliquez pour réserver le dessin au stylet)',icon('stylus',{size:20}),stylus)}
     ${btn('data-cv-space','Ajouter de l’espace en bas de la page',icon('addSpace',{size:20}),undefined)}`;
 }
-function canvasRenderTools(rt){
-  const keep=document.activeElement?.id==='cvSession';
-  rt.tools.innerHTML=canvasToolsHtml(rt);
-  if(keep)byId('cvSession')?.focus();
-}
+function canvasRenderTools(rt){rt.tools.innerHTML=canvasToolsHtml(rt)}
 // Undo / redo / "Enregistré" live in the desk toolbar (ui/desk-shell.js asks for the HTML after every render).
 function canvasTopBarHtml(){
   const rt=canvasRuntime,live=!!rt&&!!rt.root?.isConnected;
@@ -459,11 +442,6 @@ function canvasBind(rt){
   add(document,'keydown',e=>canvasOnKey(rt,e));
   // Toolbar
   add(rt.tools,'click',e=>canvasToolsClick(rt,e));
-  add(rt.tools,'change',e=>{
-    if(e.target.id!=='cvSession')return;
-    const sid=e.target.value,s=rt.course.sections.find(x=>x.sessions.some(q=>q.id===sid));
-    canvasCommitText(rt);canvasSave(rt).then(()=>navigate('notes',{courseId:rt.course.id,sectionId:s?.id,sessionId:sid}));
-  });
   // Tray
   add(rt.tray,'click',e=>{
     if(e.target.closest('[data-cv-tray-toggle]')){canvasPrefs().tray=canvasPrefs().tray==='closed'?'open':'closed';saveState();canvasRenderTray(rt);return}

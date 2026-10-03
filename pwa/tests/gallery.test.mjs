@@ -45,13 +45,13 @@ test('a section is found by its name even when its type differs', () => {
   assert.deepEqual(G.galleryEntries(c, 'TD').map(e => e.id), ['p']);
 });
 
-test('count and filter helpers', () => {
-  assert.equal(G.galleryCourseCount(course), 7);
-  assert.equal(G.galleryCourseCount(null), 0);
-  assert.equal(G.galleryValidFilter('TD'), 'TD');
-  assert.equal(G.galleryValidFilter('nope'), 'all');
-  assert.equal(G.galleryFilterLabel('all'), 'Toutes les sections');
-  assert.equal(G.galleryFilterLabel('TP'), 'TP');
+test('the navigator selects a section by its id (custom sections too) and a séance narrows further', () => {
+  assert.deepEqual(G.galleryEntries(course, 's-Projet').map(e => e.id), ['g']);
+  assert.deepEqual(G.galleryEntries(course, 's-CM').map(e => e.id), ['a', 'b', 'c', 'd']);
+  assert.deepEqual(G.galleryEntries(course, 's-CM', 'q-CM 2').map(e => e.id), ['d']);
+  assert.deepEqual(G.galleryEntries(course, 'all', 'q-TD 1').map(e => e.id), ['e', 'f']);
+  assert.deepEqual(G.galleryEntries(course, 's-TD', 'q-CM 1').map(e => e.id), [], 'a séance outside the section shows nothing');
+  assert.deepEqual(G.galleryEntries(course, 'all', 'gone').map(e => e.id), []);
 });
 
 test('default course: the one asked for, else the last used, else the first running one', () => {
@@ -79,17 +79,4 @@ test('change position moves one photo and keeps the others in order', () => {
   assert.deepEqual(G.galleryMoveInList(['a', 'b', 'c'], 'b', 99), ['a', 'c', 'b']);
   assert.deepEqual(G.galleryMoveInList(['a', 'b', 'c'], 'b', -5), ['b', 'a', 'c']);
   assert.deepEqual(G.galleryMoveInList(['a', 'b'], 'zzz', 0), ['a', 'b']);
-});
-
-test('PDF séance: the latest séance of the filter that has photos, else the latest, else none', () => {
-  const dated = (title, photoIds, createdAt) => ({ id: `q-${title}`, title, photoIds, createdAt });
-  const c = { sections: [
-    sec('CM', 'CM', [dated('CM 1', ['a'], '2026-09-01'), dated('CM 2', ['b'], '2026-09-20'), dated('CM 3', [], '2026-09-30')]),
-    sec('TD', 'TD', [dated('TD 1', [], '2026-09-05')]),
-  ] };
-  assert.equal(G.galleryLatestSession(c, 'CM').session.title, 'CM 2', 'empty séances lose to séances with photos');
-  assert.equal(G.galleryLatestSession(c, 'TD').session.title, 'TD 1', 'only empty séances: the latest of them');
-  assert.equal(G.galleryLatestSession(c, 'all').session.title, 'CM 2');
-  assert.equal(G.galleryLatestSession(c, 'TP').session.title, 'CM 2', 'a filter with no séance falls back to the whole course');
-  assert.equal(G.galleryLatestSession({ sections: [sec('CM', 'CM', [])] }, 'all'), null);
 });

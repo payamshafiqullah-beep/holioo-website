@@ -9,9 +9,9 @@ const pageFiles=[
   './pages/PhotoViewerPage.js','./pages/PdfBuilderPage.js','./pages/PdfViewerPage.js','./pages/FilesPage.js',
   './pages/AcademicLibraryPage.js','./pages/ProfilePage.js','./pages/SyncPage.js'
 ];
-const uiFiles=['./ui/icons.js','./ui/components.js','./ui/reorder.js','./ui/shell.js','./ui/desk-shell.js','./ui/camera-picker.js','./ui/radial-menu.js','./ui/photo-editor.js'];
+const uiFiles=['./ui/icons.js','./ui/components.js','./ui/reorder.js','./ui/shell.js','./ui/desk-shell.js','./ui/course-navigator.js','./ui/camera-picker.js','./ui/radial-menu.js','./ui/photo-editor.js'];
 const featureFiles=[
-  './features/media-viewer.js','./features/course-actions.js','./features/image-pipeline.js','./features/photo-edits.js','./features/thumbs.js','./features/camera-i18n.js','./features/camera-destination.js','./features/gallery-logic.js','./features/canvas-doc.js','./features/canvas-render.js','./features/canvas-sync.js','./features/canvas-export.js',
+  './features/media-viewer.js','./features/course-actions.js','./features/image-pipeline.js','./features/photo-edits.js','./features/thumbs.js','./features/camera-i18n.js','./features/camera-destination.js','./features/gallery-logic.js','./features/navigator-logic.js','./features/canvas-doc.js','./features/canvas-render.js','./features/canvas-sync.js','./features/canvas-export.js',
   './features/camera-queue.js','./features/scan-core.js','./features/scanner.js','./features/scan-ml.js','./features/ocr.js','./features/text-actions.js','./features/capture-actions.js','./features/quick-capture.js','./features/item-menu.js',
   './features/pdf-actions.js','./features/cloud-sync.js','./features/community-actions.js','./features/state-merge.js','./features/remote-sync.js','./features/notes.js'
 ];
@@ -28,7 +28,7 @@ const drive=read('./drive.js');
 const html=read('./index.html');
 const sw=read('./sw.js');
 const manifest=JSON.parse(read('./manifest.webmanifest'));
-if(!html.includes('20261003-desk-canvas-v1'))throw new Error('Asset cache-bust version missing');
+if(!html.includes('20261003-desk-nav-v1'))throw new Error('Asset cache-bust version missing');
 
 const required=[
   'Diviser le lot','Organiser les photos','Captures à trier','Section personnalisée','Nouvelle séance',
@@ -94,14 +94,26 @@ if(!read('./features/camera-queue.js').includes('onPhotoStoredForLive'))throw ne
 for(const s of ['renderGallery','galleryEntries','galleryMoveInList','openQuickCamera(dest)','renderNotesCanvas','canvasMerge','canvasDriveDocuments','canvasDocumentSent','pullSessionCanvas','exportCanvasPdf','canvasRenderSheet','canvasTopBarHtml','deskNotes','deskPdf','deskSync'])if(!app.includes(s))throw new Error(`Galerie / Notes missing: ${s}`);
 if(!read('./pages/GalleryDeskPage.js').includes("if(!isDesk()){navigate('courses')"))throw new Error('Phones must never reach the Galerie');
 if(!read('./pages/NotesCanvasPage.js').includes("if(!isDesk()){navigate('home')"))throw new Error('Phones must never reach the Notes page');
-for(const s of['.gallery-fab','.gallery-grid','.cv-sheet','.cv-tray','.cv-tools','.desk-pill','.desk-menu'])if(!deskCss.includes(s))throw new Error(`Desk style missing (or outside the desk block): ${s}`);
-for(const s of['.gallery-fab','.cv-sheet','.cv-tray','.desk-pill'])if(css.slice(0,css.indexOf('TABLET & COMPUTER')).includes(s))throw new Error(`${s} must only exist in the tablet / computer block`);
+for(const s of['.gallery-fab','.gallery-grid','.cv-sheet','.cv-tray','.cv-tools','.cnav-tree','.desk-crumb','.desk-menu'])if(!deskCss.includes(s))throw new Error(`Desk style missing (or outside the desk block): ${s}`);
+for(const s of['.gallery-fab','.cv-sheet','.cv-tray','.cnav-tree','.crumb-list'])if(css.slice(0,css.indexOf('TABLET & COMPUTER')).includes(s))throw new Error(`${s} must only exist in the tablet / computer block`);
 for(const f of['features/canvas-doc.js','features/canvas-render.js','features/canvas-sync.js','features/canvas-export.js','features/gallery-logic.js','pages/GalleryDeskPage.js','pages/NotesCanvasPage.js'])if(!html.includes(`src="./${f}`))throw new Error(`HTML dependency missing: ${f}`);
 if(html.indexOf('features/canvas-doc.js')>html.indexOf('features/canvas-sync.js')||html.indexOf('features/remote-sync.js')>html.indexOf('features/canvas-sync.js'))throw new Error('canvas-sync.js needs canvas-doc.js and remote-sync.js loaded before it');
 if(!fs.existsSync(new URL('../supabase/migrations/20261003120000_sync_signals_canvas.sql',import.meta.url)))throw new Error('The canvas signal needs its migration');
 if(/\(\?<[=!]/.test(read('./features/canvas-doc.js')+read('./features/canvas-render.js')+read('./pages/NotesCanvasPage.js')))throw new Error('No regex look-behind: iPads before Safari 16.4 could not load the file');
 // The phone's own nav and builder are untouched: the Notes option exists only when the desk layout is on.
 if(!read('./pages/PdfBuilderPage.js').includes("typeof isDesk==='function'&&isDesk()"))throw new Error('The PDF builder must offer Notes pages on tablet / computer only');}
+// Course navigator (tablet / computer): ONE shared tree + breadcrumb on every desk screen, Notes included; the old course
+// list, tree, CM / TD / TP pills and the Notes séance selector are gone. Phones keep their own course / section pages.
+{const desk=read('./ui/desk-shell.js'),css=read('./styles.css'),deskCss=css.slice(css.indexOf('TABLET & COMPUTER'));
+for(const s of['CourseNavigatorTree','navigatorMount','navigatorSelect','navigatorAddSession','navigatorAddCourse','PageBreadcrumb','navTargetView','navCourseTap','navPickSession','navBreadcrumb','DESK_REDIRECT'])if(!app.includes(s))throw new Error(`Course navigator missing: ${s}`);
+for(const s of['navigatorMount','PageBreadcrumb','deskSideToggle'])if(!desk.includes(s))throw new Error(`The desk shell must use the course navigator: ${s}`);
+for(const s of['DeskTree','DeskCourses','DeskPills','deskFillTree','deskNewSession','deskNewCourse','cvSession','data-gallery-filter','galleryFilterLabel'])if(app.includes(s))throw new Error(`Old course selector still present: ${s}`);
+if(/\.(desk-(pill|tree|node|link|filter|scrim|sessions)|cv-session)\b/.test(css))throw new Error('Styles of the old course selectors must be removed');
+for(const f of['pages/GalleryDeskPage.js','pages/NotesCanvasPage.js'])if(!read(`./${f}`).includes('navResolve'))throw new Error(`${f} must follow the navigator's selection`);
+if(!html.includes('ui/course-navigator.js')||!html.includes('features/navigator-logic.js'))throw new Error('Course navigator files missing from the HTML');
+if(html.indexOf('features/navigator-logic.js')>html.indexOf('pages/LoginPage.js'))throw new Error('navigator-logic.js must load before the pages');
+if(!deskCss.includes('.cnav-add')||!deskCss.includes('.cnav-dot'))throw new Error('Navigator styles must live in the desk block');
+if(css.slice(0,css.indexOf('TABLET & COMPUTER')).includes('.cnav-'))throw new Error('Navigator styles must only exist in the tablet / computer block');}
 console.log(`Holioo modular smoke test: PASS (${pageFiles.length} page files)`);
 
 for(const s of ['HOLIOO UI v2','--bg:#F7F7FB','--accent:#5B67F1','.bottom-nav','.capture-orb','.shutter','.cam-dest','.cam-sheet'])if(!read('./styles.css').includes(s))throw new Error(`UI v2 style missing: ${s}`);

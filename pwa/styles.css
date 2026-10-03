@@ -1304,6 +1304,7 @@ body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
     .cv-status{padding:0 9px}
   }
 }
+/* =====================================================================
    DARK MODE — [data-theme="dark"] on <html>, set by the early script in
    index.html and the Profile toggle (localStorage 'holioo-theme').
    ===================================================================== */

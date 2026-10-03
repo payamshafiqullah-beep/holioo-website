@@ -35,7 +35,9 @@ async function renderHome(){
     state.courses=[...ids.map(id=>all.get(id)).filter(Boolean),...state.courses.filter(c=>!ids.includes(c.id))];
     saveState();queueSync();showToast('Ordre des cours enregistré');
   }});
-  attachQuickCapture(byId('heroQuick'));
+  const heroQuick=byId('heroQuick');
+  if(heroQuick?.hasAttribute('data-desk-notes'))heroQuick.addEventListener('click',()=>navigate('notes'));
+  else attachQuickCapture(heroQuick);
   byId('heroResume')?.addEventListener('click',()=>{currentCourseId=latest.course.id;currentSectionId=latest.section.id;currentSessionId=latest.session.id;navigate('session')});
   byId('homeInbox').onclick=()=>navigate(inboxCount?'inbox':'capture');
 }

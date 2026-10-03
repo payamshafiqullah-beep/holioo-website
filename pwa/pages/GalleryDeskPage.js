@@ -110,7 +110,7 @@ async function renderGallery(){
       <div class="gallery-meta"><span class="gallery-filter-chip">${esc(scope)}</span><span class="gallery-count">${esc(plural(n,'photo'))}</span></div>
     </header>
     ${n?`<ul class="gallery-grid" id="galleryGrid">${tiles}</ul>`:empty}
-    <button class="gallery-fab" type="button" id="galleryFab" title="Capture rapide" aria-label="Capture rapide : prendre une photo dans ${esc(course.name)}, ${esc(scope)}">${icon('camera',{size:28,stroke:2})}</button>
+    <button class="gallery-fab" type="button" id="galleryFab" title="Note Srieh" aria-label="Note Srieh : ouvrir les notes de ${esc(course.name)}, ${esc(scope)}">${icon('pencil',{size:28,stroke:2})}</button>
   </section>`;
   const box=byId('galleryGrid');
   if(box){
@@ -122,10 +122,5 @@ async function renderGallery(){
     });
     galleryCleanup=galleryLoadThumbs(box);
   }
-  // Inside the click itself: browsers open the camera only during a user action.
-  byId('galleryFab').addEventListener('click',()=>{
-    const dest=galleryCameraDestination(course);
-    if(!dest){showToast('Ce cours n’a pas de section');return}
-    openQuickCamera(dest);
-  });
+  byId('galleryFab').addEventListener('click',()=>navigate('notes',{courseId:course.id,sectionId:sel.section?.id,sessionId:sel.session?.id}));
 }

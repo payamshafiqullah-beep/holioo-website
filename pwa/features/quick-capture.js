@@ -84,6 +84,8 @@ function attachQuickCapture(trigger,onPick=openQuickCamera){
 
 // The trigger button (Accueil: in the "Reprendre" card, where the illustration was).
 function QuickCaptureTrigger({id='quickCapture'}={}){
+  // Tablet / computer: same button, same icon size, but a pen that opens the notes page.
+  if(typeof isDesk==='function'&&isDesk())return`<button type="button" class="qc-trigger" id="${id}" data-desk-notes aria-label="Note Srieh : ouvrir les notes"><span class="qc-trigger-orb">${icon('pencil',{size:26,stroke:2})}</span><small>Note Srieh</small></button>`;
   return`<button type="button" class="qc-trigger" id="${id}" aria-label="${esc(camT('qcButton'))}"><span class="qc-trigger-orb">${icon('camera',{size:26,stroke:2})}</span><small>${esc(camT('qcTrigger'))}</small></button>`;
 }
 

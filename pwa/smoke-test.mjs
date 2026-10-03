@@ -28,7 +28,7 @@ const drive=read('./drive.js');
 const html=read('./index.html');
 const sw=read('./sw.js');
 const manifest=JSON.parse(read('./manifest.webmanifest'));
-if(!html.includes('20261003-epure-v2'))throw new Error('Asset cache-bust version missing');
+if(!html.includes('20261003-epure-v3'))throw new Error('Asset cache-bust version missing');
 
 const required=[
   'Diviser le lot','Organiser les photos','Captures à trier','Section personnalisée','Nouvelle séance',
@@ -91,7 +91,7 @@ for(const s of ['renderLiveCapture','onPhotoStoredForLive','receiveRemotePhoto',
 if(!read('./features/camera-queue.js').includes('onPhotoStoredForLive'))throw new Error('Camera queue must hand stored photos to Live Capture');
 // Galerie + Notes page (tablet / computer): never on phones, scoped styles, model + sync + PDF wired, signal migration shipped.
 {const css=read('./styles.css'),deskCss=css.slice(css.indexOf('TABLET & COMPUTER'));
-for(const s of ['renderGallery','galleryEntries','galleryMoveInList','openQuickCamera(dest)','renderNotesCanvas','canvasMerge','canvasDriveDocuments','canvasDocumentSent','pullSessionCanvas','exportCanvasPdf','canvasRenderSheet','canvasTopBarHtml','deskNotes','deskPdf','deskSync'])if(!app.includes(s))throw new Error(`Galerie / Notes missing: ${s}`);
+for(const s of ['renderGallery','galleryEntries','galleryMoveInList','Note Srieh','renderNotesCanvas','canvasMerge','canvasDriveDocuments','canvasDocumentSent','pullSessionCanvas','exportCanvasPdf','canvasRenderSheet','canvasTopBarHtml','deskNotes','deskPdf','deskSync'])if(!app.includes(s))throw new Error(`Galerie / Notes missing: ${s}`);
 if(!read('./pages/GalleryDeskPage.js').includes("if(!isDesk()){navigate('courses')"))throw new Error('Phones must never reach the Galerie');
 if(!read('./pages/NotesCanvasPage.js').includes("if(!isDesk()){navigate('home')"))throw new Error('Phones must never reach the Notes page');
 for(const s of['.gallery-fab','.gallery-grid','.cv-sheet','.cv-tray','.cv-tools','.cnav-tree','.desk-crumb','.desk-menu'])if(!deskCss.includes(s))throw new Error(`Desk style missing (or outside the desk block): ${s}`);

@@ -7,7 +7,9 @@
 // the page's shape), each tagged with its page `pg`, so they stay aligned at any zoom. Whatever is stored is drawn
 // on the pages in normal mode too, read-only.
 
-const PDF_INK_COLORS={pen:CANVAS_COLORS.pen[0],highlighter:CANVAS_COLORS.highlighter[0]};
+// Three colours per tool, the first being the default: pen black / blue / red, highlighter yellow / green / pink (the Notes palette).
+const PDF_INK_COLORS={pen:CANVAS_COLORS.pen.slice(0,3),highlighter:CANVAS_COLORS.highlighter.slice(0,3)};
+const PDF_INK_LONG_PRESS_MS=450;
 const PDF_INK_SIZE={pen:CANVAS_SIZES.pen[1],highlighter:CANVAS_SIZES.highlighter[1]};
 const PDF_INK_ERASER=CANVAS_SIZES.eraser[1];   // eraser radius, page units
 const PDF_INK_MIN_STEP=.8;
@@ -53,6 +55,7 @@ async function createPdfInk({fileId,host,boxes,aspects,viewer,frame}){
   const hist=canvasHistory(),els=new Map(),svgs=[];
   let tool=null,fullscreen=false,gesture=null,pan=null,penUntil=0,saveTimer=0;
   const touches=new Map();
+  const colorOf=t=>{const i=state.settings.pdfInkColor?.[t];return PDF_INK_COLORS[t][i>=0&&i<3?i:0]};   // remembered per tool on this device
   const eraseMode=()=>state.settings.pdfInkErase==='partial'?'partial':'stroke';
 
   // ---- save ----
@@ -104,22 +107,23 @@ async function createPdfInk({fileId,host,boxes,aspects,viewer,frame}){
   };
   const centroid=()=>{let x=0,y=0;for(const t of touches.values()){x+=t.x;y+=t.y}return{x:x/touches.size,y:y/touches.size}};
   const onDown=e=>{
+    if(!tool||!fullscreen)return;
     const svg=e.target.closest?.('.pdf-ink');
-    if(!tool||!fullscreen||!svg)return;
     if(e.pointerType==='pen')penUntil=performance.now()+PDF_INK_PEN_HOLD_MS;
     if(e.pointerType==='touch'){
       touches.set(e.pointerId,{x:e.clientX,y:e.clientY});
-      // Two fingers: no ink, they scroll (and pinch-zoom: handled by the viewer itself).
+      // Two fingers (anywhere on the pages): no ink, they scroll; pinch-zoom is the viewer's own.
       if(touches.size>=2){endGesture(true);pan=centroid();e.preventDefault();return}
       if(performance.now()<penUntil){e.preventDefault();return}
     }else if(e.pointerType==='mouse'&&e.button!==0)return;
+    if(!svg)return;
     const pg=+svg.dataset.page,p=point(svg,e);
     svg.setPointerCapture(e.pointerId);e.preventDefault();
     if(tool==='eraser'){
       gesture={pointerId:e.pointerId,svg,pg,erase:{partial:eraseMode()==='partial',before:[],created:new Map()}};
       eraseStep(p);return;
     }
-    const color=PDF_INK_COLORS[tool],path=pathFor({color,tool});
+    const color=colorOf(tool),path=pathFor({color,tool});
     svg.appendChild(path);
     gesture={pointerId:e.pointerId,svg,pg,tool,color,size:PDF_INK_SIZE[tool],sp:e.pointerType==='pen'?0:1,pts:[[p.x,p.y,e.pointerType==='pen'?canvasRound(e.pressure||.5,2):.5]],path,raf:0};
     drawLive(gesture);
@@ -149,6 +153,14 @@ async function createPdfInk({fileId,host,boxes,aspects,viewer,frame}){
     touches.delete(e.pointerId);if(touches.size<2)pan=null;
     if(gesture?.pointerId===e.pointerId){e.preventDefault();endGesture(e.type==='pointercancel'&&!gesture.erase)}
   };
+  // While a tool is picked the pages never scroll or bounce under one finger or the pencil: touch-action none on the
+  // pages (styles.css) and, for browsers that still scroll, a cancelled touchmove. A lifted finger is always forgotten,
+  // wherever it lifted (a stale finger would turn the next stroke into a two-finger scroll).
+  const lock=e=>{if(tool&&fullscreen&&e.cancelable&&e.touches.length<2)e.preventDefault()};
+  const forget=e=>{if(!e.touches.length){touches.clear();pan=null}};
+  host.addEventListener('touchstart',lock,{passive:false});
+  host.addEventListener('touchmove',lock,{passive:false});
+  document.addEventListener('touchend',forget,true);document.addEventListener('touchcancel',forget,true);
   host.addEventListener('pointerdown',onDown);
   host.addEventListener('pointermove',onMove);
   host.addEventListener('pointerup',onUp);
@@ -157,25 +169,47 @@ async function createPdfInk({fileId,host,boxes,aspects,viewer,frame}){
   // ---- the toolbar (fullscreen only: styles.css hides it otherwise) ----
   const bar=document.createElement('div');
   bar.className='pdf-ink-bar';bar.setAttribute('role','toolbar');bar.setAttribute('aria-label','Annotations');
-  const tb=(attrs,label,ic)=>`<button type="button" ${attrs} title="${label}" aria-label="${label}">${icon(ic,{size:20})}</button>`;
-  bar.innerHTML=`${tb('data-ink="highlighter" aria-pressed="false"','Surligneur','highlighter')}${tb('data-ink="pen" aria-pressed="false"','Stylo noir','penLine')}${tb('data-ink="eraser" aria-pressed="false"','Gomme','eraser')}
+  const tb=(attrs,label,ic,dot='')=>`<button type="button" ${attrs} title="${label}" aria-label="${label}">${icon(ic,{size:20})}${dot}</button>`;
+  const dot='<i class="pdf-ink-dot"></i>';
+  bar.innerHTML=`${tb('data-ink="highlighter" aria-pressed="false"','Surligneur (maintenir pour la couleur)','highlighter',dot)}${tb('data-ink="pen" aria-pressed="false"','Stylo (maintenir pour la couleur)','penLine',dot)}${tb('data-ink="eraser" aria-pressed="false"','Gomme','eraser')}
     <span class="pdf-ink-sep"></span>${tb('data-ink-undo disabled','Annuler','undo')}
+    <div class="pdf-ink-pop" role="group" aria-label="Couleur" hidden></div>
     <div class="pdf-ink-fly" role="group" aria-label="Mode de la gomme" hidden>
       <button type="button" data-ink-mode="stroke" title="Trait entier : efface le trait touché" aria-label="Trait entier">${icon('eraser',{size:18})}<span>Trait entier</span></button>
       <button type="button" data-ink-mode="partial" title="Partielle : n’efface que la partie touchée" aria-label="Partielle">${icon('scissors',{size:18})}<span>Partielle</span></button>
     </div>`;
   frame.appendChild(bar);
+  const pop=bar.querySelector('.pdf-ink-pop');
   const undoBtn=bar.querySelector('[data-ink-undo]'),fly=bar.querySelector('.pdf-ink-fly');
   function refreshUndo(){undoBtn.disabled=!hist.undo.length}
   function refreshBar(){
     bar.querySelectorAll('[data-ink]').forEach(b=>{const on=b.dataset.ink===tool;b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on))});
+    for(const t of['pen','highlighter'])bar.querySelector(`[data-ink="${t}"]`).style.setProperty('--ink-c',colorOf(t));
     fly.hidden=tool!=='eraser';
+    if(pop.dataset.for!==tool)closePop();
     fly.querySelectorAll('[data-ink-mode]').forEach(b=>b.classList.toggle('active',b.dataset.inkMode===eraseMode()));
     viewer.classList.toggle('ink-on',!!tool&&fullscreen);
   }
+  function closePop(){pop.hidden=true;pop.dataset.for=''}
+  const openPop=btn=>{
+    const t=btn.dataset.ink,cur=colorOf(t);
+    pop.innerHTML=PDF_INK_COLORS[t].map((c,i)=>`<button type="button" data-ink-color="${i}" class="${c===cur?'active':''}" style="--c:${c}" aria-label="Couleur ${i+1}"></button>`).join('');
+    pop.dataset.for=t;pop.style.top=`${btn.offsetTop}px`;pop.hidden=false;
+  };
+  // Long-press on the pen or highlighter that is already picked → its colours; a plain tap still picks / drops the tool.
+  let hold=null,held=false;
+  bar.addEventListener('pointerdown',e=>{
+    const b=e.target.closest('[data-ink]');held=false;clearTimeout(hold);
+    if(!b||b.dataset.ink!==tool||tool==='eraser')return;
+    hold=setTimeout(()=>{held=true;openPop(b)},PDF_INK_LONG_PRESS_MS);
+  });
+  for(const t of['pointerup','pointercancel','pointerleave'])bar.addEventListener(t,()=>clearTimeout(hold));
+  bar.addEventListener('contextmenu',e=>e.preventDefault());
   const setTool=t=>{endGesture(true);tool=t;refreshBar()};
   bar.addEventListener('click',e=>{
     const b=e.target.closest('button');if(!b)return;
+    if(b.dataset.inkColor!==undefined){state.settings.pdfInkColor={...state.settings.pdfInkColor,[pop.dataset.for]:+b.dataset.inkColor};saveState();closePop();return refreshBar()}
+    if(held){held=false;return}
     if(b.dataset.ink)return setTool(tool===b.dataset.ink?null:b.dataset.ink);   // again = back to plain reading
     if(b.dataset.inkMode){state.settings.pdfInkErase=b.dataset.inkMode;saveState();return refreshBar()}
     if(b.hasAttribute('data-ink-undo')){
@@ -189,7 +223,7 @@ async function createPdfInk({fileId,host,boxes,aspects,viewer,frame}){
     // Entering or leaving fullscreen; leaving puts the reader back to plain reading.
     fullscreen(on){fullscreen=on;if(!on){endGesture(true);tool=null}refreshBar()},
     flush:save,
-    destroy(){host.removeEventListener('pointerdown',onDown);host.removeEventListener('pointermove',onMove);host.removeEventListener('pointerup',onUp);host.removeEventListener('pointercancel',onUp);bar.remove();viewer.classList.remove('ink-on')}
+    destroy(){host.removeEventListener('touchstart',lock);host.removeEventListener('touchmove',lock);document.removeEventListener('touchend',forget,true);document.removeEventListener('touchcancel',forget,true);host.removeEventListener('pointerdown',onDown);host.removeEventListener('pointermove',onMove);host.removeEventListener('pointerup',onUp);host.removeEventListener('pointercancel',onUp);bar.remove();viewer.classList.remove('ink-on')}
   };
 }
 

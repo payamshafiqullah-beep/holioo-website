@@ -23,14 +23,13 @@ test('an empty document: one A4 sheet, ruled, nothing on it', () => {
 test('reading a stored document drops broken parts and makes numbers safe', () => {
   const d = C.normalizeCanvasDoc({
     sessionId: 's', height: 'x', bg: 'weird',
-    items: [photo('a', 'nope', -50, 100, 100, 1), { id: 'b', type: 'unknown' }, { type: 'photo' }, { id: 'c', type: 'photo' }, null, 'junk',
-      { id: 'r', type: 'rect', x: 5, y: 5, w: 50, h: 40, z: 2, color: '#fff', size: 3 }],
+    items: [photo('a', 'nope', -50, 100, 100, 1), { id: 'b', type: 'unknown' }, { type: 'photo' }, { id: 'c', type: 'photo' }, null, 'junk'],
     strokes: [{ id: 'x', pts: [] }, { id: 'y', pts: [[1, 2]] }, { id: 'z', pts: [['a', 'b']] }],
     known: ['k', 3, null],
   });
   assert.equal(d.height, 1414);
   assert.equal(d.bg, 'lines');
-  assert.deepEqual(d.items.map(i => i.id), ['a', 'r']);
+  assert.deepEqual(d.items.map(i => i.id), ['a']);
   assert.equal(d.items[0].x, 0, 'a bad number becomes 0');
   assert.equal(d.items[0].y, 0, 'a photo never starts above the page');
   assert.deepEqual(d.strokes.map(s => s.id), ['y']);
@@ -42,9 +41,9 @@ test('reading a stored document drops broken parts and makes numbers safe', () =
 test('colours are checked when a document is read (they end up in attributes)', () => {
   const evil = '#fff" onload="alert(1)';
   const d = C.normalizeCanvasDoc({ items: [
-    { id: 'r', type: 'rect', x: 0, y: 0, w: 10, h: 10, z: 1, color: evil, size: 3 },
+    { id: 'r', type: 'text', x: 0, y: 0, w: 10, h: 10, z: 1, text: 'y', lines: ['y'], color: evil, size: 20 },
     { id: 't', type: 'text', x: 0, y: 0, w: 100, h: 40, z: 2, text: 'x', lines: ['x'], color: 'red', size: 20 },
-    { id: 'a', type: 'arrow', p: [0, 0, 10, 10], z: 3, color: '#12ab34', size: 3 }],
+    { id: 'a', type: 'text', x: 0, y: 0, w: 10, h: 10, z: 3, text: 'z', lines: ['z'], color: '#12ab34', size: 20 }],
   strokes: [{ id: 's', pts: [[1, 1]], color: '"><script>', tool: 'pen', size: 3 }] });
   assert.equal(d.items.find(i => i.id === 'r').color, '#111827', 'a colour with quotes is replaced');
   assert.equal(d.items.find(i => i.id === 't').color, '#111827', 'only hex colours are accepted');
@@ -58,13 +57,10 @@ test('the newest edit of an id wins when a list holds it twice', () => {
   assert.equal(d.items[0].x, 99);
 });
 
-test('text items keep their wrapped lines; arrows get their box from their ends', () => {
+test('text items keep their wrapped lines', () => {
   const d = C.normalizeCanvasDoc({ items: [
-    { id: 't', type: 'text', x: 1, y: 2, w: 300, h: 60, z: 1, text: 'a\nb', color: '#000', size: 30 },
-    { id: 'ar', type: 'arrow', p: [200, 300, 100, 50], x: 0, y: 0, w: 0, h: 0, z: 2, color: '#000', size: 4 }] });
+    { id: 't', type: 'text', x: 1, y: 2, w: 300, h: 60, z: 1, text: 'a\nb', color: '#000', size: 30 }] });
   assert.deepEqual(d.items.find(i => i.id === 't').lines, ['a', 'b'], 'lines default to the text split on line breaks');
-  const ar = d.items.find(i => i.id === 'ar');
-  assert.deepEqual([ar.x, ar.y, ar.w, ar.h], [100, 50, 100, 250]);
 });
 
 // ── history ──
@@ -147,17 +143,13 @@ test('serialising keeps items by z and strokes by creation, and round-trips thro
 });
 
 // ── geometry ──
-test('hit test: topmost first; a rectangle only at its edge; an arrow near its line', () => {
+test('hit test: topmost first', () => {
   const items = C.normalizeCanvasDoc({ items: [
     photo('low', 0, 0, 400, 400, 1),
     photo('high', 100, 100, 100, 100, 3),
-    { id: 'frame', type: 'rect', x: 50, y: 50, w: 300, h: 300, z: 2, color: '#000', size: 4 },
-    { id: 'arr', type: 'arrow', p: [500, 500, 700, 500], z: 4, color: '#000', size: 4 }] }).items;
+  ] }).items;
   assert.equal(C.canvasHitItem(items, 150, 150).id, 'high');
-  assert.equal(C.canvasHitItem(items, 300, 300).id, 'low', 'inside a frame: the photo under it, not the frame');
-  assert.equal(C.canvasHitItem(items, 51, 200).id, 'frame', 'on the frame edge (above the photo it is drawn over)');
-  assert.equal(C.canvasHitItem(items, 600, 506).id, 'arr');
-  assert.equal(C.canvasHitItem(items, 600, 560), null);
+  assert.equal(C.canvasHitItem(items, 300, 300).id, 'low');
   assert.equal(C.canvasHitItem(items, 900, 900), null);
   const gone = items.map(i => i.id === 'high' ? { ...i, deleted: true } : i);
   assert.equal(C.canvasHitItem(gone, 150, 150).id, 'low', 'removed items are not hit');
@@ -184,14 +176,6 @@ test('the page grows near its bottom, by steps, up to a ceiling', () => {
 test('z-order: the next item goes on top', () => {
   assert.equal(C.canvasNextZ([]), 1);
   assert.equal(C.canvasNextZ([{ z: 3 }, { z: 7 }, { z: 1 }]), 8);
-});
-
-test('shape paths are plain SVG data (also used by Path2D in the PDF)', () => {
-  assert.equal(C.canvasRectPath({ x: 10, y: 20, w: 100, h: 50 }), 'M10 20H110V70H10Z');
-  const d = C.canvasArrowPath([0, 0, 100, 0], 4);
-  assert.match(d, /^M0 0L100 0M/);
-  assert.equal((d.match(/L/g) || []).length, 3, 'shaft + two sides of the head');
-  assert.ok(C.canvasArrowPath([0, 0, 100, 0], 8).length > 0);
 });
 
 test('perfect-freehand outline becomes a closed path', () => {

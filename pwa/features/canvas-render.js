@@ -33,7 +33,7 @@ function canvasDrawSlice(ctx,doc,{y0,y1,scale,photos}){
     for(let y=Math.max(1,Math.ceil(y0/CANVAS_LINE))*CANVAS_LINE;y-CANVAS_RULE<y1;y+=CANVAS_LINE)ctx.fillRect(0,y-CANVAS_RULE,CANVAS_W,CANVAS_RULE);
     if(doc.bg==='grid')for(let x=CANVAS_LINE;x<=CANVAS_W+CANVAS_RULE;x+=CANVAS_LINE)ctx.fillRect(x-CANVAS_RULE,y0,CANVAS_RULE,y1-y0);
   }
-  // Photos, text and shapes, bottom to top.
+  // Photos and text, bottom to top.
   const measure=ctx.measureText.bind(ctx);
   for(const it of canvasLive(doc.items).sort((a,b)=>a.z-b.z)){
     if(it.y>y1||it.y+it.h+(it.size||0)<y0)continue;
@@ -46,9 +46,6 @@ function canvasDrawSlice(ctx,doc,{y0,y1,scale,photos}){
       ctx.font=canvasFontCss(it.size);ctx.fillStyle=it.color;ctx.textBaseline='alphabetic';ctx.textAlign='left';ctx.textRendering='geometricPrecision';ctx.fontKerning='normal';
       const m=measure('Hg'),asc=m.fontBoundingBoxAscent??it.size*.95,desc=m.fontBoundingBoxDescent??it.size*.25,lh=canvasLineHeight(it.size);
       it.lines.forEach((line,i)=>ctx.fillText(line,it.x+CANVAS_TEXT_PAD,it.y+CANVAS_TEXT_PAD+i*lh+(lh-(asc+desc))/2+asc));
-    }else if(it.type==='arrow'||it.type==='rect'){
-      ctx.strokeStyle=it.color;ctx.lineWidth=it.size;ctx.lineCap='round';ctx.lineJoin='round';
-      ctx.stroke(new Path2D(it.type==='arrow'?canvasArrowPath(it.p,it.size):canvasRectPath(it)));
     }
   }
   // The ink, above everything.

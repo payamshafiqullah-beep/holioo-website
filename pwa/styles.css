@@ -749,14 +749,22 @@ html.radial-haptic-confirm body{animation:radialHapticConfirm .2s var(--ease)}
 /* Ink on the pages (features/pdf-ink.js): drawn in every mode, drawable only in fullscreen with a tool picked. */
 .pdf-ink{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .pdf-ink .hl{mix-blend-mode:multiply}
-.pdf-viewer.ink-on .pdf-ink{pointer-events:auto;touch-action:none;cursor:crosshair}
-.pdf-viewer.ink-on .pdf-pages{-webkit-user-select:none;user-select:none}
+.pdf-viewer.ink-on .pdf-ink{pointer-events:auto;touch-action:none;cursor:crosshair;overscroll-behavior:contain}
+/* A tool is picked: one finger or the pencil only draws, anywhere on the pages (gutters and captions included); two fingers scroll in script. */
+.pdf-viewer.ink-on .pdf-pages{touch-action:none;overscroll-behavior:contain;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .pdf-ink-bar,.pdf-corner-back,.pdf-pill{display:none}
 .pdf-viewer.pdf-immersive .pdf-ink-bar{position:absolute;left:calc(var(--s2) + env(safe-area-inset-left));top:50%;transform:translateY(-50%);z-index:3;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px;border-radius:20px;background:rgba(29,33,64,.5);border:1px solid rgba(255,255,255,.16);color:#fff;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
 .pdf-ink-bar button{display:grid;place-items:center;width:44px;height:44px;border-radius:14px;color:#fff;touch-action:manipulation}
 .pdf-ink-bar button:active{background:rgba(255,255,255,.18)}
 .pdf-ink-bar button.active{background:#fff;color:#1D2140}
 .pdf-ink-bar button:disabled{opacity:.35}
+.pdf-ink-bar button{position:relative}
+.pdf-ink-dot{position:absolute;right:6px;bottom:6px;width:9px;height:9px;border-radius:50%;background:var(--ink-c,transparent);box-shadow:0 0 0 1.5px rgba(255,255,255,.9)}
+.pdf-ink-bar button.active .pdf-ink-dot{box-shadow:0 0 0 1.5px rgba(29,33,64,.35)}
+.pdf-ink-pop{position:absolute;left:calc(100% + 8px);display:flex;gap:6px;padding:8px;border-radius:16px;background:rgba(29,33,64,.62);border:1px solid rgba(255,255,255,.16);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.pdf-ink-pop[hidden]{display:none}
+.pdf-ink-bar .pdf-ink-pop button{width:34px;height:34px;border-radius:50%;background:var(--c);border:2px solid rgba(255,255,255,.55)}
+.pdf-ink-bar .pdf-ink-pop button.active{border-color:#fff;box-shadow:0 0 0 2px rgba(29,33,64,.6)}
 .pdf-ink-sep{width:22px;height:1px;margin:2px 0;background:rgba(255,255,255,.3)}
 .pdf-ink-fly{position:absolute;left:calc(100% + 8px);top:100px;display:flex;flex-direction:column;gap:2px;padding:4px;border-radius:16px;background:rgba(29,33,64,.62);border:1px solid rgba(255,255,255,.16);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
 .pdf-ink-fly[hidden]{display:none}
@@ -1681,7 +1689,7 @@ body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
   .cv-sheet{position:relative;margin:0 auto;background:#fff;border-radius:6px;box-shadow:var(--shadow-md);touch-action:pan-y pinch-zoom;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
   .cv-sheet.tool-select .cv-item{touch-action:none}
   .cv-sheet.finger-draw:not(.tool-select){touch-action:none}
-  .cv-sheet.tool-pen,.cv-sheet.tool-highlighter,.cv-sheet.tool-arrow,.cv-sheet.tool-rect{cursor:crosshair}
+  .cv-sheet.tool-pen,.cv-sheet.tool-highlighter{cursor:crosshair}
   .cv-sheet.tool-text{cursor:text}
   .cv-sheet.tool-eraser{cursor:none}
   .cv-world{position:absolute;left:0;top:0;width:1000px;transform-origin:0 0;isolation:isolate;overflow:hidden;border-radius:6px}
@@ -1700,9 +1708,6 @@ body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
   .cv-text-lines{white-space:pre;pointer-events:none}
   .cv-text.editing{outline:2px solid rgba(91,103,241,.6);border-radius:4px;background:rgba(255,255,255,.88)}
   .cv-text-edit{display:block;width:100%;margin:0;padding:0;border:0;outline:none;resize:none;overflow:hidden;background:transparent;font:inherit;line-height:inherit;color:inherit;white-space:pre-wrap;overflow-wrap:break-word;-webkit-user-select:text;user-select:text;touch-action:auto}
-  .cv-arrow,.cv-rect{pointer-events:none}
-  .cv-arrow svg,.cv-rect svg{display:block;overflow:visible}
-  .cv-sheet.tool-select .cv-arrow .hit,.cv-sheet.tool-select .cv-rect .hit{pointer-events:stroke}
   .cv-ink{position:absolute;left:0;top:0;z-index:1;overflow:visible;pointer-events:none}
   .cv-ink .hl{mix-blend-mode:multiply}
   .cv-overlay{position:absolute;inset:0;overflow:visible;pointer-events:none}
@@ -1715,7 +1720,6 @@ body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
   .cv-bar button:hover{background:#F0F1F6}
   .cv-bar .danger{color:var(--danger)}
   .cv-eraser{position:absolute;display:none;border:2px solid rgba(229,72,107,.8);background:rgba(229,72,107,.1);border-radius:50%;transform:translate(-50%,-50%);pointer-events:none}
-  .cv-preview{position:absolute;left:0;top:0;overflow:visible;pointer-events:none}
   /* Photo tray (floating, collapsible) */
   .cv-tray{position:absolute;left:12px;top:12px;z-index:5;display:flex;max-height:calc(100% - 24px)}
   .cv-tray-panel{display:flex;flex-direction:column;width:132px;max-height:100%;overflow:hidden;background:rgba(255,255,255,.96);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow-md)}
@@ -1724,6 +1728,11 @@ body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
   .cv-tray-close{display:grid;place-items:center;margin-left:auto;width:32px;height:32px;border-radius:10px;color:var(--muted)}
   .cv-tray-close:hover{background:#F0F1F6}
   .cv-tray-list{display:flex;flex-direction:column;gap:8px;margin:0;padding:0 8px 8px;list-style:none;overflow-y:auto;overscroll-behavior:contain}
+  .cv-pdf-list{display:flex;flex-direction:column;gap:6px;margin:0;padding:0 8px 8px;list-style:none}
+  .cv-pdf{display:flex;align-items:center;border-radius:12px;background:#F0F1F6}
+  .cv-pdf-open{display:flex;align-items:center;gap:6px;flex:1;min-width:0;min-height:40px;padding:0 4px 0 8px;color:var(--accent);text-align:left}
+  .cv-pdf-open span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:600;color:var(--ink)}
+  .cv-pdf-more{display:grid;place-items:center;flex:none;width:32px;height:40px;color:var(--muted)}
   .cv-thumb{position:relative;display:block;width:100%;aspect-ratio:4/3;border-radius:12px;overflow:hidden;background:#E6E7EF;touch-action:pan-y;cursor:grab;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
   .cv-thumb img{display:block;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .2s var(--ease)}
   .cv-thumb.loaded img{opacity:1}

@@ -30,9 +30,16 @@ async function makeThumb(blob){
   finally{img.close?.()}
 }
 
+// The stored photo. One taken on another device of the account is fetched from Drive first (features/remote-sync.js).
+async function photoRow(id){
+  let row=await DB.get('photos',id);
+  if(!row?.blob&&typeof ensurePhotoLocal==='function'&&await ensurePhotoLocal(id))row=await DB.get('photos',id);
+  return row;
+}
+
 // Object URL of a photo's preview, made and stored the first time it is needed.
 async function photoThumbUrl(id){
-  const row=await DB.get('photos',id);if(!row?.blob)return null;
+  const row=await photoRow(id);if(!row?.blob)return null;
   if(row.thumb)return thumbUrl(row.thumb);
   const src=row.rendered||row.blob;
   try{

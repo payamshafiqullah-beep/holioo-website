@@ -58,7 +58,7 @@ async function exportSessionImages(course,section,session){
   const files=[];
   const base=Drive.safeName(`${course.name}_${section.name}_${session.title}`).replace(/\s+/g,'_');
   for(let i=0;i<session.photoIds.length;i++){
-    const row=await DB.get('photos',session.photoIds[i]);if(!row?.blob)continue;
+    const row=await photoRow(session.photoIds[i]);if(!row?.blob)continue;
     const b=photoBlob(row);files.push(new File([b],`${base}_${String(i+1).padStart(2,'0')}.jpg`,{type:b.type||'image/jpeg'}));
   }
   if(!files.length){showToast('Aucune image à exporter');return}

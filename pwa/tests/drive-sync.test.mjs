@@ -5,59 +5,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import {fakeDrive,fakeDb} from './helpers/fake-drive.mjs';
 
 const code=fs.readFileSync(new URL('../drive.js',import.meta.url),'utf8');
-
-// ── A small in-memory Google Drive ──
-function fakeDrive(){
-  const files=new Map();let n=0;const calls=[];
-  const fail={upload:null,full:false};
-  const json=(status,body)=>({ok:status<300,status,text:async()=>JSON.stringify(body)});
-  const notFound=id=>json(404,{error:{message:`File not found: ${id}`,errors:[{reason:'notFound'}]}});
-  const alive=id=>files.has(id)||id==='root';
-  async function fetch(url,opts={}){
-    const u=new URL(url),method=opts.method||'GET';calls.push(`${method} ${u.pathname}`);
-    if(u.pathname==='/drive/v3/files'&&method==='GET'){
-      const q=u.searchParams.get('q');const name=/name='((?:[^'\\]|\\.)*)'/.exec(q)[1].replace(/\\'/g,"'");const parent=/'([^']+)' in parents/.exec(q)[1];
-      return json(200,{files:[...files.values()].filter(f=>f.folder&&!f.trashed&&f.name===name&&f.parents.includes(parent))});
-    }
-    if(u.pathname==='/drive/v3/files'&&method==='POST'){
-      const b=JSON.parse(opts.body);if(!alive(b.parents[0]))return notFound(b.parents[0]);
-      const f={id:`f${++n}`,name:b.name,parents:b.parents,folder:true};files.set(f.id,f);return json(200,f);
-    }
-    if(u.pathname==='/upload/drive/v3/files'&&method==='POST'){
-      const raw=await new Response(opts.body).text();const meta=JSON.parse(/\{.*\}/.exec(raw)[0]);
-      if(fail.full)return json(403,{error:{message:'The user\'s Drive storage quota has been exceeded.',errors:[{reason:'storageQuotaExceeded'}]}});
-      if(fail.upload&&meta.name.includes(fail.upload))return json(500,{error:{message:'Backend error'}});
-      if(!alive(meta.parents[0]))return notFound(meta.parents[0]);
-      const f={id:`p${++n}`,name:meta.name,parents:meta.parents,content:raw.length};files.set(f.id,f);return json(200,f);
-    }
-    const m=/^\/(upload\/)?drive\/v3\/files\/([^/]+)$/.exec(u.pathname);
-    if(m){
-      const id=decodeURIComponent(m[2]),f=files.get(id);if(!f)return notFound(id);
-      if(method==='GET')return json(200,f);
-      if(m[1]){f.content=`updated-${opts.body.size}`;f.updated=(f.updated||0)+1;return json(200,f)}
-      const add=u.searchParams.get('addParents');if(add&&!alive(add))return notFound(add);
-      const rm=(u.searchParams.get('removeParents')||'').split(',').filter(Boolean);
-      f.parents=[...f.parents.filter(p=>!rm.includes(p)),...(add&&!f.parents.includes(add)?[add]:[])];
-      const body=JSON.parse(opts.body||'{}');if(body.name)f.name=body.name;if(body.trashed)f.trashed=true;
-      return json(200,f);
-    }
-    throw new Error(`Unexpected ${method} ${url}`);
-  }
-  const photosIn=folderId=>[...files.values()].filter(f=>!f.folder&&f.parents.includes(folderId));
-  const folder=name=>[...files.values()].find(f=>f.folder&&f.name===name);
-  return{files,fetch,calls,fail,photosIn,folder};
-}
-
-function fakeDb(){
-  const stores={photos:new Map(),files:new Map(),kv:new Map()};
-  return{stores,
-    get:async(s,k)=>stores[s].get(k)&&structuredClone(stores[s].get(k)),
-    put:async(s,v)=>{stores[s].set(v.id??v.key,structuredClone(v));return v},
-    all:async s=>[...stores[s].values()].map(v=>({...v})),
-    patch:async(s,k,ch)=>{const r=stores[s].get(k);if(!r)return null;const next={...r,...(typeof ch==='function'?ch(r):ch)};stores[s].set(k,next);return next}};
-}
 
 function load(drive){
   const storage=new Map();
@@ -203,4 +153,44 @@ test('notebook never written in: nothing is created in Drive, nothing counted',a
   const t=setup(0),nb=notebook(t);nb.empty=true;nb.pages=[];
   assert.equal(await nb.pending(),0);await nb.sync();
   assert.equal(nb.built,0);assert.equal(t.drive.folder('CM 1'),undefined);
+});
+
+// ── Course structure shared by the devices (Holioo/.holioo/state.json) and the access token ──
+test('state.json: written once, updated in place, read back only when it changed',async()=>{
+  const t=setup(0),ctx=await t.D.context(sb,'u1');
+  assert.deepEqual({...await t.D.readState(ctx,{})},{id:null,md5:null,data:null},'nothing yet: nothing created');
+  assert.equal(t.drive.folder('.holioo'),undefined);
+  const w1=await t.D.writeState(ctx,{courses:[1]},{});
+  const r1=await t.D.readState(ctx,{});
+  assert.equal(r1.id,w1.id);assert.deepEqual(JSON.parse(JSON.stringify(r1.data)),{courses:[1]});
+  const w2=await t.D.writeState(ctx,{courses:[1,2]},w1);
+  assert.equal(w2.id,w1.id,'same file');
+  assert.equal([...t.drive.files.values()].filter(f=>f.name==='state.json').length,1);
+  const before=t.drive.fail.downloads;
+  const r2=await t.D.readState(ctx,w2);
+  assert.equal(r2.data,null,'unchanged: not downloaded');assert.equal(t.drive.fail.downloads,before);
+  assert.equal(t.drive.files.get(w1.id).parents[0],t.drive.folder('.holioo').id);
+});
+
+test('access token: reused until it expires, renewed once after a 401',async()=>{
+  const t=setup(1);let minted=0;
+  const sb2={...sb,functions:{invoke:async()=>({data:{access_token:`token${++minted}`,expires_in:3600}})}};
+  await t.D.syncAll({sb:sb2,user:{id:'u1'},state:t.state,db:t.db});
+  await t.D.syncAll({sb:sb2,user:{id:'u1'},state:t.state,db:t.db});
+  assert.equal(minted,1,'one token for both syncs');
+  t.drive.fail.expire=true;
+  const ctx=await t.D.context(sb2,'u1');await t.D.readState(ctx,{});
+  assert.equal(minted,2,'renewed after the 401');assert.equal(ctx.token,'token2');
+  t.D.forgetToken();await t.D.context(sb2,'u1');assert.equal(minted,3);
+});
+
+test('pushPhoto sends one photo now and returns its Drive id; downloadFile reads it back',async()=>{
+  const t=setup(2);
+  const id=await t.D.pushPhoto({sb,user:{id:'u1'},state:t.state,db:t.db,id:t.ids[1]});
+  assert.ok(id);assert.equal((await t.db.get('photos',t.ids[1])).driveFileId,id);
+  assert.equal((await t.db.get('photos',t.ids[0])).driveFileId,undefined,'only that photo');
+  assert.equal(t.drive.files.get(id).name,'002-photo-1-.jpg');
+  const blob=await t.D.downloadFile(await t.D.context(sb,'u1'),id);
+  assert.equal(await blob.text(),'jpeg-photo-1-aaaaaaaa');
+  const r=await t.sync();assert.equal(r.synced,1,'the full sync then sends only the other one');
 });

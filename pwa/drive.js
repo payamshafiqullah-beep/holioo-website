@@ -12,7 +12,7 @@
   try{localStorage.removeItem('holioo_drive_folder_cache')}catch{} // old cache shared by all accounts
   function useFolderCache(userId){
     if(folderCacheOwner===userId)return;
-    folderCacheOwner=userId;
+    folderCacheOwner=userId;cachedToken=null;
     try{folderCache=JSON.parse(localStorage.getItem(cacheKey())||'{}')}catch{folderCache={}}
   }
   const saveCache=()=>{try{localStorage.setItem(cacheKey(),JSON.stringify(folderCache))}catch{}};
@@ -32,7 +32,17 @@
   }
   async function connect(sb,returnTo){return invoke(sb,'drive-auth-start',{return_to:returnTo})}
   async function disconnect(sb){return invoke(sb,'drive-disconnect')}
-  async function accessToken(sb){const data=await invoke(sb,'drive-access-token');return data.access_token}
+  // Short-lived Drive access token (minted server-side from the refresh token), kept in memory until a minute
+  // before it expires: a tablet page open for hours keeps working without a new token for every request.
+  let cachedToken=null;
+  async function accessToken(sb,{force=false}={}){
+    if(!force&&cachedToken?.sb===sb&&Date.now()<cachedToken.exp-60000)return cachedToken.value;
+    const data=await invoke(sb,'drive-access-token');
+    cachedToken={sb,value:data.access_token,exp:Date.now()+(Number(data.expires_in)||3600)*1000};
+    return cachedToken.value;
+  }
+  const forgetToken=()=>{cachedToken=null};
+  async function context(sb,userId){useFolderCache(userId);return{sb,token:await accessToken(sb)}}
   async function driveFetch(token,url,options={}){
     const headers=new Headers(options.headers||{});headers.set('Authorization',`Bearer ${token}`);
     const r=await fetch(url,{...options,headers});
@@ -62,6 +72,18 @@
   }
   async function ensureFolder(token,name,parentId){return await findFolder(token,name,parentId)||await createFolder(token,name,parentId)}
   async function ensurePath(token,names){let parent='root';for(const n of names.filter(Boolean))parent=await ensureFolder(token,safeName(n),parent);return parent}
+  // Same path, without creating anything: null when a folder is missing.
+  async function findPath(token,names){let parent='root';for(const n of names.filter(Boolean)){parent=await findFolder(token,safeName(n),parent);if(!parent)return null}return parent}
+  async function findFile(token,name,parentId){
+    const q=`name='${escQ(name)}' and '${escQ(parentId)}' in parents and trashed=false and mimeType!='${folderMime}'`;
+    const data=await driveFetch(token,`${API}/files?q=${encodeURIComponent(q)}&spaces=drive&fields=files(id,md5Checksum)&orderBy=createdTime&pageSize=5`);
+    return data.files?.[0]||null;
+  }
+  async function downloadBlob(token,fileId){
+    const r=await fetch(`${API}/files/${encodeURIComponent(fileId)}?alt=media`,{headers:{Authorization:`Bearer ${token}`}});
+    if(!r.ok){const err=new Error(`Google Drive ${r.status}`);err.status=r.status;throw err}
+    return r.blob();
+  }
   async function fileInfo(token,fileId){return driveFetch(token,`${API}/files/${encodeURIComponent(fileId)}?fields=id,parents,webViewLink,name,trashed`)}
   async function moveFile(token,fileId,parentId,name,info){
     info??=await fileInfo(token,fileId);const remove=(info.parents||[]).filter(x=>x!==parentId).join(',');
@@ -80,7 +102,15 @@
     const a=enc.encode(`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n--${boundary}\r\nContent-Type: ${blob.type||'application/octet-stream'}\r\n\r\n`);
     const b=enc.encode(`\r\n--${boundary}--`);
     const body=new Blob([a,blob,b],{type:`multipart/related; boundary=${boundary}`});
-    return driveFetch(token,`${UPLOAD}?uploadType=multipart&fields=id,name,parents,webViewLink`,{method:'POST',headers:{'Content-Type':`multipart/related; boundary=${boundary}`},body});
+    return driveFetch(token,`${UPLOAD}?uploadType=multipart&fields=id,name,parents,webViewLink,md5Checksum`,{method:'POST',headers:{'Content-Type':`multipart/related; boundary=${boundary}`},body});
+  }
+  function photoPlace(state,pc,p){
+    const rootYear=state.profile?.academicYear||'Année universitaire';
+    const names=pc.kind==='session'?
+      ['Holioo',rootYear,pc.course.name,pc.section.name,pc.session.title]:
+      ['Holioo',rootYear,'Inbox',new Date(pc.batch.createdAt).toISOString().slice(0,10)];
+    const list=pc.kind==='session'?pc.session.photoIds:pc.batch.photoIds;
+    return{names,filename:`${String(list.indexOf(p.id)+1).padStart(3,'0')}-${p.id.slice(0,8)}.jpg`};
   }
   function photoContexts(state){
     const map=new Map();
@@ -98,7 +128,7 @@
         // A folder deleted in Drive leaves a stale id in the cache: forget the cache and retry once.
         if(e.status===404){clearCache();continue}
         // The access token expired during a long sync: get a new one and retry once.
-        if(e.status===401){ctx.token=await accessToken(ctx.sb);continue}
+        if(e.status===401){ctx.token=await accessToken(ctx.sb,{force:true});continue}
         throw e;
       }
     }
@@ -130,6 +160,51 @@
   async function trashFile(ctx,fileId){
     try{await retrying(ctx,()=>driveFetch(ctx.token,`${API}/files/${encodeURIComponent(fileId)}?fields=id`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({trashed:true})}))}
     catch(e){if(e.status!==404)throw e}
+  }
+
+  // A file made by Holioo on any device of this account (drive.file), e.g. a photo taken on the phone.
+  const downloadFile=(ctx,fileId)=>retrying(ctx,()=>downloadBlob(ctx.token,fileId));
+
+  // The course structure shared by the devices of an account: Holioo/.holioo/state.json in the user's Drive.
+  // `meta` = {id, md5} of what this device last read or wrote; an unchanged file is not downloaded again.
+  const STATE_PATH=['Holioo','.holioo'],STATE_NAME='state.json';
+  async function readState(ctx,meta={}){
+    return retrying(ctx,async()=>{
+      let info=null;
+      if(meta.id){
+        try{info=await driveFetch(ctx.token,`${API}/files/${encodeURIComponent(meta.id)}?fields=id,md5Checksum,trashed`)}catch(e){if(e.status!==404)throw e}
+        if(info?.trashed)info=null;
+      }
+      if(!info){const parent=await findPath(ctx.token,STATE_PATH);info=parent?await findFile(ctx.token,STATE_NAME,parent):null}
+      if(!info)return{id:null,md5:null,data:null};
+      if(info.md5Checksum&&info.md5Checksum===meta.md5)return{id:info.id,md5:info.md5Checksum,data:null};
+      const text=await(await downloadBlob(ctx.token,info.id)).text();
+      let data=null;try{data=JSON.parse(text)}catch{}
+      return{id:info.id,md5:info.md5Checksum||null,data};
+    });
+  }
+  async function writeState(ctx,doc,meta={}){
+    const blob=new Blob([JSON.stringify(doc)],{type:'application/json'});
+    return retrying(ctx,async()=>{
+      let r=null;
+      if(meta.id){
+        try{r=await driveFetch(ctx.token,`${UPLOAD}/${encodeURIComponent(meta.id)}?uploadType=media&fields=id,md5Checksum`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:blob})}
+        catch(e){if(e.status!==404)throw e}
+      }
+      if(!r){const up=await uploadBlob(ctx.token,blob,STATE_NAME,await ensurePath(ctx.token,STATE_PATH));r={id:up.id,md5Checksum:up.md5Checksum}}
+      return{id:r.id,md5:r.md5Checksum||null};
+    });
+  }
+
+  // Sends one photo now (Live Capture), without waiting for a full sync. Returns its Drive file id.
+  async function pushPhoto({sb,user,state,db,id}){
+    const ctx=await context(sb,user.id);
+    const p=await db.get('photos',id);if(!p?.blob)return null;
+    const pc=photoContexts(state).get(id);if(!pc)return null;
+    const {names,filename}=photoPlace(state,pc,p);
+    const res=await pushItem(ctx,p,p.rendered||p.blob,names,filename);
+    if(res){await markSynced(db,'photos',p,res,filename);return res.remote.id}
+    return p.driveFileId||null;
   }
 
   // Documents made of several files in one folder (a session's notebook: one image per written page + its data),
@@ -297,11 +372,7 @@
     for(const [id,pc] of contexts){
       const p=await db.get('photos',id);
       if(!p?.blob){step();continue}
-      const names=pc.kind==='session'?
-        ['Holioo',rootYear,pc.course.name,pc.section.name,pc.session.title]:
-        ['Holioo',rootYear,'Inbox',new Date(pc.batch.createdAt).toISOString().slice(0,10)];
-      const list=pc.kind==='session'?pc.session.photoIds:pc.batch.photoIds;
-      const filename=`${String(list.indexOf(p.id)+1).padStart(3,'0')}-${p.id.slice(0,8)}.jpg`;
+      const {names,filename}=photoPlace(state,pc,p);
       try{
         const res=await pushItem(ctx,p,p.rendered||p.blob,names,filename);
         if(res){await markSynced(db,'photos',p,res,filename);synced++}
@@ -355,5 +426,5 @@
     }
     return n;
   }
-  window.HoliooDrive={status,connect,disconnect,accessToken,ensureFolder,ensurePath,uploadBlob,moveFile,updateContent,syncAll,pendingCount,safeName};
+  window.HoliooDrive={status,connect,disconnect,accessToken,forgetToken,context,readState,writeState,downloadFile,pushPhoto,ensureFolder,ensurePath,uploadBlob,moveFile,updateContent,syncAll,pendingCount,safeName};
 })();

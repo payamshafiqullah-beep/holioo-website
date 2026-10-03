@@ -13,7 +13,7 @@ const uiFiles=['./ui/icons.js','./ui/components.js','./ui/reorder.js','./ui/shel
 const featureFiles=[
   './features/media-viewer.js','./features/course-actions.js','./features/image-pipeline.js','./features/photo-edits.js','./features/thumbs.js','./features/camera-i18n.js','./features/camera-destination.js',
   './features/camera-queue.js','./features/scan-core.js','./features/scanner.js','./features/scan-ml.js','./features/ocr.js','./features/text-actions.js','./features/capture-actions.js','./features/quick-capture.js','./features/item-menu.js',
-  './features/pdf-actions.js','./features/cloud-sync.js','./features/community-actions.js'
+  './features/pdf-actions.js','./features/cloud-sync.js','./features/community-actions.js','./features/state-merge.js','./features/remote-sync.js'
 ];
 
 const app=[
@@ -28,7 +28,7 @@ const drive=read('./drive.js');
 const html=read('./index.html');
 const sw=read('./sw.js');
 const manifest=JSON.parse(read('./manifest.webmanifest'));
-if(!html.includes('20261002-cloud-sync-v1'))throw new Error('Asset cache-bust version missing');
+if(!html.includes('20261002-full-sync-v1'))throw new Error('Asset cache-bust version missing');
 
 const required=[
   'Diviser le lot','Organiser les photos','Captures à trier','Section personnalisée','Nouvelle séance',
@@ -48,14 +48,14 @@ if(!app.includes('gallery-shortcut'))throw new Error('Modern gallery control mis
 if(/openCropEditor|captureDraft\.photoIds=/.test([read('./features/capture-actions.js'),read('./pages/CapturePage.js')].join(' ')))throw new Error('Old camera draft/crop flow still present');
 for(const s of ['Choisir la destination','Nouvelle séance','Emploi du temps','permBlocked','visibilitychange'])if(!app.includes(s))throw new Error(`Camera v2 missing: ${s}`);
 
-for(const p of [...pageFiles,...uiFiles,...featureFiles,'./db.js','./drive.js','./core.js','./app.js','./manifest.webmanifest']){
+for(const p of [...pageFiles,...uiFiles,...featureFiles,'./db.js','./drive.js','./sync-signals.js','./core.js','./app.js','./manifest.webmanifest']){
   const htmlPath=p.replace('./','./');
   if(p.endsWith('.js')&&!html.includes(`src="${htmlPath}`))throw new Error(`HTML dependency missing: ${htmlPath}`);
 }
 
 if(app.includes('device-bootstrap'))throw new Error('Anonymous device sign-in must stay retired');
 for(const s of ['drive-auth-start','drive-access-token','drive-disconnect','syncAll'])if(!drive.includes(s))throw new Error(`Drive integration missing: ${s}`);
-for(const p of [...pageFiles,...uiFiles,...featureFiles,'./app.js','./core.js','./db.js','./drive.js'])if(!sw.includes(p))throw new Error(`Offline cache missing: ${p}`);
+for(const p of [...pageFiles,...uiFiles,...featureFiles,'./app.js','./core.js','./db.js','./drive.js','./sync-signals.js'])if(!sw.includes(p))throw new Error(`Offline cache missing: ${p}`);
 
 if(manifest.display!=='standalone'||manifest.scope!=='./')throw new Error('PWA manifest invalid');
 if(/GOOGLE_CLIENT_SECRET|SUPABASE_SERVICE_ROLE_KEY/.test(app+drive))throw new Error('Sensitive server secret referenced in frontend');
@@ -74,6 +74,11 @@ if(!read('./styles.css').includes('.pe-stage'))throw new Error('Photo editor sty
 for(const s of ['SCAN_MODES','Scanner.start','queueScanCapture','renderScanReview','Ocr.enqueue','buildPdfDocument','setTextRenderingMode','cameraFallbackInput','capture="environment"'])if(!app.includes(s))throw new Error(`Scanner missing: ${s}`);
 for(const f of ['./workers/scanner-worker.js','./features/scan-detect.js'])if(!sw.includes(f))throw new Error(`Offline cache missing: ${f}`);
 if(html.includes('jspdf'))throw new Error('jsPDF replaced by pdf-lib (loaded on demand)');
+// Cross-device sync: structure in the user's Drive, Supabase only for signals (ids, never content).
+for(const s of ['syncStructure','applyPendingRemote','ensurePhotoLocal','syncStamp','syncMerge','startSyncSignals'])if(!app.includes(s))throw new Error(`Cross-device sync missing: ${s}`);
+for(const s of ['readState','writeState','downloadFile','forgetToken'])if(!drive.includes(s))throw new Error(`Drive state sync missing: ${s}`);
+if(html.indexOf('features/state-merge.js')>html.indexOf('src="./core.js'))throw new Error('state-merge.js must load before core.js (saveState stamps from the first save)');
+if(/from\('sync_signals'\)\.insert\(\{[^}]*(title|name|text|blob)/.test(read('./sync-signals.js')))throw new Error('Sync signals must carry ids only');
 console.log(`Holioo modular smoke test: PASS (${pageFiles.length} page files)`);
 
 for(const s of ['HOLIOO UI v2','--bg:#F7F7FB','--accent:#5B67F1','.bottom-nav','.capture-orb','.shutter','.cam-dest','.cam-sheet'])if(!read('./styles.css').includes(s))throw new Error(`UI v2 style missing: ${s}`);

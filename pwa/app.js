@@ -10,6 +10,8 @@ async function render(){
   if(signedIn&&!state.onboardingComplete&&currentView==='home')currentView='academicSetup';
   setChrome(['login','blocked','academicSetup','photoViewer','pdfViewer','capture','scanReview','admin'].includes(currentView));
   releaseThumbUrls();
+  // Changes made on another device are merged here, just before the screen is drawn again.
+  if(typeof applyPendingRemote==='function')await applyPendingRemote().catch(e=>console.warn('Remote merge',e));
   await VIEWS[currentView]?.();
   applyChromeStatus();
   if(typeof syncQuickCapture==='function')syncQuickCapture();
@@ -19,7 +21,7 @@ window.addEventListener('online',async()=>{offlineBanner.classList.add('hidden')
 window.addEventListener('offline',()=>{offlineBanner.classList.remove('hidden');refreshSyncIndicator()});
 // The app goes to the background: the notebook's last strokes are saved and copied to Drive.
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&typeof flushNotebook==='function')flushNotebook()});
-window.addEventListener('focus',async()=>{if(sb&&currentUser&&navigator.onLine){try{driveStatus=await Drive.status(sb,currentUser.id);await refreshSyncIndicator();if(driveStatus.connected&&currentView==='sync')render()}catch{}}});
+window.addEventListener('focus',async()=>{if(sb&&currentUser&&navigator.onLine){try{driveStatus=await Drive.status(sb,currentUser.id);await refreshSyncIndicator();if(driveStatus.connected&&currentView==='sync')render();if(typeof pullStructureSoon==='function')pullStructureSoon()}catch{}}});
 // Back on screen after a while: look at what the account's other devices did (at most once a minute).
 let lastPullAt=0;
 document.addEventListener('visibilitychange',()=>{
@@ -59,6 +61,7 @@ async function recoverOrphanPhotos(){
       for(const b of s?.inbox||[])for(const id of b.photoIds||[])used.add(id);
       for(const c of s?.courses||[])for(const x of c.sections||[])for(const q of x.sessions||[])for(const id of q.photoIds||[])used.add(id);
       for(const id of s?.captureDraft?.photoIds||[])used.add(id);
+      for(const id of Object.keys(s?.sync?.deleted||{}))used.add(id);   // deleted on another device
     };
     for(let i=0;i<localStorage.length;i++){
       const k=localStorage.key(i);

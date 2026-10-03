@@ -175,7 +175,7 @@ function chooseFilterForAll(ids){
   document.querySelectorAll('[data-all-filter]').forEach(b=>b.onclick=()=>{sheetRoot.innerHTML='';applyFilterToAll(ids,b.dataset.allFilter)});
 }
 
-// Delete with undo: the page leaves the list at once and is really deleted a few seconds later.
+// Delete with undo: remove page from gallery at once, commit after 6 seconds.
 function deleteScanPage(id){
   flushScanDelete();
   const ctx=findSessionContext(camDest.sessionId);if(!ctx)return;
@@ -186,9 +186,13 @@ function deleteScanPage(id){
   showUndo(camT('reviewDeleted'),()=>{
     const p=scanReview.pendingDelete;if(!p||p.id!==id)return;clearTimeout(p.timer);scanReview.pendingDelete=null;
     const c=findSessionContext(p.sessionId);if(c)c.session.photoIds.splice(Math.max(0,p.pos),0,id);
-    camShots.splice(Math.max(0,p.shot),0,id);saveState();render();
+    camShots.splice(Math.max(0,p.shot),0,id);saveState();removeDeletedScanPageTile(id);
   });
-  render();
+  removeDeletedScanPageTile(id);
+}
+function removeDeletedScanPageTile(id){
+  if(scanReview.index===null){const tile=document.querySelector(`.srv-page[data-photo-id="${CSS.escape(id)}"]`);if(tile)tile.remove()}
+  else if(scanReview.index!==null){const ids=scanReviewIds();if(ids[scanReview.index]===id){ids.splice(scanReview.index,1);if(!ids.length)navigate('session');else{scanReview.index=Math.min(scanReview.index,ids.length-1);showScanPreview(ids[scanReview.index])}}}
 }
 function flushScanDelete(){
   const p=scanReview.pendingDelete;if(!p)return;scanReview.pendingDelete=null;clearTimeout(p.timer);

@@ -5,6 +5,7 @@ let cameraZoomMin=1;
 let cameraZoomMax=4;
 let camDest=null;        // where the next photo goes: {courseId, sectionId, sessionId|null, source}
 let camEntryDestination=null; // explicit origin, consumed once when opening the camera
+let camReturnView=null;       // tablet / computer: the Galerie or Notes the camera was opened from, shown again when it is left
 let camShots=[];         // photos taken in this camera visit for the current destination (badge counter)
 let camThumbUrl='';
 let camStartToken=0;
@@ -23,6 +24,7 @@ function setCameraStatus(text){
 
 function prepareCameraEntry(fromView,dest=null){
   camEntryDestination=null;
+  camReturnView=fromView==='gallery'||fromView==='notes'?fromView:null;
   // Quick Capture (Accueil) names the destination itself.
   if(dest?.courseId&&dest.sectionId){
     camKeepBatch=false;
@@ -31,6 +33,8 @@ function prepareCameraEntry(fromView,dest=null){
   }
   if(fromView==='scanReview'||fromView==='photoViewer')return;
   camKeepBatch=false;
+  // Galerie / Notes (tablet, computer): the photos go where the screen is (course and filter, or the notes' séance).
+  if(camReturnView&&typeof deskCameraDestination==='function'){const d=deskCameraDestination(camReturnView);if(d)camEntryDestination={courseId:d.courseId,sectionId:d.sectionId,sessionId:d.sessionId||null,source:'manual'};return}
   if(fromView!=='session'&&fromView!=='section')return;
   const course=state.courses.find(c=>c.id===currentCourseId);
   const section=course?.sections.find(s=>s.id===currentSectionId);
@@ -723,8 +727,18 @@ function leaveCamera(){
   queueSync();
 }
 
+// Tablet / computer: back to the Galerie or the Notes the camera was opened from.
+function cameraReturn(ctx){
+  const view=camReturnView;camReturnView=null;
+  if(!view||typeof isDesk!=='function'||!isDesk())return false;
+  if(view==='gallery')navigate('gallery',ctx?{courseId:ctx.course.id}:{});
+  else navigate('notes',ctx?{courseId:ctx.course.id,sectionId:ctx.section.id,sessionId:ctx.session?.id}:{});
+  return true;
+}
 function closeCaptureScreen(){
   leaveCamera();
+  const dest=camDest?cameraDestContext(camDest):null;
+  if(cameraReturn(dest?{course:dest.course,section:dest.section,session:null}:null))return;
   navigate('home');
 }
 
@@ -733,6 +747,7 @@ function finishCapture(){
   const ctx=camShots.length&&camDest?.sessionId&&findSessionContext(camDest.sessionId);
   if(ctx)showToast(camT('savedTo',{dest:cameraDestinationLabel(camDest)}));
   leaveCamera();
+  if(cameraReturn(ctx||null))return;
   if(ctx)navigate('session',{courseId:ctx.course.id,sectionId:ctx.section.id,sessionId:ctx.session.id});
   else navigate('home');
 }

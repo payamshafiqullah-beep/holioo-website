@@ -179,7 +179,7 @@ async function runDriveSync(reason='manual'){
     // What the account’s other devices added or removed is now here: show it where that is safe (not in the camera,
     // the photo viewer, a notebook being written in, a form being filled).
     const news=(result.received||0)+(result.changed?1:0);
-    if(news&&['home','courses','course','section','files','inbox','sync','library','profile'].includes(currentView))render();
+    if(news&&['home','courses','course','section','gallery','files','inbox','sync','library','profile'].includes(currentView))render();
     if(result.failed){console.warn('Drive sync:',result.lastError);showToast(`${result.failed} élément(s) non synchronisé(s) — nouvel essai plus tard`)}
     else if(result.receivedFailed)showToast(`${result.receivedFailed} élément(s) de vos autres appareils n’ont pas pu être reçus — nouvel essai plus tard`);
     else if(result.received)showToast(`${result.received} élément(s) reçu(s) de vos autres appareils`);

@@ -11,6 +11,7 @@
 //   attachItemMenu(el,{name, title, rename(newName), move(), remove()})
 //     rename(newName)  named items: left action "Renommer", edited in place, never empty
 //     move()           unnamed items (photos): left action "Déplacer"
+//     reposition()     gallery photos (tablet / computer): left action "Changer la position" instead of "Déplacer"
 //     remove()         hides the item at once, returns {undo(), commit()}: "Supprimé · Annuler" for 5 s,
 //                      then commit() makes it final (a new deletion or leaving the app commits at once)
 //     name             shown above the rings;  title: selector of the text edited by "Renommer" (default strong)
@@ -68,10 +69,11 @@ function itemMenuGet(){
 function itemMenuOpen(el,o,at,pointer){
   const radial=itemMenuGet();
   if(radial.isOpen())radial.close();
-  const lead=o.move?{id:'move',label:'Déplacer',icon:'folder',color:'#506BFF'}:{id:'rename',label:'Renommer',icon:'pencil',color:'#506BFF'};
+  const lead=o.reposition?{id:'position',label:'Changer la position',icon:'arrowsUpDown',color:'#506BFF'}:o.move?{id:'move',label:'Déplacer',icon:'folder',color:'#506BFF'}:{id:'rename',label:'Renommer',icon:'pencil',color:'#506BFF'};
   const del={id:'delete',label:'Supprimer',icon:'trash',color:'#E5484D'};
   itemMenuCur={name:o.name,at,items:[lead,del].map(a=>({...a,short:'',aria:a.label})),act:id=>{
     if(id==='delete')itemDelete(o.remove);
+    else if(id==='position')o.reposition();
     else if(id==='move')o.move();
     else itemRename(el.querySelector(o.title||'strong'),o.name,v=>{o.rename(v);saveState();queueSync();render()},o.check);
   }};

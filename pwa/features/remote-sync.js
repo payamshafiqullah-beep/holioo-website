@@ -85,6 +85,7 @@ function remoteRenderBlocked(){
   if(['capture','scanReview','photoViewer','pdfBuilder','academicSetup'].includes(currentView))return true;
   if(sheetRoot.innerHTML)return true;
   if(document.querySelector('.radial,.photo-editor'))return true;
+  if(typeof canvasBusy==='function'&&canvasBusy())return true;   // a stroke, a drag or a text box in progress
   const a=document.activeElement;
   return!!a&&(a.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
 }
@@ -153,7 +154,7 @@ async function prefetchRemotePhotos(){
   for(const id of new Set(statePhotoIds()))if(map[id]&&!(await DB.get('photos',id).catch(()=>null)))missing.push(id);
   if(!missing.length)return;
   const got=await Promise.all(missing.map(ensurePhotoLocal));
-  if(got.some(Boolean)&&['home','courses','course','section','session','inbox'].includes(currentView))renderWhenIdle();
+  if(got.some(Boolean)&&['home','courses','course','section','session','gallery','inbox'].includes(currentView))renderWhenIdle();
 }
 
 // ── Signals ──
@@ -171,8 +172,10 @@ function startSyncSignals(){if(window.HoliooSignals&&!guestMode&&sb&&currentUser
 // What this device tells the others (after every render): tablet / computer layout, on Live Capture, which séance.
 function updatePresence(){
   if(!window.HoliooSignals)return;
-  const live=currentView==='live';
-  const p={desk:typeof isDesk==='function'&&isDesk(),live,sessionId:live&&typeof liveSessionId!=='undefined'?liveSessionId:null};
+  // The Notes page listens too: the phone's photos fill its tray at once.
+  const live=currentView==='live'||currentView==='notes';
+  const sid=currentView==='notes'&&typeof canvasSessionId==='function'?canvasSessionId():currentView==='live'&&typeof liveSessionId!=='undefined'?liveSessionId:null;
+  const p={desk:typeof isDesk==='function'&&isDesk(),live,sessionId:sid};
   const key=JSON.stringify(p);if(key===updatePresence.key)return;
   updatePresence.key=key;window.HoliooSignals.track(p);
 }

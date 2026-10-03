@@ -1269,6 +1269,12 @@ body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
 
   /* ---------- Viewers and editors: toolbars 40px, buttons 28px ---------- */
   .viewer-topbar,.pdf-viewer .page-header,.srv-top,.pe-top{min-height:40px}
+  .viewer-topbar,.pdf-viewer .page-header,.srv-top{padding-top:calc(var(--s1) + env(safe-area-inset-top));padding-bottom:var(--s1)}
+  /* The photo fits its stage (a percentage max-height doesn't resolve in an auto-sized grid row, so tall photos overflowed and were cropped). */
+  .viewer-stage{grid-template:minmax(0,1fr)/minmax(0,1fr)}
+  .viewer-stage img{min-width:0;min-height:0}
+  /* Sign-in and set-up: a centred column instead of full-width fields and buttons. */
+  .onboarding{max-width:440px;margin-left:auto;margin-right:auto}
   .media-viewer .glass-btn,.viewer-arrow,.pe-icon-btn,.srv-icon{width:28px;height:28px;border-radius:6px}
   .viewer-heading b,.viewer-title strong,.srv-title b{font-size:13px}
   .viewer-heading span,.viewer-title small,.srv-title small,.pe-counter,.pe-note{font-size:12px}
@@ -1291,6 +1297,14 @@ body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
   /* ---------- Touch screens: text fields stay 16px so iPad Safari doesn't zoom in on focus ---------- */
   @media (pointer:coarse){
     .field input,.field select,.field textarea,.search-bar input,.ocr-text{font-size:16px}
+    /* Finger: the 28px buttons keep their look, an invisible layer makes the touch target 40px tall
+       (6px above and below, 2px each side: the gaps between buttons are 4px or more, so neighbours never overlap). */
+    .chip,.link-btn,.ink-tool,.course-delete,.thumb-actions button,.srv-icon,.srv-text-btn,.srv-done,.pe-icon-btn,.pe-text-btn,.pe-done,.pe-chip,.pe-pill-btn,.media-viewer .glass-btn{position:relative}
+    .avatar-btn{overflow:visible}
+    .avatar-btn .avatar-image{border-radius:50%}
+    .icon-btn::after,.avatar-btn::after,.chip::after,.link-btn::after,.ink-tool::after,.reorder-handle::after,.course-delete::after,.image-delete::after,.thumb-actions button::after,.srv-icon::after,.srv-text-btn::after,.srv-done::after,.pe-icon-btn::after,.pe-text-btn::after,.pe-done::after,.pe-chip::after,.pe-pill-btn::after,.media-viewer .glass-btn::after,.viewer-arrow::after{content:"";position:absolute;inset:-6px -2px}
+    .icon-btn::after,.media-viewer .glass-btn::after{inset:-7px -3px}   /* these have a 1px border: the offset starts inside it */
+    .chips{margin-top:-4px;margin-bottom:-4px;padding-top:6px;padding-bottom:8px}   /* room for the layer inside the scrolling row, same layout height */
   }
 
   /* ---------- Hover (mouse only) ---------- */
@@ -1764,4 +1778,7 @@ body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
 /* Touch screens: the desk's text fields stay 16px so iPad Safari doesn't zoom in on focus. */
 @media (min-width:768px) and (min-height:521px) and (pointer:coarse),(min-width:960px) and (pointer:coarse){
   .desk .cnav-search input,.desk .desk-session-note textarea,.desk .desk-note textarea{font-size:16px}
+  /* Finger: invisible 40px-tall touch layer around the 28px toolbar / canvas buttons (see part 1/2). */
+  .desk-logo,.desk-tool,.desk-tab,.cv-btn,.cv-bar button,.cv-tray-close,.cnav-add,.cnav-twisty{position:relative}
+  .desk-logo::after,.desk-tool::after,.desk-tab::after,.cv-btn::after,.cv-bar button::after,.cv-tray-close::after,.cnav-add::after,.cnav-twisty::after{content:"";position:absolute;inset:-6px -2px}
 }

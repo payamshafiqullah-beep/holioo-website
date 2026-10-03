@@ -432,8 +432,6 @@ html.radial-haptic-confirm body{animation:radialHapticConfirm .2s var(--ease)}
 .thumb.group-b .group-tag{color:var(--peach-fg)}
 .thumb-status{position:absolute;right:6px;top:6px;z-index:2}
 .gallery-thumb img{cursor:zoom-in}
-.thumb-actions{position:absolute;left:6px;right:6px;bottom:6px;display:flex;justify-content:space-between;gap:4px}
-.thumb-actions button{flex:1;height:28px;border-radius:10px;background:rgba(29,33,64,.55);backdrop-filter:blur(8px);color:#fff;font-size:13px;font-weight:700}
 
 /* Photo reordering — press, hold and drag (ui/reorder.js). Used by every photo grid. */
 .reorder-grid{position:relative}
@@ -442,7 +440,7 @@ html.radial-haptic-confirm body{animation:radialHapticConfirm .2s var(--ease)}
 .reorder-grid.is-dragging > [data-photo-id]:not(.drag-placeholder){box-shadow:var(--shadow-sm)}
 .reorder-grid > .drag-placeholder{opacity:.22;transform:scale(.92);border-style:dashed;border-color:var(--accent)}
 .reorder-ghost{position:fixed!important;z-index:160!important;margin:0!important;pointer-events:none!important;opacity:.96;transform:scale(1.08) rotate(1.5deg);box-shadow:0 18px 42px rgba(29,33,64,.28)!important;border-color:var(--accent)!important;transition:transform .15s var(--ease)!important;animation:none!important}
-.reorder-ghost .thumb-actions,.reorder-ghost .thumb-status,.reorder-ghost .pdf-order-hint{display:none}
+.reorder-ghost .thumb-status,.reorder-ghost .pdf-order-hint{display:none}
 .reorder-hint{display:flex;align-items:center;gap:6px;margin:0;font-size:12px;color:var(--muted)}
 .pdf-order-thumb .pdf-order-hint{position:absolute;right:6px;bottom:6px;display:grid;place-items:center;width:28px;height:24px;border-radius:10px;background:rgba(29,33,64,.58);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);color:#fff;transform:rotate(90deg);pointer-events:none}
 
@@ -879,13 +877,8 @@ body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
 /* Course management uses the same long-press interaction as photo grids. */
 .course-managed{cursor:pointer}
 .course-managed[hidden]{display:none}
-.course-delete{display:grid;place-items:center;flex:none;width:44px;height:44px;border-radius:12px;color:var(--muted);background:transparent}
-.managed-row{display:flex;align-items:center;gap:var(--s2)}
-.managed-row>.list-card{flex:1;min-width:0}
-.course-delete:hover,.course-delete:focus-visible{background:#ffe9ed;color:#b4233a}
 .course-managed:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .reorder-grid > [data-course]{touch-action:pan-y;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
-.reorder-ghost .course-delete{visibility:hidden}
 
 /* Stable touch sorting: the original slot never changes size. */
 .reorder-grid > .drag-placeholder{opacity:.25;transform:none!important;border:3px dashed var(--accent)}
@@ -909,16 +902,10 @@ body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
 
 .image-tile{position:relative}
 .image-open{display:block;width:100%;height:100%;padding:0}
-.image-delete{position:absolute;right:4px;bottom:4px;display:grid;place-items:center;width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.95);color:#b4233a;box-shadow:0 2px 8px #0002}
 .file-card .danger,.page-header-right .danger{color:#b4233a}
 .file-card[hidden]{display:none}
 
-.capture-delete{left:3px;right:auto;z-index:4}
-.thumb-actions button{height:40px}
 .gallery-thumb .reorder-handle{bottom:3px}
-.gallery-thumb .thumb-actions{right:auto;left:3px;bottom:3px;width:44px}
-.gallery-thumb .thumb-actions button{width:44px;height:44px;display:grid;place-items:center}
-.reorder-ghost .capture-delete{visibility:hidden}
 
 /* ==============================================================
 
@@ -1226,16 +1213,12 @@ body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
   .thumb .num{left:4px;top:4px;min-width:20px;height:20px;padding:0 var(--s2);border-radius:10px;font-size:12px;line-height:20px}
   .thumb .check{right:4px;top:4px;width:20px;height:20px;font-size:12px}
   .thumb .group-tag{right:4px;bottom:4px;padding:2px var(--s2);border-radius:6px;font-size:12px}
-  .thumb-actions button,.gallery-thumb .thumb-actions button{height:28px;border-radius:6px;font-size:12px}
-  .gallery-thumb .thumb-actions{width:28px}
-  .gallery-thumb .thumb-actions button{width:28px}
   .reorder-handle{width:28px;height:28px}
   .reorder-handle .grip{width:22px;height:22px}
   .reorder-handle .grip::before,.reorder-handle .grip::after{width:4px;height:4px;margin-left:-2px}
   .reorder-handle .grip::before{top:calc(50% - 5px)}
   .reorder-handle .grip::after{top:calc(50% + 1px)}
   .course-managed{padding-bottom:36px}
-  .course-delete,.image-delete{width:28px;height:28px;border-radius:6px}
   .pdf-order-thumb .pdf-order-hint{width:24px;height:20px;border-radius:6px}
   .reorder-hint{font-size:12px}
   .files-image-heading .ico{width:16px;height:16px}
@@ -1299,10 +1282,10 @@ body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
     .field input,.field select,.field textarea,.search-bar input,.ocr-text{font-size:16px}
     /* Finger: the 28px buttons keep their look, an invisible layer makes the touch target 40px tall
        (6px above and below, 2px each side: the gaps between buttons are 4px or more, so neighbours never overlap). */
-    .chip,.link-btn,.ink-tool,.course-delete,.thumb-actions button,.srv-icon,.srv-text-btn,.srv-done,.pe-icon-btn,.pe-text-btn,.pe-done,.pe-chip,.pe-pill-btn,.media-viewer .glass-btn{position:relative}
+    .chip,.link-btn,.ink-tool,.srv-icon,.srv-text-btn,.srv-done,.pe-icon-btn,.pe-text-btn,.pe-done,.pe-chip,.pe-pill-btn,.media-viewer .glass-btn{position:relative}
     .avatar-btn{overflow:visible}
     .avatar-btn .avatar-image{border-radius:50%}
-    .icon-btn::after,.avatar-btn::after,.chip::after,.link-btn::after,.ink-tool::after,.reorder-handle::after,.course-delete::after,.image-delete::after,.thumb-actions button::after,.srv-icon::after,.srv-text-btn::after,.srv-done::after,.pe-icon-btn::after,.pe-text-btn::after,.pe-done::after,.pe-chip::after,.pe-pill-btn::after,.media-viewer .glass-btn::after,.viewer-arrow::after{content:"";position:absolute;inset:-6px -2px}
+    .icon-btn::after,.avatar-btn::after,.chip::after,.link-btn::after,.ink-tool::after,.reorder-handle::after,.srv-icon::after,.srv-text-btn::after,.srv-done::after,.pe-icon-btn::after,.pe-text-btn::after,.pe-done::after,.pe-chip::after,.pe-pill-btn::after,.media-viewer .glass-btn::after,.viewer-arrow::after{content:"";position:absolute;inset:-6px -2px}
     .icon-btn::after,.media-viewer .glass-btn::after{inset:-7px -3px}   /* these have a 1px border: the offset starts inside it */
     .chips{margin-top:-4px;margin-bottom:-4px;padding-top:6px;padding-bottom:8px}   /* room for the layer inside the scrolling row, same layout height */
   }
@@ -1620,7 +1603,6 @@ body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
 [data-theme="dark"] .hero-card::before{background:radial-gradient(circle,rgba(255,255,255,.08),rgba(255,255,255,0) 70%)}
 [data-theme="dark"] .pdf-pages{background:#0B0C16}
 [data-theme="dark"] .course-managed .reorder-handle{color:var(--ink)}
-[data-theme="dark"] .image-delete{background:rgba(26,28,48,.95);color:#FF8FA6}
 [data-theme="dark"] .switch::after{background:#fff}
 [data-theme="dark"] .desk-toolbar,[data-theme="dark"] .cv-tray-panel{background:rgba(26,28,48,.94)}
 [data-theme="dark"] .desk-tool:hover,[data-theme="dark"] .desk-tab:hover,[data-theme="dark"] .cnav-link:hover,[data-theme="dark"] .crumb-link:hover,[data-theme="dark"] .desk-live:hover,[data-theme="dark"] .desk-logo:hover,[data-theme="dark"] .desk-menu-item:hover,[data-theme="dark"] .desk-menu-item:focus-visible,[data-theme="dark"] .cv-btn:hover,[data-theme="dark"] .cv-bar button:hover,[data-theme="dark"] .cv-tray-close:hover{background:#2A2D47}

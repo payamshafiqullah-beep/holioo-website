@@ -7,14 +7,14 @@ function renderCourses(){
     ${PageHeader({title:'Mes cours',large:true})}
     ${SearchBar({id:'courseSearch',placeholder:'Rechercher un cours...'})}
     ${FilterChips('courseFilters',[{value:'all',label:'Tous'},{value:'active',label:'Actifs'},{value:'review',label:'À revoir'},{value:'done',label:'Terminés'}],coursesFilter)}
-    <p class="reorder-hint">Faites glisser la poignée pour changer l’ordre. Maintenez un cours pour le renommer ou le supprimer.</p>
+    <p class="reorder-hint">Maintenez un cours puis faites-le glisser pour changer l’ordre. Touchez la poignée pour le renommer ou le supprimer.</p>
     <div class="card-stack" id="courseList">${state.courses.map((c,i)=>CourseCard(c,i,true)).join('')}</div>
     <div id="courseEmpty" hidden>${EmptyState({iconName:'search',title:'Aucun cours ici',text:'Essayez un autre filtre ou une autre recherche.'})}</div>
     ${ActionButton({label:'Ajouter un cours',id:'addCourse',variant:'soft',iconName:'plus'})}
   </section>`;
   bindCourseCards();
   const list=byId('courseList');
-  makeReorderable(list,{itemSelector:'[data-course]',idAttribute:'course',holdMs:6e5,onChange:ids=>{
+  makeReorderable(list,{itemSelector:'[data-course]',idAttribute:'course',onHandle:itemMenuFromHandle,onChange:ids=>{
     const courses=new Map(state.courses.map(c=>[c.id,c]));
     state.courses=ids.map(id=>courses.get(id)).filter(Boolean);
     saveState();queueSync();showToast('Ordre des cours enregistré');
@@ -22,7 +22,7 @@ function renderCourses(){
   list.querySelectorAll('[data-course]').forEach(card=>card.onkeydown=e=>{
     if(e.target===card&&(e.key==='Enter'||e.key===' ')){e.preventDefault();card.click()}
   });
-  list.querySelectorAll('[data-course]').forEach(card=>{const c=state.courses.find(x=>x.id===card.dataset.course);if(c)attachItemMenu(card,courseMenu(c))});
+  list.querySelectorAll('[data-course]').forEach(card=>{const c=state.courses.find(x=>x.id===card.dataset.course);if(c)attachItemMenu(card,courseMenu(c),{press:false})});
   bindListFilter({searchId:'courseSearch',chipsId:'courseFilters',scope:'#courseList',onChange:({kind,shown})=>{coursesFilter=kind;byId('courseEmpty').hidden=!!shown}});
   byId('addCourse').onclick=openNewCourseSheet;
 }

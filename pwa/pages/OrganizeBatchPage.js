@@ -10,7 +10,7 @@ async function renderOrganize(){
     ${PageHeader({back:true,title:'Capture',actions:false})}
     ${PageIntro({eyebrow:'ORGANISER',title:'Organiser les photos',subtitle:'Choisissez où ranger ce lot.'})}
     <div class="thumbs compact" id="organizeThumbs"></div>
-    <p class="reorder-hint">${icon('more',{size:14})}Faites glisser la poignée pour changer l’ordre. Maintenez une photo pour la déplacer ou la supprimer.</p>
+    <p class="reorder-hint">${icon('more',{size:14})}Maintenez une photo puis faites-la glisser pour changer l’ordre. Touchez la poignée pour la déplacer ou la supprimer.</p>
     <div class="form-card">
       <div class="field"><label for="orgCourse">Cours</label><select id="orgCourse">${state.courses.map(x=>`<option value="${x.id}" ${x.id===c.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select></div>
       <div class="field"><label for="orgSection">Section</label><select id="orgSection">${c.sections.map(x=>`<option value="${x.id}" ${x.id===s.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select></div>

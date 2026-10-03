@@ -231,6 +231,11 @@ function pdfMenu(meta){
     return{undo:()=>{state.files.splice(Math.min(at,state.files.length),0,meta);saveState();queueSync();render()},commit:()=>removeLocalPdf(meta.id)};
   }};
 }
+// A PDF inside a séance: the same two actions as its photos (Déplacer = course → section → séance, Supprimer).
+function pdfSessionMenu(meta){
+  const{remove}=pdfMenu(meta);
+  return{name:meta.title,move:()=>openPdfMoveSheet(meta),remove};
+}
 // `removed`: how the screen shows it gone (default: redraw).
 function photoMenu(id,removed=()=>render()){
   return{name:'Photo',move:()=>itemMovePhoto(id),remove:()=>{

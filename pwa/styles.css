@@ -434,6 +434,15 @@ html.radial-haptic-confirm body{animation:radialHapticConfirm .2s var(--ease)}
 .gallery-thumb img{cursor:zoom-in}
 
 /* Photo reordering — press, hold and drag (ui/reorder.js). Used by every photo grid. */
+.pdf-row{display:flex;gap:var(--s2);overflow-x:auto;padding-bottom:var(--s1);scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+.pdf-row:empty{display:none}
+.pdf-thumb{flex:none;width:calc((100% - 2 * var(--s2)) / 3);min-width:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:var(--s2);text-align:center;scroll-snap-align:start;cursor:pointer;background:var(--lavender);color:var(--ink)}
+.pdf-thumb-icon{display:grid;place-items:center;width:48px;height:48px;border-radius:14px;background:#fff;color:var(--accent)}
+.pdf-thumb strong{max-width:100%;font-size:12px;line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;word-break:break-word}
+.pdf-thumb small{font-size:11px;color:var(--muted)}
+.pdf-thumb .reorder-handle{color:#1D2140}
+.pdf-thumb .reorder-handle .grip{background:rgba(29,33,64,.07);border-color:rgba(29,33,64,.18);box-shadow:none}
+.reorder-grid > .pdf-thumb{touch-action:pan-x;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 .reorder-grid{position:relative}
 .reorder-grid > [data-photo-id]{touch-action:pan-y;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;transition:transform .18s var(--ease),opacity .18s,border-color .18s,box-shadow .18s}
 .reorder-grid > [data-photo-id] img{pointer-events:none;-webkit-user-drag:none}

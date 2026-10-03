@@ -120,7 +120,7 @@ function QuickCaptureCard({id='heroQuick',latest=null,hand=false}={}){
   const resume=latest
     ?`<button type="button" class="qr-resume" id="heroResume" aria-label="Reprendre ${esc(latest.session.title)}, ${esc(where)}"><span class="qr-play">${icon('play',{size:16})}</span><small>Reprendre</small><em class="qr-where">${caption}</em></button>`
     :`<button type="button" class="qr-resume" data-nav="capture" aria-label="Capturer un premier cours"><span class="qr-play">${icon('camera',{size:16})}</span><small>Capturer</small><em class="qr-where">${caption}</em></button>`;
-  return`<div class="qr-row qcap-row">${trigger}<span class="qr-copy"><strong>${esc(desk?'Note rapide':camT('qcTrigger'))}</strong></span>${resume}</div>`;
+  return`<div class="qr-row qcap-row"><span class="qr-copy"><strong>${esc(desk?'Note rapide':camT('qcTrigger'))}</strong></span>${resume}${trigger}</div>`;
 }
 
 // Without a live camera (old browser, page not on https): the phone's own camera app.

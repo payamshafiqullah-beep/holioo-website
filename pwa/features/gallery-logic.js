@@ -21,6 +21,18 @@ function galleryEntries(course,filter='all',sessionId=null){
   return out;
 }
 
+// The PDFs of the selected séance, or of the selected section (a PDF belongs to séances through `sessionIds`).
+// Nothing is selected → none: the row only shows where a séance or a section is picked.
+function galleryPdfs(files,course,sectionId=null,sessionId=null){
+  if(!sessionId&&!sectionId)return[];
+  const ids=new Set();
+  for(const section of course?.sections||[]){
+    if(sectionId&&section.id!==sectionId)continue;
+    for(const session of section.sessions||[])if(!sessionId||session.id===sessionId)ids.add(session.id);
+  }
+  return(files||[]).filter(f=>(f.sessionIds||[]).some(id=>ids.has(id)));
+}
+
 // The course on screen: the one asked for, else the last used with the camera, else the first one still running.
 function galleryDefaultCourse(courses,wantedId,lastCourseId){
   const live=(courses||[]).filter(c=>!c.done);
@@ -44,4 +56,4 @@ function galleryMoveInList(ids,id,to){
   return list;
 }
 
-if(typeof module!=='undefined')module.exports={gallerySectionMatches,galleryEntries,galleryDefaultCourse,galleryCaptureSection,galleryMoveInList};
+if(typeof module!=='undefined')module.exports={gallerySectionMatches,galleryEntries,galleryPdfs,galleryDefaultCourse,galleryCaptureSection,galleryMoveInList};

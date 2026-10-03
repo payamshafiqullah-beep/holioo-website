@@ -1647,6 +1647,9 @@ body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
   .gallery-filter-chip,.gallery-count{display:inline-flex;align-items:center;height:32px;padding:0 14px;border-radius:999px;font-size:13px;font-weight:700}
   .gallery-filter-chip{background:var(--accent-soft);color:var(--accent)}
   .gallery-count{background:var(--surface);border:1px solid var(--line);color:var(--muted)}
+  /* The PDF row above the photos: cards the size of a photo tile, not a third of a wide screen. */
+  .gallery-screen .pdf-row{margin-bottom:var(--s4)}
+  .gallery-screen .pdf-thumb{width:168px;min-width:0}
   .gallery-grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:var(--s3)}
   .gallery-tile{position:relative;aspect-ratio:4/3;border-radius:18px;overflow:hidden;background:#E6E7EF;box-shadow:var(--shadow-sm);-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;transition:box-shadow .2s var(--ease)}
   .gallery-tile:hover{box-shadow:var(--shadow-md)}

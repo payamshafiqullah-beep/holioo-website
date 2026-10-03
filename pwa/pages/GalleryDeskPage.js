@@ -102,6 +102,7 @@ async function renderGallery(){
     return;
   }
   const entries=galleryEntries(course,filter,sel.session?.id),n=entries.length;
+  const pdfs=galleryPdfs(state.files,course,sel.section?.id,sel.session?.id);   // the PDF row of the phone's séance screen, above the photos
   const tiles=entries.map((e,i)=>`<li class="gallery-tile" data-photo-id="${e.id}" data-session-id="${e.session.id}"><button class="gallery-tile-btn" type="button" data-open-photo="${e.id}" aria-label="Ouvrir la photo ${i+1}, ${esc(e.session.title)}"><img alt="Photo ${i+1} · ${esc(e.session.title)}" decoding="async" draggable="false"></button><span class="gallery-tile-tag">${esc(e.session.title)}</span><i class="gallery-tile-missing" aria-hidden="true">${icon('image',{size:26})}</i></li>`).join('');
   const empty=EmptyState({iconName:'camera',title:'Aucune photo',text:sel.session||sel.section?`Prenez une photo avec le bouton caméra : elle ira dans « ${scope} ».`:'Prenez une photo avec le bouton caméra, ou avec votre téléphone : elle arrive ici.'});
   app.innerHTML=`<section class="screen screen-wide gallery-screen">
@@ -109,9 +110,11 @@ async function renderGallery(){
       <div class="page-intro"><p class="eyebrow">GALERIE</p><h1 class="hero-title">${esc(course.name)}</h1></div>
       <div class="gallery-meta"><span class="gallery-filter-chip">${esc(scope)}</span><span class="gallery-count">${esc(plural(n,'photo'))}</span></div>
     </header>
+    ${pdfRowMarkup(pdfs,'galleryPdfs')}
     ${n?`<ul class="gallery-grid" id="galleryGrid">${tiles}</ul>`:empty}
     <button class="gallery-fab" type="button" id="galleryFab" title="Note rapide" aria-label="Note rapide : ouvrir les notes de ${esc(course.name)}, ${esc(scope)}">${icon('penLine',{size:28,stroke:2})}</button>
   </section>`;
+  if(pdfs.length)bindPdfRow(byId('galleryPdfs'),'gallery');
   const box=byId('galleryGrid');
   if(box){
     const ids=entries.map(e=>e.id);

@@ -193,51 +193,46 @@ function itemPhotoSnapshot(){
 }
 
 // ─── What each kind of item offers (the delete is the app's own: removeCourse, removeSection, …) ───
+// A deleted item leaves the list in place (its card is removed, the rest does not move): the screen is never
+// left, never redrawn when the card can simply go, and keeps its scroll position. Annuler redraws once.
+function itemGone(selector){
+  const el=document.querySelector(selector);
+  if(!el)return render();
+  el.remove();
+}
 function courseMenu(course){
   return{name:course.name,title:'.course-card-copy strong',rename:v=>{course.name=v},check:v=>courseNameProblem(v,course.id),remove:()=>{
     const restore=itemSnapshot(),ids=course.sections.flatMap(s=>s.sessions.map(q=>q.id));
-    const isCurrent=currentCourseId===course.id;
     removeCourse(course.id);saveState();queueSync();
-    if(isCurrent){currentCourseId=null;currentSectionId=null;currentSessionId=null;navigate('courses')}else{removeDomCourseCard(course.id)}
-    return{undo:()=>{restore();saveState();if(isCurrent)navigate('courses');else rebuildCoursesList();render()},commit:()=>purgeSessionInk(ids)};
+    itemGone(`#app [data-course="${CSS.escape(course.id)}"]`);
+    return{undo:()=>{restore();saveState();render()},commit:()=>purgeSessionInk(ids)};
   }};
 }
 function sectionMenu(course,section){
   return{name:section.name,rename:v=>{section.name=v},check:v=>sectionNameProblem(course,v,section.id),remove:()=>{
     const restore=itemSnapshot(),ids=removeSection(course,section);
-    const isCurrent=currentSectionId===section.id;
     saveState();queueSync();
-    if(isCurrent){currentSectionId=null;currentSessionId=null;navigate('section')}else if(currentCourseId===course.id){removeDomSection(section.id)}
-    return{undo:()=>{restore();saveState();if(isCurrent)navigate('section');else rebuildSessionsList();render()},commit:()=>purgeSessionInk(ids)};
+    itemGone(`#app [data-section="${CSS.escape(section.id)}"]`);
+    return{undo:()=>{restore();saveState();render()},commit:()=>purgeSessionInk(ids)};
   }};
 }
 function sessionMenu(course,section,session){
   return{name:session.title,rename:v=>{session.title=v},check:v=>sessionTitleProblem(section,v,session.id),remove:()=>{
     const restore=itemSnapshot();
-    const isCurrent=currentSessionId===session.id;
     removeSessions(course,section,[session]);saveState();queueSync();
-    if(isCurrent){currentSessionId=null;navigate('section')}else if(currentCourseId===course.id&&currentSectionId===section.id){removeDomSession(session.id)}
-    return{undo:()=>{restore();saveState();if(isCurrent)navigate('session');else rebuildSessionsList();render()},commit:()=>purgeSessionInk([session.id])};
+    itemGone(`#app [data-session="${CSS.escape(session.id)}"]`);
+    return{undo:()=>{restore();saveState();render()},commit:()=>purgeSessionInk([session.id])};
   }};
 }
 function pdfMenu(meta){
   return{name:meta.title,rename:v=>{meta.title=v;if(meta.fileName)meta.fileName=`${Drive.safeName(v)}.pdf`},remove:()=>{
     const at=state.files.indexOf(meta);
     state.files=state.files.filter(f=>f!==meta);saveState();
-    if(currentView==='files')removeDomPdfCard(meta.id);
-    return{undo:()=>{state.files.splice(Math.min(at,state.files.length),0,meta);saveState();queueSync();if(currentView==='files')render();else render()},commit:()=>removeLocalPdf(meta.id)};
+    const card=document.querySelector(`#app [data-file-open="${CSS.escape(meta.id)}"]`)?.closest('.file-card');
+    if(card)card.remove();else render();
+    return{undo:()=>{state.files.splice(Math.min(at,state.files.length),0,meta);saveState();queueSync();render()},commit:()=>removeLocalPdf(meta.id)};
   }};
 }
-function removeDomCourseCard(courseId){
-  const card=document.querySelector(`[data-course="${CSS.escape(courseId)}"]`);if(card)card.remove()}
-function removeDomSection(sectionId){
-  const section=document.querySelector(`[data-section="${CSS.escape(sectionId)}"]`);if(section)section.remove()}
-function removeDomSession(sessionId){
-  const btn=document.querySelector(`[data-session="${CSS.escape(sessionId)}"]`);if(btn)btn.remove()}
-function removeDomPdfCard(pdfId){
-  const card=document.querySelector(`[data-file-open="${CSS.escape(pdfId)}"]`)?.closest('.file-card');if(card)card.remove()}
-function rebuildCoursesList(){const list=byId('courseList');if(list)render()}
-function rebuildSessionsList(){const list=document.querySelector('[data-session]')?.closest('.session-list');if(list)render()}
 // `removed`: how the screen shows it gone (default: redraw).
 function photoMenu(id,removed=()=>render()){
   return{name:'Photo',move:()=>itemMovePhoto(id),remove:()=>{

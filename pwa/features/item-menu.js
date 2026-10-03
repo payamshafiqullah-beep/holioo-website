@@ -236,6 +236,26 @@ function pdfSessionMenu(meta){
   const{remove}=pdfMenu(meta);
   return{name:meta.title,move:()=>openPdfMoveSheet(meta),remove};
 }
+// The row of a séance's PDFs (phone séance screen, Galerie on tablet / computer): a title and one card per PDF.
+function pdfRowMarkup(pdfs,id){
+  return pdfs.length?`${SectionTitle('PDF',{count:pdfs.length})}
+      <div class="pdf-row" id="${id}">${pdfs.map(f=>`<div class="thumb pdf-thumb" data-pdf-id="${f.id}" role="button" tabindex="0" aria-label="Ouvrir ${esc(f.title)}"><span class="pdf-thumb-icon">${icon('fileText',{size:30})}</span><strong>${esc(f.title)}</strong><small>${f.pages?esc(plural(f.pages,'page')):'PDF'}</small></div>`).join('')}</div>`:'';
+}
+// Wires that row once it is in the page: a tap opens the viewer (back returns to `returnView`), the ⋯ grip opens the menu.
+function bindPdfRow(row,returnView){
+  const open=id=>openPdfViewer(id,returnView);
+  row.querySelectorAll('[data-pdf-id]').forEach(card=>{
+    const meta=state.files.find(f=>f.id===card.dataset.pdfId);if(!meta)return;
+    card.onclick=e=>{if(!e.target.closest('[data-reorder-handle]'))open(meta.id)};
+    card.onkeydown=e=>{if((e.key==='Enter'||e.key===' ')&&e.target===card){e.preventDefault();open(meta.id)}};
+    attachItemMenu(card,pdfSessionMenu(meta),{press:false});
+  });
+  // Same ⋯ grip as the photos (Déplacer / Supprimer); dragging a card only changes the order of this row.
+  makeReorderable(row,{itemSelector:'[data-pdf-id]',idAttribute:'pdfId',onHandle:itemMenuFromHandle,onChange:ids=>{
+    const slots=state.files.map((f,i)=>ids.includes(f.id)?i:-1).filter(i=>i>=0),byIdMap=new Map(state.files.map(f=>[f.id,f]));
+    ids.forEach((id,k)=>{state.files[slots[k]]=byIdMap.get(id)});saveState();queueSync();showToast('Ordre enregistré');
+  }});
+}
 // `removed`: how the screen shows it gone (default: redraw).
 function photoMenu(id,removed=()=>render()){
   return{name:'Photo',move:()=>itemMovePhoto(id),remove:()=>{

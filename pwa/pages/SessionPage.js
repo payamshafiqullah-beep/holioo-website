@@ -38,8 +38,7 @@ async function renderSession(){
         ${ActionButton({label:'Renommer la séance',id:'renameSession',variant:'ghost',iconName:'pencil'})}
       </div>`:'';
   const pdfs=state.files.filter(f=>f.sessionIds?.includes(session.id));
-  const pdfRow=pdfs.length?`${SectionTitle('PDF',{count:pdfs.length})}
-      <div class="pdf-row" id="sessionPdfs">${pdfs.map(f=>`<div class="thumb pdf-thumb" data-pdf-id="${f.id}" role="button" tabindex="0" aria-label="Ouvrir ${esc(f.title)}"><span class="pdf-thumb-icon">${icon('fileText',{size:30})}</span><strong>${esc(f.title)}</strong><small>${f.pages?esc(plural(f.pages,'page')):'PDF'}</small></div>`).join('')}</div>`:'';
+  const pdfRow=pdfRowMarkup(pdfs,'sessionPdfs');
   const galleryView=pdfRow+(n?`${SectionTitle('Galerie',{action:'Plein écran',id:'openFirstPhoto'})}
       <div class="thumbs" id="sessionThumbs"></div>
       <p class="reorder-hint">${icon('more',{size:14})}Maintenez une photo puis faites-la glisser pour changer l’ordre. Touchez la poignée pour la déplacer ou la supprimer.</p>`
@@ -64,20 +63,7 @@ async function renderSession(){
     state.settings.sessionView=next;saveState();
     await render();
   });
-  if(pdfs.length){
-    const row=byId('sessionPdfs'),open=id=>openPdfViewer(id,'session');
-    row.querySelectorAll('[data-pdf-id]').forEach(card=>{
-      const meta=state.files.find(f=>f.id===card.dataset.pdfId);if(!meta)return;
-      card.onclick=e=>{if(!e.target.closest('[data-reorder-handle]'))open(meta.id)};
-      card.onkeydown=e=>{if((e.key==='Enter'||e.key===' ')&&e.target===card){e.preventDefault();open(meta.id)}};
-      attachItemMenu(card,pdfSessionMenu(meta),{press:false});
-    });
-    // Same ⋯ grip as the photos (Déplacer / Supprimer); dragging a card only changes the order of this row.
-    makeReorderable(row,{itemSelector:'[data-pdf-id]',idAttribute:'pdfId',onHandle:itemMenuFromHandle,onChange:ids=>{
-      const slots=state.files.map((f,i)=>ids.includes(f.id)?i:-1).filter(i=>i>=0),byIdMap=new Map(state.files.map(f=>[f.id,f]));
-      ids.forEach((id,k)=>{state.files[slots[k]]=byIdMap.get(id)});saveState();queueSync();showToast('Ordre enregistré');
-    }});
-  }
+  if(pdfs.length)bindPdfRow(byId('sessionPdfs'),'session');
   if(active==='gallery'&&n){
     await fillSessionThumbs(session);
     byId('openFirstPhoto').onclick=()=>openPhotoViewer(session.photoIds,0,{title:session.title,source:'session',sourceId:session.id,editable:true,returnView:'session',courseId:course.id,sectionId:section.id,sessionId:session.id});

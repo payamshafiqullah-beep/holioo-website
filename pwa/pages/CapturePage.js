@@ -24,6 +24,7 @@ function renderCapture(){
     </div>
     <div class="scan-tools" id="scanTools">
       <button class="scan-tool" id="scanAutoBtn" aria-pressed="true"></button>
+      <button class="scan-tool" id="scanCornersBtn" aria-pressed="false">${esc(camT('scanCorners'))}</button>
       <button class="glass-btn small" id="gridBtn" aria-pressed="${state.camGrid!==false}" aria-label="${esc(camT('grid'))}">${icon('layers',{size:18})}</button>
     </div>
     <div class="cam-notices">
@@ -79,6 +80,7 @@ function renderCapture(){
   byId('camSaveState').onclick=()=>cameraQueue.retryNow();
   byId('zoomRange').oninput=e=>setCameraZoom(Number(e.target.value));
   byId('scanAutoBtn').onclick=toggleScanAuto;
+  byId('scanCornersBtn').onclick=toggleScanCorners;
   byId('gridBtn').onclick=toggleCameraGrid;
   document.querySelectorAll('[data-zoom]').forEach(b=>b.onclick=()=>setCameraZoom(Number(b.dataset.zoom)));
   document.querySelectorAll('#camModes [data-mode]').forEach(b=>b.onclick=()=>applyCameraMode(b.dataset.mode));

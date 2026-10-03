@@ -19,6 +19,35 @@ test('corners are ordered TL, TR, BR, BL from any order, even for a turned page'
   assert.equal(C.orderQuad([[0,0],[1,0]]),null);
 });
 
+test('confidence: edges, a clear step, size and shape raise it; a bare side, a cut-off or a reflection lower it',()=>{
+  const good={support:.95,contrast:40,coverage:.3,minArea:.08,quad:Q,aspect:.75,weak:.9};
+  const c=C.confidence(good);
+  assert.ok(c>.9&&c<=1,`good ${c}`);
+  assert.ok(C.confidence({...good,support:.4})<.8,'weak edges: doubtful (under 80 %)');
+  assert.ok(C.confidence({...good,weak:0})<c*.7,'one side with no edge at all');
+  assert.ok(C.confidence({...good,through:2})<c,'edges that go on past the corners');
+  assert.ok(C.confidence({...good,cutoff:true})<c&&C.confidence({...good,glare:true})<c);
+  assert.ok(C.confidence({...good,quad:[[.1,.1],[.9,.1],[.2,.2],[.1,.9]]})<c,'a needle-thin corner');
+  assert.doesNotThrow(()=>C.confidence({}));
+  for(const v of[C.confidence({support:9,contrast:999,coverage:9,minArea:.01,quad:Q}),C.confidence({support:-1,contrast:0,coverage:0})])assert.ok(v>=0&&v<=1);
+});
+
+test('board frames the detector is not sure of are never auto-captured (the shutter still works)',()=>{
+  const ok={sharpness:200,brightness:140,support:.9};
+  assert.deepEqual(plain(C.judgeFrame({...ok,confidence:.9},'board')),{ok:true,warn:null});
+  assert.deepEqual(plain(C.judgeFrame({...ok,confidence:.5},'board')),{ok:false,warn:'lowconf'});
+  assert.equal(C.judgeFrame({...ok,confidence:.5},'document').ok,true,'documents are unchanged');
+  assert.equal(C.judgeFrame(ok,'board').ok,true,'no confidence given: unchanged');
+});
+
+test('a point dragged on the preview maps back to the same frame point (corners by hand)',()=>{
+  const view={videoW:1920,videoH:1080,elW:390,elH:700,zoom:1.6,crop:{x:240,y:135,w:1440,h:810}};
+  for(const p of[[.1,.2],[.5,.5],[.93,.81]]){
+    const [sx,sy]=C.mapToScreen([p],view)[0],back=C.mapFromScreen([sx,sy],view);
+    assert.ok(Math.abs(back[0]-p[0])<1e-9&&Math.abs(back[1]-p[1])<1e-9,`${p} → ${back}`);
+  }
+});
+
 test('plausible pages only: convex, big enough, no needle corners',()=>{
   assert.equal(C.quadValid(Q,{minArea:.2}),true);
   assert.equal(C.quadValid([[.4,.4],[.5,.4],[.5,.5],[.4,.5]],{minArea:.2}),false,'too small');
@@ -132,4 +161,42 @@ test('corner brackets: one L at every corner, along the two sides, never longer 
   const tiny=C.bracketPath([[0,0],[10,0],[10,10],[0,10]]);
   assert.ok(!/NaN|Infinity/.test(tiny));
   assert.equal(C.polyPath(q),'M100.0 100.0L300.0 100.0L300.0 400.0L100.0 400.0Z');
+});
+
+test('corners by hand start on screen, whatever part of the video the phone shows (video is "cover")',()=>{
+  // A 16:9 frame on a portrait phone: only the middle ~26 % of its width is visible.
+  const view={videoW:1280,videoH:720,elW:375,elH:812,zoom:1,crop:{x:0,y:0,w:1280,h:720}};
+  const old=C.mapToScreen([[.14,.2],[.86,.2],[.86,.78],[.14,.78]],view);
+  assert.ok(old.some(([x])=>x<0||x>375),'the old default (frame points .14/.86) was off screen: x '+old.map(p=>Math.round(p[0])));
+  const box=C.freeBox(375,812),lim={box:{x0:14,x1:361,y0:62,y1:530},avoid:[{x0:283,x1:367,y0:60,y1:204}]};
+  for(const mode of['board','document','book']){
+    const guide=C.guideQuad(mode,375,812).map(p=>C.placePoint(p,lim));
+    for(const[x,y]of guide){
+      assert.ok(x>=lim.box.x0&&x<=lim.box.x1&&y>=lim.box.y0&&y<=lim.box.y1,`${mode}: ${x},${y} inside the limits`);
+      assert.ok(!(x>283&&x<367&&y>60&&y<204),`${mode}: ${x},${y} not under the Auto / Coins buttons`);
+      const f=C.mapFromScreen([x,y],view),back=C.mapToScreen([f],view)[0];
+      assert.ok(Math.abs(back[0]-x)<1e-6&&Math.abs(back[1]-y)<1e-6,'frame point maps back to the same screen point');
+    }
+  }
+  assert.ok(box.y0>0&&box.y1>box.y0);
+});
+
+test('a corner is kept inside the limits and pushed out from under a button',()=>{
+  const lim={box:{x0:10,x1:360,y0:60,y1:530},avoid:[{x0:280,x1:370,y0:60,y1:200}]};
+  assert.deepEqual(plain(C.placePoint([-300,135],lim)),[10,135],'off the left edge');
+  assert.deepEqual(plain(C.placePoint([700,700],lim)),[360,530],'off the bottom right');
+  const [x,y]=C.placePoint([330,120],lim);
+  assert.ok(!(x>280&&x<370&&y>60&&y<200),`under a button: moved to ${x},${y}`);
+  assert.deepEqual(plain(C.placePoint(C.placePoint([330,120],lim),lim)),plain(C.placePoint([330,120],lim)),'placing twice changes nothing');
+  assert.deepEqual(plain(C.placePoint([100,300],lim)),[100,300],'a free point does not move');
+});
+
+test('a placed quad is refused when it is a bow-tie, tiny, or had to be squeezed in from far off screen',()=>{
+  const lim={box:{x0:10,x1:360,y0:60,y1:530},avoid:[]};
+  const ok=[[60,120],[300,110],[310,400],[50,410]];
+  assert.deepEqual(plain(C.placeQuad(ok,lim)),ok);
+  assert.equal(C.placeQuad([[60,120],[300,400],[310,110],[50,410]],lim),null,'bow-tie');
+  assert.equal(C.placeQuad([[100,100],[110,100],[110,110],[100,110]],lim),null,'tiny');
+  assert.equal(C.placeQuad([[-300,120],[300,110],[310,400],[-290,410]],lim,{maxShift:28}),null,'mostly off screen');
+  assert.ok(C.placeQuad([[-300,120],[300,110],[310,400],[-290,410]],lim),'without a limit it is squeezed in');
 });

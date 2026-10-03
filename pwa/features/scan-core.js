@@ -48,6 +48,21 @@
     return isConvex(sq)&&area(sq)>=minArea*aspect&&angles(sq).every(a=>a>=minAngle&&a<=180-minAngle);
   }
 
+  // How sure a detection is, 0..1 (the camera says so when it is under 80 %): real edges on every side, a
+  // clear step in brightness across them, an outline big enough to be the board, a plausible shape.
+  //   weak = support (0..1) of the weakest side that is inside the picture; through = sides whose edge goes on
+  //   past the corners (the outline may have stopped on a shadow); aspect = frame height/width.
+  function confidence({support=0,contrast=0,coverage=0,minArea=.1,quad=null,aspect=1,weak=1,through=0,cutoff=false,glare=false}={}){
+    const edge=Math.min(1,support/.85),step=Math.min(1,Math.abs(contrast)/30),size=Math.min(1,coverage/Math.max(1e-6,minArea));
+    let shape=1;
+    if(quad)shape=1-Math.min(1,Math.max(0,Math.max(...angles(quad.map(([x,y])=>[x,y*aspect])).map(a=>Math.abs(a-90)))-30)/40);
+    let c=(.5*edge+.2*step+.15*size+.15*shape)*(.6+.4*Math.min(1,weak/.4));
+    c*=1-.08*through;
+    if(cutoff)c*=.85;
+    if(glare)c*=.93;
+    return Math.max(0,Math.min(1,c));
+  }
+
   const maxCornerShift=(a,b)=>Math.max(...a.map((p,i)=>dist(p,b[i])));
 
   // Smooth, jitter-free quad that follows detections, plus "held still long enough" for auto-capture.
@@ -88,12 +103,14 @@
 
   // Frame quality from the worker's measures. Thresholds are tuned for 512 px analysis frames.
   // `ok` gates the auto-capture; `warn` is the hint shown to the person (a reflection is only a hint).
-  function judgeFrame({sharpness=0,brightness=128,far=false,cutoff=false,glare=false,support=1}={},mode='document'){
+  function judgeFrame({sharpness=0,brightness=128,far=false,cutoff=false,glare=false,support=1,confidence=null}={},mode='document'){
     if(brightness<55)return{ok:false,warn:'dark'};
     const minSharp=mode==='board'?35:60;
     if(sharpness<minSharp)return{ok:false,warn:'blur'};
     if(cutoff)return{ok:false,warn:'cutoff'};
     if(far)return{ok:false,warn:'far'};
+    // A board outline the detector is not sure of is shown, but never shot by itself (the shutter works).
+    if(mode==='board'&&confidence!=null&&confidence<.6)return{ok:false,warn:'lowconf'};
     if(support<.3)return{ok:false,warn:null}; // outline not really on edges: never shoot by itself
     if(glare)return{ok:true,warn:'glare'};
     return{ok:true,warn:null};
@@ -185,15 +202,56 @@
     });
   }
 
+  // Screen point → frame point: the inverse of mapToScreen (dragging a corner on the preview).
+  function mapFromScreen([x,y],{videoW,videoH,elW,elH,zoom=1,crop=null}){
+    const c=crop||{x:0,y:0,w:videoW,h:videoH};
+    const s=Math.max(elW/videoW,elH/videoH),ox=(elW-videoW*s)/2,oy=(elH-videoH*s)/2;
+    const sx=elW/2+(x-elW/2)/zoom,sy=elH/2+(y-elH/2)/zoom;
+    return[((sx-ox)/s-c.x)/c.w,((sy-oy)/s-c.y)/c.h];
+  }
+
   // Quad pulled toward its centre by a fraction of its size.
   function insetQuad(q,k){const o=orderQuad(q),cx=o.reduce((s,p)=>s+p[0],0)/4,cy=o.reduce((s,p)=>s+p[1],0)/4;return o.map(([x,y])=>[x+(cx-x)*k*2,y+(cy-y)*k*2])}
+
+  // The part of the preview the controls leave free (screen px): below the top bar, above the shutter; in a
+  // landscape phone, left of the control column. Same rule as the CSS.
+  function freeBox(w,h){
+    const column=w>h&&h<=520;
+    return column?{x0:16,x1:w-224,y0:56,y1:h-16}:{x0:w*.07,x1:w*.93,y0:96,y1:h-250};
+  }
+
+  // A point kept inside `box`, and out of every rectangle in `avoid` (buttons): pushed out through the nearest
+  // edge that stays inside the box. All in screen px.
+  function placePoint([x,y],{box,avoid=[]}){
+    const cl=(v,a,b)=>Math.min(Math.max(v,a),Math.max(a,b));
+    x=cl(x,box.x0,box.x1);y=cl(y,box.y0,box.y1);
+    for(const r of avoid){
+      if(!(x>r.x0&&x<r.x1&&y>r.y0&&y<r.y1))continue;
+      const moves=[[x-r.x0,[r.x0,y]],[r.x1-x,[r.x1,y]],[y-r.y0,[x,r.y0]],[r.y1-y,[x,r.y1]]]
+        .map(([d,p])=>[d,[cl(p[0],box.x0,box.x1),cl(p[1],box.y0,box.y1)]])
+        .filter(([,p])=>!(p[0]>r.x0&&p[0]<r.x1&&p[1]>r.y0&&p[1]<r.y1))
+        .sort((a,b)=>a[0]-b[0]);
+      if(moves.length){[x,y]=moves[0][1]}
+    }
+    return[x,y];
+  }
+
+  // A quad (screen px) brought inside the limits, or null when that leaves nothing usable: not convex, a side
+  // shorter than `minSide`, or a corner that had to move more than `maxShift` px (an outline mostly off screen
+  // squeezed into the edge is no help: the caller then starts from the framing guide).
+  function placeQuad(q,limits,{minSide=40,maxShift=Infinity}={}){
+    const p=q.map(pt=>placePoint(pt,limits));
+    if(p.some((pt,i)=>dist(pt,q[i])>maxShift)||!isConvex(p))return null;
+    for(let i=0;i<4;i++)if(dist(p[i],p[(i+1)%4])<minSide)return null;
+    return p;
+  }
 
   // Framing guide shown while no page is found: a rectangle (screen px, TL TR BR BL) with the shape
   // the mode expects, centred in the part of the preview the controls leave free (below the top bar and
   // above the shutter; in a landscape phone, left of the control column — same rule as the CSS).
   function guideQuad(mode,w,h){
-    const land=w>h,column=land&&h<=520,ar={document:land?Math.SQRT2:1/Math.SQRT2,board:1.6,book:1.4,id:85.6/54,qr:1}[mode]||1/Math.SQRT2;
-    const box=column?{x0:16,x1:w-224,y0:56,y1:h-16}:{x0:w*.07,x1:w*.93,y0:96,y1:h-250};
+    const land=w>h,ar={document:land?Math.SQRT2:1/Math.SQRT2,board:1.6,book:1.4,id:85.6/54,qr:1}[mode]||1/Math.SQRT2;
+    const box=freeBox(w,h);
     const k=mode==='qr'?.72:1,aw=Math.max(80,box.x1-box.x0)*k,ah=Math.max(80,box.y1-box.y0)*k;
     let gw=aw,gh=gw/ar;if(gh>ah){gh=ah;gw=gh*ar}
     const cx=(box.x0+box.x1)/2,cy=(box.y0+box.y1)/2;
@@ -214,6 +272,6 @@
   // Quad corners as a closed SVG path.
   const polyPath=q=>`M${q.map(p=>`${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join('L')}Z`;
 
-  root.ScanCore={guideQuad,bracketPath,polyPath,insetQuad,orderQuad,area,isConvex,angles,quadValid,maxCornerShift,createTracker,judgeFrame,createAutoCapture,toEditQuad,fromEditQuad,fullQuad,splitSpread,findGutter,pageRatio,idCardLayout,tiltHint,mapToScreen};
+  root.ScanCore={guideQuad,bracketPath,polyPath,insetQuad,orderQuad,area,isConvex,angles,quadValid,confidence,maxCornerShift,createTracker,judgeFrame,createAutoCapture,toEditQuad,fromEditQuad,fullQuad,splitSpread,findGutter,pageRatio,mapFromScreen,freeBox,placePoint,placeQuad,idCardLayout,tiltHint,mapToScreen};
 })(typeof self!=='undefined'?self:typeof window!=='undefined'?window:globalThis);
 if(typeof module!=='undefined')module.exports=(typeof self!=='undefined'?self:globalThis).ScanCore;

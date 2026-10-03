@@ -16,7 +16,7 @@ const CANVAS_MIN_STEP=.8;          // page units between two points of a stroke
 const CANVAS_SVG='http://www.w3.org/2000/svg';
 const CANVAS_TOOL_UI={
   select:['pointer','Sélection : déplacer, redimensionner'],pen:['penLine','Stylo'],highlighter:['highlighter','Surligneur'],
-  eraser:['eraser','Gomme : efface le trait entier'],text:['type','Zone de texte : touchez la page, double-cliquez pour modifier'],
+  eraser:['eraser','Gomme : efface le trait entier ou seulement la partie touchée (voir le mode)'],text:['type','Zone de texte : touchez la page, double-cliquez pour modifier'],
   arrow:['arrowUpRight','Flèche : glissez'],rect:['square','Rectangle : glissez']
 };
 const CANVAS_COLOR_NAMES={pen:['Noir','Bleu','Rouge','Vert'],highlighter:['Jaune','Vert','Rose','Bleu']};
@@ -25,6 +25,8 @@ const canvasMeasure=size=>t=>{canvasMeasureCtx.font=canvasFontCss(size);return c
 
 // Tool, colour and size are remembered on the device.
 const canvasPrefs=()=>state.settings.canvasPrefs??={tool:'pen',ci:{pen:0,highlighter:0},size:1};
+const canvasSnapOn=()=>!!state.settings.canvasPrefs?.snap;                         // Formes auto: straighten lines, circles, polygons
+const canvasEraseMode=()=>state.settings.canvasPrefs?.eraseMode==='partial'?'partial':'stroke';   // gomme: whole stroke / touched part only
 const canvasStylusOnly=()=>state.settings.canvasPrefs?.stylusOnly??(navigator.maxTouchPoints>0);
 const canvasPaletteKind=tool=>tool==='highlighter'?'highlighter':'pen';
 const canvasColor=(tool=canvasRuntime?.tool)=>{const k=canvasPaletteKind(tool);return CANVAS_COLORS[k][canvasPrefs().ci[k]??0]};
@@ -231,6 +233,10 @@ function canvasToolsHtml(rt){
     <div class="cv-group" role="group" aria-label="Couleur">${palette.map((c,i)=>`<button class="cv-color${i===ci?' active':''}" type="button" data-cv-color="${i}" style="--c:${c}" title="${CANVAS_COLOR_NAMES[pk][i]}" aria-label="${CANVAS_COLOR_NAMES[pk][i]}" aria-pressed="${i===ci}"></button>`).join('')}</div>
     <span class="cv-sep"></span>
     <div class="cv-group" role="group" aria-label="Épaisseur">${['Fin','Moyen','Épais'].map((l,i)=>btn(`data-cv-size="${i}"`,`Épaisseur : ${l.toLowerCase()}`,`<i class="cv-dot" style="--d:${5+i*5}px"></i>`,i===p.size)).join('')}</div>
+    ${rt.tool==='pen'||rt.tool==='highlighter'?`<span class="cv-sep"></span>
+    <div class="cv-group" role="group" aria-label="Aide au dessin">${btn('data-cv-snap',canvasSnapOn()?'Formes automatiques activées : lignes, cercles et formes régulières sont redressés (cliquez pour désactiver)':'Formes automatiques désactivées (cliquez pour redresser lignes, cercles et formes régulières)',icon('wand',{size:20}),canvasSnapOn())}</div>`:''}
+    ${rt.tool==='eraser'?`<span class="cv-sep"></span>
+    <div class="cv-group" role="group" aria-label="Mode de la gomme">${btn('data-cv-erasemode="stroke"','Gomme trait : efface le trait entier touché',icon('eraser',{size:20}),canvasEraseMode()==='stroke')}${btn('data-cv-erasemode="partial"','Gomme partielle : n’efface que la partie touchée du trait',icon('scissors',{size:20}),canvasEraseMode()==='partial')}</div>`:''}
     <span class="cv-sep"></span>
     <div class="cv-group" role="group" aria-label="Fond de page">${[['lines','rows','Lignes'],['grid','grid','Quadrillage'],['blank','square','Page blanche']].map(([v,ic,l])=>btn(`data-cv-bg="${v}"`,l,icon(ic,{size:19}),rt.store.page.bg===v)).join('')}</div>
     <span class="cv-sep"></span>
@@ -312,7 +318,7 @@ function canvasCancelGesture(rt){
   canvasCommitText(rt);
   if(rt.drawing){rt.drawing.path.remove();rt.drawing=null}
   if(rt.drag){rt.store.items.set(rt.drag.id,rt.drag.orig);rt.drag=null;canvasSyncItems(rt)}
-  if(rt.erasing){for(const s of rt.erasing.before)rt.store.strokes.set(s.id,s);rt.erasing=null;canvasSyncInk(rt)}
+  if(rt.erasing){for(const id of rt.erasing.created?.keys()||[])rt.store.strokes.delete(id);for(const s of rt.erasing.before)rt.store.strokes.set(s.id,s);rt.erasing=null;canvasSyncInk(rt)}
   if(rt.shape){rt.shape.el.remove();rt.shape=null}
 }
 
@@ -468,7 +474,7 @@ function canvasLeave(rt){
 }
 
 function canvasToolsClick(rt,e){
-  const t=e.target.closest('[data-cv-tool],[data-cv-color],[data-cv-size],[data-cv-bg],[data-cv-stylus],[data-cv-space]');if(!t)return;
+  const t=e.target.closest('[data-cv-tool],[data-cv-color],[data-cv-size],[data-cv-bg],[data-cv-stylus],[data-cv-space],[data-cv-snap],[data-cv-erasemode]');if(!t)return;
   const d=t.dataset,prefs=canvasPrefs();
   if(d.cvTool){
     canvasCommitText(rt);rt.tool=d.cvTool;prefs.tool=d.cvTool;
@@ -492,6 +498,8 @@ function canvasToolsClick(rt,e){
     }else if(sel&&(sel.type==='arrow'||sel.type==='rect'))canvasSelectedChange(rt,o=>({...o,size:CANVAS_SIZES.shape[i]}));
     canvasRenderTools(rt);return;
   }
+  if(d.cvSnap!==undefined){prefs.snap=!prefs.snap;saveState();canvasRenderTools(rt);showToast(prefs.snap?'Formes automatiques activées':'Formes automatiques désactivées');return}
+  if(d.cvErasemode){prefs.eraseMode=d.cvErasemode;saveState();canvasRenderTools(rt);return}
   if(d.cvBg){
     if(rt.store.page.bg===d.cvBg)return;
     const before={bg:rt.store.page.bg},after={bg:d.cvBg};
@@ -537,7 +545,7 @@ function canvasDown(rt,e){
   if(rt.tool==='select')return canvasSelectDown(rt,e,p);
   if(!canvasIsInk(rt,e))return;
   if(rt.tool==='pen'||rt.tool==='highlighter')return canvasInkDown(rt,e,p);
-  if(rt.tool==='eraser'){rt.erasing={pointerId:e.pointerId,before:[]};rt.sheet.setPointerCapture(e.pointerId);canvasEraseAt(rt,p,e);e.preventDefault();return}
+  if(rt.tool==='eraser'){rt.erasing={pointerId:e.pointerId,before:[],created:new Map(),partial:canvasEraseMode()==='partial'};rt.sheet.setPointerCapture(e.pointerId);canvasEraseAt(rt,p,e);e.preventDefault();return}
   if(rt.tool==='text'){rt.pendingText={id:e.pointerId,x:e.clientX,y:e.clientY,p,hit:canvasHitItem([...rt.store.items.values()],p.x,p.y,canvasTol(rt))};return}
   if(rt.tool==='arrow'||rt.tool==='rect')return canvasShapeDown(rt,e,p);
 }
@@ -664,28 +672,48 @@ function canvasInkEnd(rt,d){
   rt.drawing=null;cancelAnimationFrame(d.raf);
   try{rt.sheet.releasePointerCapture(d.pointerId)}catch{}
   const s={id:uid(),tool:d.tool,color:d.color,size:d.size,pts:d.pts,sp:d.sp,at:Date.now(),updatedAt:Date.now()};
-  canvasGrowFor(rt,d.pts.at(-1)[1]);
+  // Formes auto: a line, circle or regular shape is replaced by its clean version (constant pressure, so no tapered ends).
+  if(canvasSnapOn()){const snap=canvasSnapShape(d.pts);if(snap){s.pts=snap.pts;s.sp=0}}
+  canvasGrowFor(rt,s.pts.reduce((m,p)=>Math.max(m,p[1]),0));
   d.path.dataset.id=s.id;d.path.setAttribute('d',canvasStrokePathD(s));rt.inkEls.set(s.id,d.path);
   rt.store.strokes.set(s.id,s);
   canvasCommit(rt,[canvasChangeCreate('s',s)]);
   canvasAfterGesture(rt);
 }
 
-// Stroke eraser: a stroke touched is removed whole.
+// Eraser. Stroke mode: a stroke touched is removed whole. Partial mode: only the part under the eraser goes — the
+// stroke is cut and its remaining pieces become strokes of their own (same look, same place in the stacking order).
 function canvasEraseAt(rt,p,e){
-  const r=CANVAS_SIZES.eraser[canvasPrefs().size];
+  const er=rt.erasing,r=CANVAS_SIZES.eraser[canvasPrefs().size];
   canvasEraserCursor(rt,e);
-  for(const s of rt.store.strokes.values()){
-    if(s.deleted||!canvasStrokeHit(s,p.x,p.y,r))continue;
-    rt.erasing.before.push(s);rt.store.strokes.set(s.id,{...s,deleted:true});
+  for(const s of [...rt.store.strokes.values()]){
+    if(s.deleted)continue;
+    if(!er.partial){
+      if(!canvasStrokeHit(s,p.x,p.y,r))continue;
+      er.before.push(s);rt.store.strokes.set(s.id,{...s,deleted:true});
+      const el=rt.inkEls.get(s.id);if(el){el.remove();rt.inkEls.delete(s.id)}
+      continue;
+    }
+    const pieces=canvasEraseSplit(s,p.x,p.y,r);if(!pieces)continue;
+    // A piece made earlier in this same gesture simply disappears (it was never in the history); an original is recorded.
+    if(er.created.has(s.id)){er.created.delete(s.id);rt.store.strokes.delete(s.id)}
+    else{er.before.push(s);rt.store.strokes.set(s.id,{...s,deleted:true})}
     const el=rt.inkEls.get(s.id);if(el){el.remove();rt.inkEls.delete(s.id)}
+    for(const pts of pieces){
+      const ns={...s,id:uid(),pts,updatedAt:Date.now()};
+      rt.store.strokes.set(ns.id,ns);er.created.set(ns.id,ns);
+      const path=canvasInkPath(ns);path.dataset.id=ns.id;path.setAttribute('d',canvasStrokePathD(ns));
+      rt.ink.appendChild(path);rt.inkEls.set(ns.id,path);
+    }
   }
 }
 function canvasEraseEnd(rt){
   const er=rt.erasing;rt.erasing=null;
   const c=rt.overlay.querySelector('.cv-eraser');if(c)c.style.display='none';
-  if(!er?.before.length)return;
-  canvasCommit(rt,er.before.map(s=>canvasChangeRemove('s',s)));
+  if(!er)return;
+  const made=[...er.created.values()];
+  if(!er.before.length&&!made.length)return;
+  canvasCommit(rt,[...er.before.map(s=>canvasChangeRemove('s',s)),...made.map(s=>canvasChangeCreate('s',s))]);
   canvasAfterGesture(rt);
 }
 function canvasEraserCursor(rt,e){

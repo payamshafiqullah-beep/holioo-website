@@ -107,6 +107,8 @@ async function openFileMenu(fileId){
   if(!row?.blob){showToast('PDF absent de cet appareil : maintenez-le pour le supprimer');return}
   openActionSheet(meta.title,[
     {label:'Ouvrir',iconName:'maximize',onClick:()=>openPdfViewer(fileId,'files')},
+    {label:'Renommer',iconName:'pencil',tone:'sky',onClick:()=>renamePdfSheet(meta)},
+    {label:'Déplacer vers un cours',iconName:'folder',tone:'lavender',onClick:()=>openPdfMoveSheet(meta)},
     {label:'Partager',iconName:'share',tone:'sky',onClick:()=>sharePdf(meta,row)},
     {label:'Partager avec des personnes Holioo',iconName:'users',tone:'lavender',onClick:()=>sharePdfWithPeople(meta,row)},
     {label:'Publier dans la bibliothèque',iconName:'globe',tone:'mint',onClick:()=>publishPdfToLibrary(meta,row)},
@@ -120,9 +122,7 @@ async function importLocalFiles(e){
   const files=[...(e.target.files||[])];e.target.value='';
   const pdfs=files.filter(f=>f.type==='application/pdf'||/\.pdf$/i.test(f.name)),images=files.filter(f=>f.type.startsWith('image/'));
   for(const f of pdfs){
-    const id=uid(),title=f.name.replace(/\.pdf$/i,'');
-    await DB.put('files',{id,blob:f,createdAt:now(),syncState:'pending'});
-    state.files.unshift({id,title,fileName:f.name,courseId:null,sessionIds:[],createdAt:now(),pages:null,imported:true});
+    await storeImportedPdf(f);
   }
   if(images.length){
     const ids=[];for(const f of images){const id=uid();await DB.put('photos',{id,blob:f,createdAt:now(),syncState:'pending'});ids.push(id)}

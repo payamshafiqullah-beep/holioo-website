@@ -170,6 +170,104 @@ const canvasStrokeOptions=s=>s.tool==='highlighter'
   ?{size:s.size,thinning:0,smoothing:.6,streamline:.5,simulatePressure:false,last:true}
   :{size:s.size,thinning:.55,smoothing:.55,streamline:.5,simulatePressure:!!s.sp,last:true};
 
+// ── Eraser, partial mode: the part of a stroke under the eraser (centre x,y, radius r) is cut out ──
+// → null when the eraser touches nothing, else the pieces left (each an array of [x,y,pressure], 2 points or more).
+// The stroke is resampled every ≤ 2.5 units first, so a fast pass across a sparse stroke still cuts exactly.
+function canvasEraseSplit(stroke,x,y,r){
+  if(!canvasStrokeHit(stroke,x,y,r))return null;
+  const pts=stroke.pts,reach=r+stroke.size/2,dense=[pts[0]];
+  for(let i=1;i<pts.length;i++){
+    const a=pts[i-1],b=pts[i],n=Math.max(1,Math.ceil(Math.hypot(b[0]-a[0],b[1]-a[1])/2.5));
+    for(let k=1;k<=n;k++){const t=k/n;dense.push([canvasRound(a[0]+(b[0]-a[0])*t),canvasRound(a[1]+(b[1]-a[1])*t),canvasRound((a[2]??.5)+((b[2]??.5)-(a[2]??.5))*t,2)])}
+  }
+  const pieces=[];let cur=[],cut=false;
+  for(const p of dense){
+    if(Math.hypot(p[0]-x,p[1]-y)<=reach){cut=true;if(cur.length>1)pieces.push(cur);cur=[]}
+    else cur.push(p);
+  }
+  if(cur.length>1)pieces.push(cur);
+  return cut?pieces:null;
+}
+
+// ── Shape snap: a drawn line, circle / ellipse or polygon becomes the clean shape ──
+// → null (keep the stroke as drawn) or {kind:'line'|'circle'|'ellipse'|'rect'|'polygon', pts:[[x,y,.5]…]}.
+// Small strokes (handwriting) are never touched: the shape must be at least `minSize` units across.
+function canvasRdp(pts,tol){
+  if(pts.length<3)return pts;
+  const a=pts[0],b=pts.at(-1);let worst=-1,at=0;
+  for(let i=1;i<pts.length-1;i++){const d=canvasSegDist(pts[i][0],pts[i][1],a[0],a[1],b[0],b[1]);if(d>worst){worst=d;at=i}}
+  if(worst<=tol)return[a,b];
+  return[...canvasRdp(pts.slice(0,at+1),tol).slice(0,-1),...canvasRdp(pts.slice(at),tol)];
+}
+function canvasSnapShape(pts,{minSize=60}={}){
+  if(!Array.isArray(pts)||pts.length<6)return null;
+  let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity,len=0;
+  pts.forEach((p,i)=>{x0=Math.min(x0,p[0]);y0=Math.min(y0,p[1]);x1=Math.max(x1,p[0]);y1=Math.max(y1,p[1]);if(i)len+=Math.hypot(p[0]-pts[i-1][0],p[1]-pts[i-1][1])});
+  const w=x1-x0,h=y1-y0,diag=Math.hypot(w,h),first=pts[0],last=pts.at(-1),gap=Math.hypot(last[0]-first[0],last[1]-first[1]);
+  if(Math.max(w,h)<minSize)return null;
+  const out=(kind,list)=>{
+    const dense=[];
+    for(let i=0;i<list.length-1||(i===0&&list.length===1);i++){
+      const a=list[i],b=list[i+1]||a,n=Math.max(1,Math.ceil(Math.hypot(b[0]-a[0],b[1]-a[1])/6));
+      for(let k=0;k<n;k++){const t=k/n;dense.push([canvasRound(a[0]+(b[0]-a[0])*t),canvasRound(a[1]+(b[1]-a[1])*t),.5])}
+    }
+    const e=list.at(-1);dense.push([canvasRound(e[0]),canvasRound(e[1]),.5]);
+    return{kind,pts:dense};
+  };
+  // Line: the stroke stays close to the straight line between its ends.
+  if(gap>=minSize&&gap>=len*.8){
+    let dev=0;for(const p of pts)dev=Math.max(dev,canvasSegDist(p[0],p[1],first[0],first[1],last[0],last[1]));
+    if(dev<=Math.max(4,gap*.07)){
+      let a=[first[0],first[1]],b=[last[0],last[1]];
+      const ang=Math.abs(Math.atan2(b[1]-a[1],b[0]-a[0]))*180/Math.PI;
+      if(ang<6||ang>174){const y=(a[1]+b[1])/2;a[1]=y;b[1]=y}
+      else if(Math.abs(ang-90)<6){const x=(a[0]+b[0])/2;a[0]=x;b[0]=x}
+      return out('line',[a,b]);
+    }
+    return null;
+  }
+  // Closed shapes only: the end comes back near the start.
+  if(gap>Math.max(w,h)*.25||len<minSize*2)return null;
+  // Circle / ellipse: every point near the ellipse that fits the box (a square or a triangle is far from it).
+  const ellipse=maxDev=>{
+    const cx=(x0+x1)/2,cy=(y0+y1)/2,rx=w/2,ry=h/2;
+    if(rx<minSize/3||ry<minSize/3)return null;
+    let worst=0;for(const p of pts)worst=Math.max(worst,Math.abs(Math.hypot((p[0]-cx)/rx,(p[1]-cy)/ry)-1));
+    if(worst>maxDev)return null;
+    const circle=Math.min(rx,ry)/Math.max(rx,ry)>=.85,r=(rx+ry)/2,pr=circle?[r,r]:[rx,ry],ring=[];
+    for(let i=0;i<=48;i++){const a=i*2*Math.PI/48-Math.PI/2;ring.push([cx+pr[0]*Math.cos(a),cy+pr[1]*Math.sin(a)])}
+    return out(circle?'circle':'ellipse',ring);
+  };
+  const round=ellipse(.12);if(round)return round;
+  // Polygon: few corners, each a real turn, and every point of the stroke close to an edge.
+  const loop=[...pts,first],tol=Math.max(3,diag*.035);
+  let v=canvasRdp(loop,tol);v=v.slice(0,-1);
+  const turn=(i)=>{const a=v[(i+v.length-1)%v.length],b=v[i],c=v[(i+1)%v.length],u=Math.atan2(b[1]-a[1],b[0]-a[0]),t=Math.atan2(c[1]-b[1],c[0]-b[0]);let d=Math.abs(t-u)*180/Math.PI;if(d>180)d=360-d;return d};
+  for(let guard=0;guard<8&&v.length>3;guard++){const i=v.findIndex((_,k)=>turn(k)<30);if(i<0)break;v.splice(i,1)}
+  if(v.length>=3&&v.length<=6&&v.every((_,i)=>turn(i)>=30)){
+    let fit=0;for(const p of pts){let d=Infinity;for(let i=0;i<v.length;i++){const a=v[i],b=v[(i+1)%v.length];d=Math.min(d,canvasSegDist(p[0],p[1],a[0],a[1],b[0],b[1]))}fit=Math.max(fit,d)}
+    if(fit<=diag*.07){
+      if(v.length===4&&v.every((_,i)=>Math.abs(turn(i)-90)<=22)){
+        const e=v.map((a,i)=>{const b=v[(i+1)%4];return Math.abs(Math.atan2(b[1]-a[1],b[0]-a[0]))*180/Math.PI});
+        if(e.every(a=>a<22||a>158||Math.abs(a-90)<22)){
+          const rx0=(Math.min(...v.map(p=>p[0]))),rx1=Math.max(...v.map(p=>p[0])),ry0=Math.min(...v.map(p=>p[1])),ry1=Math.max(...v.map(p=>p[1]));
+          return out('rect',[[rx0,ry0],[rx1,ry0],[rx1,ry1],[rx0,ry1],[rx0,ry0]]);
+        }
+      }
+      const sides=v.map((a,i)=>{const b=v[(i+1)%v.length];return Math.hypot(b[0]-a[0],b[1]-a[1])});
+      if(v.length>=5||(v.length===3&&Math.max(...sides)/Math.min(...sides)<1.15)){
+        if(Math.max(...sides)/Math.min(...sides)<1.3){
+          const cx=v.reduce((s,p)=>s+p[0],0)/v.length,cy=v.reduce((s,p)=>s+p[1],0)/v.length,rad=v.reduce((s,p)=>s+Math.hypot(p[0]-cx,p[1]-cy),0)/v.length,a0=Math.atan2(v[0][1]-cy,v[0][0]-cx);
+          const reg=v.map((_,i)=>[cx+rad*Math.cos(a0+i*2*Math.PI/v.length),cy+rad*Math.sin(a0+i*2*Math.PI/v.length)]);
+          return out('polygon',[...reg,reg[0]]);
+        }
+      }
+      return out('polygon',[...v,v[0]]);
+    }
+  }
+  return ellipse(.2);
+}
+
 // ── Text: lines are wrapped once, when the text is written, and kept ──
 const canvasLineHeight=size=>canvasRound(size*1.38,1);
 function canvasTextHeight(lineCount,size){return Math.max(1,lineCount)*canvasLineHeight(size)+2*CANVAS_TEXT_PAD}
@@ -275,6 +373,6 @@ function canvasPhotoSize(ratio){
 
 if(typeof module!=='undefined')module.exports={CANVAS_W,CANVAS_PAGE_H,CANVAS_MAX_H,CANVAS_GROW_MARGIN,CANVAS_GROW_STEP,CANVAS_ADD_SPACE,CANVAS_LINE,CANVAS_TOOLS,CANVAS_BGS,CANVAS_COLORS,CANVAS_SIZES,CANVAS_HIGHLIGHT_ALPHA,CANVAS_TEXT_PAD,CANVAS_TEXT_W,CANVAS_PHOTO_MIN_W,
   canvasKey,canvasKindOf,emptyCanvasDoc,normalizeCanvasDoc,canvasPrune,canvasLive,canvasIsEmpty,canvasArrowBox,canvasContentBottom,canvasGrownHeight,canvasNextZ,canvasSegDist,canvasStrokeHit,canvasHitItem,
-  canvasArrowPath,canvasRectPath,canvasOutlinePath,canvasStrokeOptions,canvasLineHeight,canvasTextHeight,canvasLayoutText,
+  canvasArrowPath,canvasRectPath,canvasOutlinePath,canvasStrokeOptions,canvasEraseSplit,canvasSnapShape,canvasRdp,canvasLineHeight,canvasTextHeight,canvasLayoutText,
   canvasStore,canvasSerialize,canvasChangeCreate,canvasChangeRemove,canvasChangeUpdate,canvasChangePage,canvasApplyChanges,canvasHistory,canvasHistoryPush,canvasUndo,canvasRedo,
   canvasMerge,canvasContentJson,canvasSameContent,canvasPdfPageCount,canvasPdfSlices,canvasPlacedPhotoIds,canvasNewPhotoIds,canvasPhotoSize};

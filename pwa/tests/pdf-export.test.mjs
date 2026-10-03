@@ -29,12 +29,12 @@ function contentText(bytes){
 }
 const hex=t=>'<'+Buffer.from(t,'latin1').toString('hex').toUpperCase()+'>';
 
-test('one page per photo, landscape photos on landscape pages, numbered X / Y',async()=>{
+test('one page per photo, every page A4 portrait (a landscape photo is centred on it), numbered X / Y',async()=>{
   const r=await P.buildPdfDocument(lib,{pages:[page('portrait'),page('landscape'),page('portrait')],title:'Analyse — CM',encode});
   const doc=await lib.PDFDocument.load(r.bytes);
   assert.equal(doc.getPageCount(),3);
   const [a,b]=doc.getPages();
-  assert.ok(a.getHeight()>a.getWidth(),'portrait');assert.ok(b.getWidth()>b.getHeight(),'landscape');
+  assert.ok(a.getHeight()>a.getWidth(),'portrait');assert.ok(b.getHeight()>b.getWidth(),'landscape photo, portrait A4 page');assert.equal(Math.round(b.getWidth()),595);
   assert.ok(contentText(r.bytes).includes(hex('2 / 3')),'footer page number');
 });
 
@@ -65,7 +65,7 @@ test('metadata: title, subject, keywords, creator',async()=>{
 
 test('page size, fit and word placement',()=>{
   assert.deepEqual([...P.pdfPageSize('a4',100,200)],[595.28,841.89]);
-  assert.deepEqual([...P.pdfPageSize('letter',300,200)],[792,612]);
+  assert.deepEqual([...P.pdfPageSize('letter',300,200)],[595.28,841.89],'landscape photos and other formats stay A4 portrait');
   const box=P.pdfFit(200,100,{x:0,y:0,w:100,h:100});
   assert.equal(box.width,100);assert.equal(box.height,50);assert.equal(box.y,25);
   const at=P.pdfWordPlacement([0,0,.5,.1],{x:0,y:0,width:100,height:200},10);

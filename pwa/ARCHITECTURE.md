@@ -104,3 +104,8 @@ Release: bump the `?v=` value everywhere in `index.html`, `sw.js` (`CORE` + `VER
 5. Schema changes must be backward compatible or versioned.
 6. Run syntax checks, smoke tests, and website build before merging to main.
 7. The rollback branch created before this work remains `backup-before-figma-final`.
+
+## Notes on recent changes
+- PDFs: the camera's Importer button accepts PDFs and files them in the destination séance (`storeImportedPdf`, `features/pdf-actions.js`); a stored PDF stays editable (Fichiers menu: Renommer, Déplacer vers un cours = `openPdfMoveSheet`, Supprimer). Every exported page is A4 portrait, the photo centred with equal margins (`pdfPageSize`, `pdfFit`). The viewer (`renderPdfPages`, `features/media-viewer.js`) has live zoom (pinch, Ctrl+wheel, − / +), a page pager, a corner full-screen button, and restores page, scroll and zoom per PDF (`localStorage holioo.pdfpos.<id>`).
+- Accueil: Capture rapide is a `QuickCaptureCard` (rings like Lecture rapide, big title, round Reprendre with a caption: séance + handwriting mark).
+- Notes: "Formes auto" toggle (pen / highlighter; `canvasSnapShape`) and eraser modes stroke / partial (`canvasEraseSplit`), both in the tools bar and remembered in `canvasPrefs` (`snap`, `eraseMode`).

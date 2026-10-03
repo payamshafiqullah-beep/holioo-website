@@ -290,3 +290,43 @@ test('a photo is placed at its own proportions', () => {
   assert.deepEqual(C.canvasPhotoSize(3 / 4), { w: 340, h: 453.3 });
   assert.deepEqual(C.canvasPhotoSize(0), { w: 460, h: 345 }, 'unknown proportions: 4/3');
 });
+
+// ── Shape snap and partial eraser ──
+const jitter = (i) => Math.sin(i * 12.9898) * 1.4;
+const along = (n, f) => Array.from({ length: n }, (_, i) => { const [x, y] = f(i / (n - 1)); return [x + jitter(i), y + jitter(i + 7), .5]; });
+
+test('shape snap: a wobbly line becomes a straight one, a horizontal one is levelled', () => {
+  const r = C.canvasSnapShape(along(40, t => [100 + 300 * t, 200 + 6 * t]));
+  assert.equal(r.kind, 'line');
+  assert.ok(Math.abs(r.pts[0][1] - r.pts.at(-1)[1]) < 1e-6, 'levelled');
+  const diag = C.canvasSnapShape(along(40, t => [100 + 300 * t, 100 + 200 * t]));
+  assert.equal(diag.kind, 'line');
+  assert.ok(diag.pts.length > 10 && Math.abs(diag.pts[0][1] - diag.pts.at(-1)[1]) > 100);
+});
+
+test('shape snap: circle, ellipse, rectangle, triangle', () => {
+  assert.equal(C.canvasSnapShape(along(60, t => [300 + 80 * Math.cos(t * 6.4), 300 + 80 * Math.sin(t * 6.4)])).kind, 'circle');
+  assert.equal(C.canvasSnapShape(along(60, t => [300 + 150 * Math.cos(t * 6.4), 300 + 60 * Math.sin(t * 6.4)])).kind, 'ellipse');
+  const side = (a, b) => (t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+  const poly = (v) => v.flatMap((a, i) => along(15, side(a, v[(i + 1) % v.length])));
+  const rect = C.canvasSnapShape(poly([[100, 100], [300, 104], [298, 220], [102, 218]]));
+  assert.equal(rect.kind, 'rect');
+  assert.deepEqual([rect.pts[0][1], rect.pts[0][1]].length, 2);
+  assert.equal(C.canvasSnapShape(poly([[100, 300], [260, 300], [180, 160]])).kind, 'polygon');
+});
+
+test('shape snap leaves handwriting, scribbles and small marks alone', () => {
+  assert.equal(C.canvasSnapShape(along(30, t => [10 + 20 * Math.cos(t * 6.4), 10 + 20 * Math.sin(t * 6.4)])), null, 'small circle = a letter o');
+  assert.equal(C.canvasSnapShape(along(50, t => [100 + 300 * t, 200 + 70 * Math.sin(t * 14)])), null, 'a wave');
+  assert.equal(C.canvasSnapShape([[0, 0, .5]]), null);
+});
+
+test('partial eraser cuts the touched part and keeps both ends', () => {
+  const s = stroke('l', [[0, 0, .5], [100, 0, .5]], { size: 4 });
+  assert.equal(C.canvasEraseSplit(s, 50, 50, 10), null, 'untouched');
+  const pieces = C.canvasEraseSplit(s, 50, 0, 10);
+  assert.equal(pieces.length, 2);
+  assert.ok(pieces[0].at(-1)[0] < 40 && pieces[1][0][0] > 60);
+  assert.deepEqual(C.canvasEraseSplit(s, 0, 0, 30)?.length, 1, 'cut at the end leaves one piece');
+  assert.deepEqual(C.canvasEraseSplit(stroke('t', [[0, 0, .5], [6, 0, .5]]), 3, 0, 30), [], 'all gone');
+});

@@ -42,7 +42,6 @@ async function renderPdfBuilder(){
     </div>
     ${SectionTitle('Export')}
     <div class="form-card">
-      <div class="field"><label for="pdfPageSize">Format des pages</label><select id="pdfPageSize"><option value="a4">A4</option><option value="letter">Letter (US)</option><option value="image">Adapté à chaque photo</option></select></div>
       <div class="field"><label for="pdfQuality">Qualité</label><select id="pdfQuality"><option value="high">Haute (fichier plus lourd)</option><option value="standard" selected>Standard</option><option value="small">Compacte (pour l’envoyer)</option></select></div>
       <p class="field-note" id="pdfOcrNote"></p>
     </div>
@@ -99,7 +98,7 @@ async function renderPdfBuilder(){
       numbers:byId('pdfNumbers').checked,
       searchable:byId('pdfSearchable').checked,
       canvasPages:desk&&(byId('pdfCanvas')?.checked??true),
-      pageSize:byId('pdfPageSize').value,
+      pageSize:'a4',
       quality:byId('pdfQuality').value,
       photoOrder:[...photoOrder]
     })}finally{go.disabled=false}
@@ -107,9 +106,8 @@ async function renderPdfBuilder(){
 
   // Last export settings are remembered.
   const prefs=state.pdfPrefs||{};
-  if(prefs.pageSize)byId('pdfPageSize').value=prefs.pageSize;
   if(prefs.quality)byId('pdfQuality').value=prefs.quality;
-  ['pdfPageSize','pdfQuality'].forEach(id=>byId(id).onchange=()=>{state.pdfPrefs={pageSize:byId('pdfPageSize').value,quality:byId('pdfQuality').value};saveState()});
+  byId('pdfQuality').onchange=()=>{state.pdfPrefs={quality:byId('pdfQuality').value};saveState()};
   syncPhotoOrder();
   updatePdfOcrNote([...photoOrder]);
 }

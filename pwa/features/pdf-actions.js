@@ -32,7 +32,7 @@ async function buildPdfDocument(lib,{pages,title,subject,keywords=[],author='',c
     const{bytes,width:iw,height:ih}=await encode(p.blob,q,quality);
     const img=await doc.embedJpg(bytes);
     const[pw,ph]=p.bleed?[595.28,841.89]:pdfPageSize(pageSize,iw,ih),page=doc.addPage([pw,ph]);
-    const box=p.bleed?{x:0,y:0,width:pw,height:ph}:pdfFit(iw,ih,{x:24,y:34,w:pw-48,h:ph-24-34});
+    const box=p.bleed?{x:0,y:0,width:pw,height:ph}:pdfFit(iw,ih,{x:24,y:34,w:pw-48,h:ph-68});
     page.drawImage(img,box);
     // Invisible text over the photo (text rendering mode 3): searchable and selectable, not visible.
     if(p.words?.length){
@@ -162,14 +162,48 @@ async function generatePdfFile(course,sessionIds,opts){
   }catch(e){console.error(e);showToast('Erreur pendant la création du PDF')}
 }
 
+// An imported PDF file (Fichiers, or the camera's Importer button into a séance). `courseId` / `sessionIds` file it in a
+// course; the entry stays editable afterwards (rename, move, delete: features/item-menu.js, openPdfMoveSheet).
+async function storeImportedPdf(file,{courseId=null,sessionIds=[]}={}){
+  const id=uid(),title=file.name.replace(/\.pdf$/i,'')||'PDF';
+  await DB.put('files',{id,blob:file,createdAt:now(),syncState:'pending'});
+  state.files.unshift({id,title,fileName:file.name,courseId,sessionIds:[...sessionIds],createdAt:now(),pages:null,imported:true});
+  return id;
+}
+
+function renamePdfSheet(meta){
+  openSheet({title:'Renommer le PDF',body:`<div class="field"><label for="pdfRenameInput">Nom</label><input id="pdfRenameInput" value="${esc(meta.title)}" maxlength="120"></div>`,confirmText:'Enregistrer',onConfirm:()=>{
+    const v=byId('pdfRenameInput').value.trim();if(!v){showToast('Le nom ne peut pas être vide');return false}
+    meta.title=v;if(meta.fileName)meta.fileName=`${Drive.safeName(v)}.pdf`;saveState();queueSync();render();return true;
+  }});
+}
+
+// "Déplacer": file a PDF in another course / section / séance (or none: it goes back to loose PDFs).
+function openPdfMoveSheet(meta){
+  const opt=(v,t,sel)=>`<option value="${esc(v)}"${sel?' selected':''}>${esc(t)}</option>`;
+  const field=(label,id)=>`<div class="field"><label>${label}</label><select id="${id}"></select></div>`;
+  const course=()=>state.courses.find(c=>c.id===byId('pmCourse').value),section=()=>course()?.sections.find(s=>s.id===byId('pmSection').value);
+  const here=meta.sessionIds?.[0]&&state.courses.flatMap(c=>c.sections.flatMap(s=>s.sessions.filter(q=>q.id===meta.sessionIds[0]).map(q=>({c,s,q}))))[0];
+  openSheet({title:'Déplacer le PDF',subtitle:meta.title,body:field('Cours','pmCourse')+field('Section','pmSection')+field('Séance','pmSession'),confirmText:'Déplacer',confirmClass:'purple',onConfirm:()=>{
+    const c=course();
+    if(!c){meta.courseId=null;meta.sessionIds=[]}
+    else{
+      const s=section(),q=s?.sessions.find(x=>x.id===byId('pmSession').value);
+      meta.courseId=c.id;meta.sessionIds=q?[q.id]:[];
+    }
+    saveState();queueSync();render();showToast('PDF déplacé');return true;
+  }});
+  const fillSessions=()=>{byId('pmSession').innerHTML=opt('','Aucune séance')+(section()?.sessions||[]).map(q=>opt(q.id,q.title,q.id===here?.q.id)).join('')};
+  const fillSections=()=>{byId('pmSection').innerHTML=(course()?.sections||[]).map(s=>opt(s.id,s.name,s.id===here?.s.id)).join('');fillSessions()};
+  byId('pmCourse').innerHTML=opt('','Aucun cours (PDF libre)',!meta.courseId&&!here)+state.courses.map(c=>opt(c.id,c.name,c.id===(here?.c.id||meta.courseId))).join('');
+  byId('pmCourse').onchange=fillSections;byId('pmSection').onchange=fillSessions;
+  fillSections();
+}
+
 // ---------- pure helpers (tests/pdf-export.test.mjs) ----------
 
-// Page size in points. Landscape photos get landscape pages; "image" follows the photo's shape.
-function pdfPageSize(size,iw,ih){
-  if(size==='image'){const w=595.28;return[w,Math.max(300,Math.min(w*3,(w-48)*ih/iw+58))]}
-  const[a,b]=size==='letter'?[612,792]:[595.28,841.89];
-  return iw>ih?[b,a]:[a,b];
-}
+// Page size in points: every page is A4 portrait, whatever the photo's shape (a landscape photo is centred on it).
+function pdfPageSize(){return[595.28,841.89]}
 // Largest placement of an iw×ih image inside a box, centred.
 function pdfFit(iw,ih,{x,y,w,h}){const k=Math.min(w/iw,h/ih),W=iw*k,H=ih*k;return{x:x+(w-W)/2,y:y+(h-H)/2,width:W,height:H}}
 // A recognised word (bbox 0..1 from the image's top-left) → PDF text position (baseline) and size.

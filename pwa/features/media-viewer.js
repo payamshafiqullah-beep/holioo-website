@@ -153,19 +153,65 @@ function loadPdfJs(){
   return pdfJsPromise;
 }
 
-async function renderPdfPages(blob,host,{onCount}={}){
+// Every page gets a placeholder of the right shape at once (so scroll position and zoom work immediately); its canvas is
+// drawn when it nears the screen and redrawn sharper once a zoom settles. Returns a controller:
+//   {zoom, setZoom(z), page(), goTo(page, ratio), pageRatio()} — page() = the page most on screen (1-based).
+// Options: onCount(n), onPage(page, n) on scroll, zoom / page / ratio = where to start.
+async function renderPdfPages(blob,host,{onCount,onPage,zoom=1,page:startPage=1,ratio:startRatio=0}={}){
   const lib=await loadPdfJs();
   const pdf=await lib.getDocument({data:new Uint8Array(await blob.arrayBuffer())}).promise;
   onCount?.(pdf.numPages);
   host.innerHTML='';
-  const dpr=Math.min(window.devicePixelRatio||1,2);
+  const dpr=Math.min(window.devicePixelRatio||1,2),figs=[],pages=[];
+  let z=Math.max(1,Math.min(4,zoom)),baseWidth=Math.max(200,host.clientWidth-2-(parseFloat(getComputedStyle(host).paddingLeft)||0)*2);
+  const stage=document.createElement('div');stage.className='pdf-stage';host.append(stage);
   for(let n=1;n<=pdf.numPages;n++){
-    if(!host.isConnected)return;
-    const page=await pdf.getPage(n),base=page.getViewport({scale:1});
-    const cssWidth=Math.max(200,host.clientWidth-2),viewport=page.getViewport({scale:cssWidth/base.width*dpr});
-    const wrap=document.createElement('figure');wrap.className='pdf-page';
-    const canvas=document.createElement('canvas');canvas.width=viewport.width;canvas.height=viewport.height;canvas.style.width=`${cssWidth}px`;
-    wrap.append(canvas);const cap=document.createElement('figcaption');cap.textContent=`${n} / ${pdf.numPages}`;wrap.append(cap);host.append(wrap);
-    await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
+    if(!host.isConnected)return null;
+    const pg=await pdf.getPage(n),vp=pg.getViewport({scale:1});pages.push({pg,aspect:vp.height/vp.width});
+    const wrap=document.createElement('figure');wrap.className='pdf-page';wrap.dataset.page=n;
+    const box=document.createElement('div');box.className='pdf-page-box';
+    const cap=document.createElement('figcaption');cap.textContent=`${n} / ${pdf.numPages}`;
+    wrap.append(box,cap);stage.append(wrap);figs.push({wrap,box,drawnAt:0,drawing:false});
   }
+  const sizeAll=()=>{const w=baseWidth*z;figs.forEach((f,i)=>{f.box.style.width=`${w}px`;f.box.style.height=`${w*pages[i].aspect}px`});};
+  const draw=async i=>{
+    const f=figs[i],w=baseWidth*z;if(f.drawing||Math.abs(f.drawnAt-w)<1||!host.isConnected)return;
+    f.drawing=true;
+    try{
+      const vp=pages[i].pg.getViewport({scale:w/pages[i].pg.getViewport({scale:1}).width*dpr});
+      const c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;
+      await pages[i].pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
+      f.box.replaceChildren(c);f.drawnAt=w;
+    }catch(e){console.warn(e)}
+    f.drawing=false;
+    if(Math.abs(f.drawnAt-baseWidth*z)>=1&&f.visible)draw(i);
+  };
+  const io=new IntersectionObserver(es=>{for(const e of es){const i=+e.target.dataset.page-1;figs[i].visible=e.isIntersecting;if(e.isIntersecting)draw(i)}},{root:host,rootMargin:'900px 0px'});
+  figs.forEach(f=>io.observe(f.wrap));
+  const tops=()=>figs.map(f=>f.wrap.offsetTop);
+  const cur=()=>{const mid=host.scrollTop+host.clientHeight*.35,t=tops();let n=0;for(let i=0;i<t.length;i++)if(t[i]<=mid)n=i;return n+1};
+  const pageRatio=()=>{const f=figs[cur()-1];return f?Math.max(0,Math.min(1,(host.scrollTop-f.wrap.offsetTop)/Math.max(1,f.wrap.offsetHeight))):0};
+  const goTo=(n,r=0)=>{const f=figs[Math.max(1,Math.min(figs.length,n))-1];if(f)host.scrollTop=f.wrap.offsetTop+f.wrap.offsetHeight*r};
+  let last=0,t1=null;
+  host.addEventListener('scroll',()=>{const n=cur();if(n!==last){last=n;onPage?.(n,pdf.numPages)}clearTimeout(t1);t1=setTimeout(()=>onPage?.(cur(),pdf.numPages,{settled:true}),400)},{passive:true});
+  let redraw=null;
+  const setZoom=(nz,anchor=.5)=>{
+    nz=Math.max(1,Math.min(4,nz));if(Math.abs(nz-z)<.001)return;
+    const n=cur(),r=pageRatio(),cx=(host.scrollLeft+host.clientWidth*anchor)/Math.max(1,host.scrollWidth);
+    z=nz;sizeAll();goTo(n,r);host.scrollLeft=cx*host.scrollWidth-host.clientWidth*anchor;
+    clearTimeout(redraw);redraw=setTimeout(()=>figs.forEach((f,i)=>f.visible&&draw(i)),180);
+    onPage?.(cur(),pdf.numPages,{zoom:z});
+  };
+  const resize=()=>{const w=Math.max(200,host.clientWidth-2-(parseFloat(getComputedStyle(host).paddingLeft)||0)*2);if(Math.abs(w-baseWidth)<2)return;const n=cur(),r=pageRatio();baseWidth=w;sizeAll();goTo(n,r);clearTimeout(redraw);redraw=setTimeout(()=>figs.forEach((f,i)=>f.visible&&draw(i)),180)};
+  const ro=typeof ResizeObserver==='function'?new ResizeObserver(()=>{if(!host.isConnected){ro.disconnect();io.disconnect();return}resize()}):null;ro?.observe(host);
+  // Live zoom: pinch with two fingers, ctrl + wheel / trackpad pinch.
+  let pd=0,pz=1;
+  host.addEventListener('touchstart',e=>{if(e.touches.length===2){pd=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);pz=z}},{passive:true});
+  host.addEventListener('touchmove',e=>{if(e.touches.length===2&&pd){e.preventDefault();const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);setZoom(pz*d/pd)}},{passive:false});
+  host.addEventListener('touchend',e=>{if(e.touches.length<2)pd=0},{passive:true});
+  host.addEventListener('wheel',e=>{if(!e.ctrlKey)return;e.preventDefault();setZoom(z*Math.exp(-e.deltaY*.01),(e.clientX-host.getBoundingClientRect().left)/host.clientWidth)},{passive:false});
+  sizeAll();
+  await new Promise(r=>requestAnimationFrame(r));
+  goTo(startPage,startRatio);last=cur();onPage?.(last,pdf.numPages);
+  return{get zoom(){return z},setZoom,page:cur,pageRatio,goTo,count:pdf.numPages};
 }

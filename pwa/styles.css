@@ -721,9 +721,21 @@ html.radial-haptic-confirm body{animation:radialHapticConfirm .2s var(--ease)}
 .viewer-title strong{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .viewer-title small{font-size:12px;color:var(--muted)}
 .pdf-frame-wrap{position:relative;flex:1;margin:0 var(--s4);border-radius:var(--r-lg);overflow:hidden;background:var(--surface);box-shadow:var(--shadow-sm)}
-.pdf-pages{height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:var(--s3);display:flex;flex-direction:column;align-items:center;gap:var(--s4);background:#E9EAF2}
+.pdf-pages{height:100%;overflow:auto;-webkit-overflow-scrolling:touch;padding:var(--s3);background:#E9EAF2;position:relative}
+.pdf-stage{display:flex;flex-direction:column;align-items:center;gap:var(--s4);width:max-content;min-width:100%}
 .pdf-page{margin:0;display:flex;flex-direction:column;align-items:center;gap:6px}
-.pdf-page canvas{display:block;background:#fff;border-radius:6px;box-shadow:var(--shadow-sm)}
+.pdf-page-box{background:#fff;border-radius:6px;box-shadow:var(--shadow-sm);overflow:hidden}
+.pdf-page canvas{display:block;width:100%;height:100%}
+.pdf-fs-btn{position:absolute;top:var(--s3);right:var(--s3);z-index:3;display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:rgba(29,33,64,.72);color:#fff;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.pdf-fs-btn:active{transform:scale(.94)}
+.pdf-pager{position:absolute;left:50%;bottom:var(--s3);transform:translateX(-50%);z-index:3;display:flex;align-items:center;gap:2px;padding:4px;border-radius:18px;background:rgba(29,33,64,.78);color:#fff;font-size:12px;font-weight:600;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);white-space:nowrap}
+.pdf-pager button{display:grid;place-items:center;min-width:32px;height:32px;border-radius:12px;color:#fff;font-size:18px;line-height:1}
+.pdf-pager button:active{background:rgba(255,255,255,.18)}
+.pdf-pager output{min-width:44px;text-align:center;font-variant-numeric:tabular-nums}
+.pdf-pager-sep{width:1px;height:18px;margin:0 4px;background:rgba(255,255,255,.3)}
+.pdf-viewer.pdf-immersive>.page-header,.pdf-viewer.pdf-immersive>.viewer-dock{display:none}
+.pdf-viewer.pdf-immersive .pdf-frame-wrap{margin:0;border-radius:0;box-shadow:none}
+.pdf-viewer.pdf-immersive .pdf-fs-btn{top:calc(var(--s3) + env(safe-area-inset-top))}
 .pdf-page figcaption{font-size:12px;font-weight:600;color:var(--muted)}
 .pdf-loading{margin:auto;color:var(--muted);font-size:14px}
 .pdf-frame-wrap iframe{width:100%;height:100%;border:0;display:block}
@@ -1324,6 +1336,15 @@ body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
 .qr-play{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:#fff;color:var(--lavender-fg);box-shadow:0 1px 4px rgba(0,0,0,.15)}
 .qr-resume small{font-size:11px;font-weight:600;color:var(--lavender-fg)}
 @media (prefers-reduced-motion:reduce){.qr-ring{animation:none}}
+/* Capture rapide card (Accueil): same panel as Lecture rapide, in the app's blue; a bigger title; Reprendre + caption. */
+.qcap-row{padding:var(--s4);background:color-mix(in srgb,var(--accent) 10%,var(--surface));border-color:color-mix(in srgb,var(--accent) 28%,transparent)}
+.qcap-row .qr-ring{border-color:color-mix(in srgb,var(--accent) 55%,transparent)}
+.qcap-row .qr-core{background:var(--accent)}
+.qcap-row .qr-trigger:focus-visible{outline-color:var(--accent)}
+.qcap-row .qr-copy strong{font-size:22px;line-height:1.1;font-weight:800;letter-spacing:-.03em;color:var(--accent)}
+.qcap-row .qr-play{color:var(--accent)}
+.qcap-row .qr-resume small{color:var(--accent)}
+.qr-where{max-width:104px;font-size:11px;font-style:normal;font-weight:500;line-height:1.2;text-align:center;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* Épuré (tablet / computer): smaller page, 1px-style strokes, no shadow. */
 @media (min-width:720px) and (min-height:521px),(min-width:960px){

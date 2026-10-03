@@ -104,6 +104,25 @@ function QuickCaptureTrigger({id='quickCapture'}={}){
   return`<button type="button" class="qc-trigger" id="${id}" aria-label="${esc(camT('qcButton'))}"><span class="qc-trigger-orb">${icon('camera',{size:26,stroke:2})}</span><small>${esc(camT('qcTrigger'))}</small></button>`;
 }
 
+// Handwriting in a séance: a free Notes page (tablet / computer) or notebook (Carnet) ink.
+async function sessionHasHandwriting(session){
+  try{if(typeof canvasSessionHasContent==='function'&&await canvasSessionHasContent(session.id))return true}catch{}
+  try{const d=typeof notebookDocFor==='function'?await notebookDocFor(session):null;if(d?.blocks?.some(b=>b.strokes?.length)||d?.strokes?.length)return true}catch{}
+  return false;
+}
+
+// Accueil's Capture rapide card: rings + trigger (the radial menu), title, Reprendre (the last séance) and its caption.
+function QuickCaptureCard({id='heroQuick',latest=null,hand=false}={}){
+  const desk=typeof isDesk==='function'&&isDesk();
+  const trigger=`<button type="button" class="qr-trigger qcap-trigger" id="${id}"${desk?' data-desk-notes':''} aria-label="${esc(desk?'Note rapide : ouvrir les notes':camT('qcButton'))}"><i class="qr-ring qr-outer" aria-hidden="true"></i><i class="qr-ring qr-inner" aria-hidden="true"></i><span class="qr-core">${icon(desk?'penLine':'camera',{size:22,stroke:2})}</span></button>`;
+  const where=latest?[latest.section.name,latest.course.name].filter(Boolean).join(' · '):'';
+  const caption=latest?`${esc(latest.session.title)}${hand?' · ✍︎ manuscrit':''}`:'Première capture';
+  const resume=latest
+    ?`<button type="button" class="qr-resume" id="heroResume" aria-label="Reprendre ${esc(latest.session.title)}, ${esc(where)}"><span class="qr-play">${icon('play',{size:16})}</span><small>Reprendre</small><em class="qr-where">${caption}</em></button>`
+    :`<button type="button" class="qr-resume" data-nav="capture" aria-label="Capturer un premier cours"><span class="qr-play">${icon('camera',{size:16})}</span><small>Capturer</small><em class="qr-where">${caption}</em></button>`;
+  return`<div class="qr-row qcap-row">${trigger}<span class="qr-copy"><strong>${esc(desk?'Note rapide':camT('qcTrigger'))}</strong></span>${resume}</div>`;
+}
+
 // Without a live camera (old browser, page not on https): the phone's own camera app.
 function quickCaptureInput(){
   let el=byId('qcCameraInput');

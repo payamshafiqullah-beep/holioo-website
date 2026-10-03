@@ -11,7 +11,17 @@ async function renderPdfViewer(){
       <div class="page-header-left"><button class="icon-btn" id="pdfBack" aria-label="Retour">${icon('chevronLeft',{size:22})}</button><span class="viewer-title"><strong>${esc(meta.title)}</strong><small>${esc(course?.name||'PDF')} · <span id="pdfPageCount">${meta.pages?plural(meta.pages,'page'):'—'}</span></small></span></div>
       <div class="page-header-right">${Tag(status.label,status.tone)}<button class="icon-btn danger" id="pdfDelete" aria-label="Supprimer le PDF">${icon('trash',{size:22})}</button></div>
     </header>
-    <div class="pdf-frame-wrap"><div class="pdf-pages" id="pdfPages"><p class="pdf-loading">Chargement du PDF…</p></div></div>
+    <div class="pdf-frame-wrap"><div class="pdf-pages" id="pdfPages"><p class="pdf-loading">Chargement du PDF…</p></div>
+      <button class="pdf-fs-btn" id="pdfFullscreen" type="button" aria-label="Plein écran" aria-pressed="false">${icon('maximize',{size:20})}</button>
+      <div class="pdf-pager" id="pdfPager" hidden>
+        <button type="button" id="pdfPrev" aria-label="Page précédente">${icon('chevronLeft',{size:18})}</button>
+        <output id="pdfPageNow" aria-live="polite">1 / 1</output>
+        <button type="button" id="pdfNext" aria-label="Page suivante">${icon('chevronRight',{size:18})}</button>
+        <span class="pdf-pager-sep"></span>
+        <button type="button" id="pdfZoomOut" aria-label="Zoom arrière">−</button>
+        <output id="pdfZoomNow">100 %</output>
+        <button type="button" id="pdfZoomIn" aria-label="Zoom avant">+</button>
+      </div></div>
     <div class="viewer-dock">
       <button class="dock-btn" id="pdfShare">${icon('share',{size:22})}<small>Partager</small></button>
       <button class="dock-btn" id="pdfSharePeople">${icon('users',{size:22})}<small>Avec Holioo</small></button>
@@ -20,16 +30,44 @@ async function renderPdfViewer(){
       <button class="dock-btn" id="pdfDownload">${icon('download',{size:22})}<small>Enregistrer une copie</small></button>
     </div>
   </div>`;
-  byId('pdfBack').onclick=()=>{revokeViewerUrl();navigate(currentPdfReturnView||'files')};
   byId('pdfDelete').onclick=()=>confirmDeletePdf(meta.id,currentPdfReturnView);
   byId('pdfShare').onclick=()=>sharePdf(meta,row);
   byId('pdfSharePeople').onclick=()=>sharePdfWithPeople(meta,row);
   byId('pdfPublish').onclick=()=>publishPdfToLibrary(meta,row);
   byId('pdfDrive').onclick=()=>syncPdfNow(meta,row);
   byId('pdfDownload').onclick=()=>downloadPdf(meta,row);
-  const host=byId('pdfPages');
+  const host=byId('pdfPages'),viewer=document.querySelector('.pdf-viewer'),fsBtn=byId('pdfFullscreen');
+  // Last page, scroll position and zoom are kept per PDF on this device and restored on reopening.
+  const posKey=`holioo.pdfpos.${meta.id}`;
+  let saved={};try{saved=JSON.parse(localStorage.getItem(posKey)||'{}')||{}}catch{}
+  let ctl=null;
+  const savePos=()=>{if(!ctl||!host.isConnected)return;try{localStorage.setItem(posKey,JSON.stringify({page:ctl.page(),ratio:+ctl.pageRatio().toFixed(3),zoom:+ctl.zoom.toFixed(2)}))}catch{}};
+  // Full screen: the real Fullscreen API where it exists, always the immersive layout (header and dock hidden; iPhone has no element fullscreen).
+  const setImmersive=on=>{viewer.classList.toggle('pdf-immersive',on);fsBtn.setAttribute('aria-pressed',String(on));fsBtn.setAttribute('aria-label',on?'Quitter le plein écran':'Plein écran');fsBtn.innerHTML=icon(on?'minimize':'maximize',{size:20});setTimeout(()=>host.dispatchEvent(new Event('scroll')),50)};
+  const onFsChange=()=>{if(!document.fullscreenElement&&viewer.classList.contains('pdf-immersive'))setImmersive(false)};
+  document.addEventListener('fullscreenchange',onFsChange);
+  fsBtn.onclick=async()=>{
+    const on=!viewer.classList.contains('pdf-immersive');setImmersive(on);
+    try{if(on)await viewer.requestFullscreen?.();else if(document.fullscreenElement)await document.exitFullscreen()}catch{}
+  };
+  const leave=()=>{savePos();document.removeEventListener('fullscreenchange',onFsChange);if(document.fullscreenElement)document.exitFullscreen?.().catch(()=>{})};
+  byId('pdfBack').onclick=()=>{leave();revokeViewerUrl();navigate(currentPdfReturnView||'files')};
+  window.addEventListener('pagehide',savePos,{once:true});
   try{
-    await renderPdfPages(row.blob,host,{onCount:n=>{byId('pdfPageCount')&&(byId('pdfPageCount').textContent=plural(n,'page'));if(meta.pages!==n){meta.pages=n;saveState()}}});
+    ctl=await renderPdfPages(row.blob,host,{zoom:saved.zoom||1,page:saved.page||1,ratio:saved.ratio||0,
+      onCount:n=>{byId('pdfPageCount')&&(byId('pdfPageCount').textContent=plural(n,'page'));if(meta.pages!==n){meta.pages=n;saveState()}},
+      onPage:(n,total,info)=>{
+        const now=byId('pdfPageNow');if(!now)return;now.textContent=`${n} / ${total}`;
+        byId('pdfZoomNow').textContent=`${Math.round((ctl?.zoom??saved.zoom??1)*100)} %`;
+        if(info?.settled||info?.zoom)savePos();
+      }});
+    if(!ctl||!host.isConnected)return;
+    byId('pdfPager').hidden=false;
+    byId('pdfZoomNow').textContent=`${Math.round(ctl.zoom*100)} %`;
+    byId('pdfPrev').onclick=()=>ctl.goTo(Math.max(1,(ctl.pageRatio()>.05?ctl.page():ctl.page()-1)));
+    byId('pdfNext').onclick=()=>ctl.goTo(Math.min(ctl.count,ctl.page()+1));
+    byId('pdfZoomOut').onclick=()=>ctl.setZoom(ctl.zoom/1.25);
+    byId('pdfZoomIn').onclick=()=>ctl.setZoom(ctl.zoom*1.25);
   }catch(e){
     // Offline before pdf.js was ever cached: fall back to the browser's own viewer.
     console.warn(e);if(!host.isConnected)return;

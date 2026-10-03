@@ -701,11 +701,19 @@ function captureFeedback(auto){
 
 // Photos from the gallery go to the current destination too, in the order they were picked.
 async function importGallery(e){
-  const files=[...(e.target.files||[])].filter(f=>f.type.startsWith('image/'));
+  const picked=[...(e.target.files||[])];
   e.target.value='';
-  if(!files.length)return;
+  const isPdf=f=>f.type==='application/pdf'||/\.pdf$/i.test(f.name),pdfs=picked.filter(isPdf),files=picked.filter(f=>f.type.startsWith('image/'));
+  if(!files.length&&!pdfs.length){if(picked.length)showToast('Format non pris en charge — images ou PDF');return}
   const dest=destinationForShot();
   if(!dest){openDestinationPicker(camT('chooseFirst'));return}
+  // PDFs are filed in the destination's séance (Fichiers, Lecture rapide, the course), not through the photo queue.
+  if(pdfs.length){
+    for(const f of pdfs)await storeImportedPdf(f,{courseId:dest.courseId,sessionIds:[dest.sessionId]});
+    saveState();queueSync();
+    showToast(`${plural(pdfs.length,'PDF ajouté','PDF ajoutés')} à ${cameraDestinationLabel(camDest)}`);
+    if(!files.length)return;
+  }
   if(isScanMode(camMode)){
     camShots.push(...await importScanFiles(files,dest));
   }else for(const file of files){

@@ -57,7 +57,7 @@ function renderCapture(){
         <button class="camera-text-btn" id="galleryBtn">${icon('upload',{size:16})}${esc(camT('importBtn'))}</button>
         <span></span>
         <button class="camera-done" id="finishCapture">${esc(camT('done'))}</button>
-        <input type="file" id="galleryInput" accept="image/*" multiple hidden>
+        <input type="file" id="galleryInput" accept="image/*,application/pdf,.pdf" multiple hidden>
         <input type="file" id="cameraFallbackInput" accept="image/*" capture="environment" hidden>
       </div>
     </div>

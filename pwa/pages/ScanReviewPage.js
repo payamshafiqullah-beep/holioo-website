@@ -186,19 +186,13 @@ function deleteScanPage(id){
   showUndo(camT('reviewDeleted'),()=>{
     const p=scanReview.pendingDelete;if(!p||p.id!==id)return;clearTimeout(p.timer);scanReview.pendingDelete=null;
     const c=findSessionContext(p.sessionId);if(c)c.session.photoIds.splice(Math.max(0,p.pos),0,id);
-    camShots.splice(Math.max(0,p.shot),0,id);saveState();render();
+    camShots.splice(Math.max(0,p.shot),0,id);saveState();removeDeletedScanPageTile(id);
   });
   removeDeletedScanPageTile(id);
 }
-// The grid keeps its scroll: only the deleted page's card goes, the others are renumbered. One page at a time
-// (or nothing left): the screen is redrawn, which shows the next page (or leaves an empty review).
 function removeDeletedScanPageTile(id){
-  const tile=scanReview.index==null&&document.querySelector(`.srv-page[data-photo-id="${CSS.escape(id)}"]`);
-  const left=scanReviewIds().length;
-  if(!tile||!left)return render();
-  tile.remove();
-  document.querySelectorAll('.srv-page').forEach((c,i)=>{const n=c.querySelector('.num');if(n)n.textContent=i+1;c.querySelector('img')?.setAttribute('alt',`Page ${i+1}`)});
-  const t=document.querySelector('.srv-title b');if(t)t.textContent=camT('reviewPages',{n:left});
+  if(scanReview.index===null){const tile=document.querySelector(`.srv-page[data-photo-id="${CSS.escape(id)}"]`);if(tile)tile.remove()}
+  else if(scanReview.index!==null){const ids=scanReviewIds();if(ids[scanReview.index]===id){ids.splice(scanReview.index,1);if(!ids.length)navigate('session');else{scanReview.index=Math.min(scanReview.index,ids.length-1);showScanPreview(ids[scanReview.index])}}}
 }
 function flushScanDelete(){
   const p=scanReview.pendingDelete;if(!p)return;scanReview.pendingDelete=null;clearTimeout(p.timer);

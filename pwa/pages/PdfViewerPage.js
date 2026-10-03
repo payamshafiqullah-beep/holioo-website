@@ -14,6 +14,7 @@ async function renderPdfViewer(){
     <div class="pdf-frame-wrap"><div class="pdf-pages" id="pdfPages"><p class="pdf-loading">Chargement du PDF…</p></div></div>
     <div class="viewer-dock">
       <button class="dock-btn" id="pdfShare">${icon('share',{size:22})}<small>Partager</small></button>
+      <button class="dock-btn" id="pdfSharePeople">${icon('users',{size:22})}<small>Avec Holioo</small></button>
       <button class="dock-btn" id="pdfPublish">${icon('globe',{size:22})}<small>Bibliothèque</small></button>
       <button class="dock-btn" id="pdfDrive">${icon('cloud',{size:22})}<small>${row.driveFileId?'Déjà dans Drive':'Synchroniser vers Drive'}</small></button>
       <button class="dock-btn" id="pdfDownload">${icon('download',{size:22})}<small>Enregistrer une copie</small></button>
@@ -22,6 +23,7 @@ async function renderPdfViewer(){
   byId('pdfBack').onclick=()=>{revokeViewerUrl();navigate(currentPdfReturnView||'files')};
   byId('pdfDelete').onclick=()=>confirmDeletePdf(meta.id,currentPdfReturnView);
   byId('pdfShare').onclick=()=>sharePdf(meta,row);
+  byId('pdfSharePeople').onclick=()=>sharePdfWithPeople(meta,row);
   byId('pdfPublish').onclick=()=>publishPdfToLibrary(meta,row);
   byId('pdfDrive').onclick=()=>syncPdfNow(meta,row);
   byId('pdfDownload').onclick=()=>downloadPdf(meta,row);

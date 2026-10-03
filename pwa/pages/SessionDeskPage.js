@@ -58,7 +58,7 @@ async function renderSessionDesk(){
       <div class="desk-session-actions">
         ${tool('addSessionPhotos',n?'Ajouter des photos':'Prendre des photos','camera','data-nav="capture"')}
         ${tool('buildPdf','Créer un PDF','fileText')}
-        ${n?`${tool('publishSession',pub?'Publiée':'Publier','globe')}${tool('ocrSession','Reconnaître le texte','scan')}${tool('exportImages','Exporter','share')}`:''}
+        ${n?`${tool('publishSession',pub?'Publiée':'Publier','globe')}${tool('ocrSession','Reconnaître le texte','scan')}${tool('exportImages','Exporter','share')}${tool('shareSessionPeople','Partager avec Holioo','users')}`:''}
         ${tool('renameSession','Renommer','pencil')}
       </div>
     </div>
@@ -108,6 +108,7 @@ async function renderSessionDesk(){
   byId('buildPdf')?.addEventListener('click',()=>navigate('pdfBuilder'));
   byId('ocrSession')?.addEventListener('click',()=>recognizeSessionText(session));
   byId('exportImages')?.addEventListener('click',()=>exportSessionImages(course,section,session));
+  byId('shareSessionPeople')?.addEventListener('click',()=>shareSessionWithPeople(course,section,session));
   if(n)updateSessionOcrLabel(session);
   byId('publishSession')?.addEventListener('click',()=>publishSession(course,section,session));
   byId('renameSession')?.addEventListener('click',()=>openSheet({title:'Renommer la séance',body:Field({label:'Titre',id:'renameValue',value:session.title}),onConfirm:()=>{const title=byId('renameValue').value.trim()||session.title;if(title!==session.title){const problem=sessionTitleProblem(section,title,session.id);if(problem){showToast(problem);return false}}session.title=title;saveState();render();queueSync();return true}}));

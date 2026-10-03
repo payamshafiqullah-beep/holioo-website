@@ -32,7 +32,8 @@ async function renderSession(){
         ${ActionButton({label:'Créer un PDF',id:'buildPdf',iconName:'fileText'})}
         ${n?`${ActionButton({label:pub?'Publiée dans la bibliothèque':'Publier dans la bibliothèque',id:'publishSession',variant:pub?'soft':'ghost',iconName:pub?'checkCircle':'globe'})}
         ${ActionButton({label:'Reconnaître le texte',id:'ocrSession',variant:'ghost',iconName:'scan'})}
-        ${ActionButton({label:'Exporter les images',id:'exportImages',variant:'ghost',iconName:'share'})}`:''}
+        ${ActionButton({label:'Exporter les images',id:'exportImages',variant:'ghost',iconName:'share'})}
+        ${ActionButton({label:'Partager avec des personnes Holioo',id:'shareSessionPeople',variant:'ghost',iconName:'users'})}`:''}
         ${ActionButton({label:'Renommer la séance',id:'renameSession',variant:'ghost',iconName:'pencil'})}
       </div>`:'';
   const galleryView=n?`${SectionTitle('Galerie',{action:'Plein écran',id:'openFirstPhoto'})}
@@ -75,6 +76,7 @@ async function renderSession(){
   byId('buildPdf')?.addEventListener('click',()=>navigate('pdfBuilder'));
   byId('ocrSession')?.addEventListener('click',()=>recognizeSessionText(session));
   byId('exportImages')?.addEventListener('click',()=>exportSessionImages(course,section,session));
+  byId('shareSessionPeople')?.addEventListener('click',()=>shareSessionWithPeople(course,section,session));
   if(n)updateSessionOcrLabel(session);
   byId('publishSession')?.addEventListener('click',()=>publishSession(course,section,session));
   byId('renameSession')?.addEventListener('click',()=>openSheet({title:'Renommer la séance',body:Field({label:'Titre',id:'renameValue',value:session.title}),onConfirm:()=>{const title=byId('renameValue').value.trim()||session.title;if(title!==session.title){const problem=sessionTitleProblem(section,title,session.id);if(problem){showToast(problem);return false}}session.title=title;saveState();render();queueSync();return true}}));

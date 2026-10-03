@@ -20,6 +20,7 @@ Examples:
 - PDF viewer → `pages/PdfViewerPage.js`
 - Library → `pages/AcademicLibraryPage.js`
 - Profile → `pages/ProfilePage.js`
+- People (added people + what I shared) → `pages/PeoplePage.js`; Holioo Shares (received, grouped by sender) → `pages/HolioSharesPage.js`; read-only viewer of a received document → `pages/SharedViewerPage.js`
 
 If only one screen changes, edit that page file first. Do not rewrite unrelated page files.
 
@@ -69,6 +70,7 @@ Shared behavior that several screens use lives in `pwa/features/`:
 - `thumbs.js` — small stored previews (`thumb`) used by every photo grid; full photos only in the viewer, PDF and Drive
 - `pdf-actions.js` — PDF generation helpers
 - `community-actions.js` — publish/library/Profile/Drive UI actions
+- `people.js` — People + Holioo Shares (`supabase/migrations/20261004120000_people_and_shares.sql`): exact-ID lookup by the RPC `find_holioo_person` (never a read of the private `profiles` table: its RLS only shows your own row), private `connections`, shares = one `shares` row per (document, recipient) + files in the PRIVATE bucket `shared-items` (`<owner>/<key>/<file>`), readable only by the owner and a recipient of a share listing that path; view-only (no write path for recipients), owner revokes by deleting the row (files removed with the last share that lists them). The "Partager avec des personnes Holioo" option sits next to the existing share methods (Fichiers menu, PDF viewer, séance page) and never replaces them.
 - `media-viewer.js` — shared photo/PDF viewer state and actions
 
 ## Services and app shell

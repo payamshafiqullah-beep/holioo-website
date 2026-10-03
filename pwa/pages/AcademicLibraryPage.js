@@ -36,7 +36,7 @@ async function renderLibrary(){
     :!profileReady?`<div class="notice tone-lavender">${icon('cap',{size:18})}<span>Complétez votre profil académique pour voir le matériel de votre promotion.</span><button class="link-btn" data-nav="profile">Compléter</button></div>`:'';
 
   app.innerHTML=`<section class="screen">
-    ${PageHeader({title:'Bibliothèque',large:true})}
+    ${PageHeader({title:'Bibliothèque',large:true,trailing:`<button class="icon-btn" id="holiooSharesBtn" type="button" aria-label="Holioo Shares" title="Holioo Shares">${icon('users',{size:22})}</button>`})}
     ${SearchBar({id:'librarySearch',placeholder:'Rechercher dans la bibliothèque...'})}
     ${FilterChips('libraryFilters',[{value:'all',label:'Tous'},{value:'cours',label:'Cours'},{value:'pdf',label:'PDF'},{value:'notes',label:'Notes'},{value:'sessions',label:'Sessions'},{value:'favoris',label:'Favoris'}],'all')}
     <div class="stat-grid four">
@@ -75,6 +75,7 @@ async function renderLibrary(){
     <div id="libraryEmpty" hidden>${EmptyState({iconName:'library',title:'Rien à afficher',text:'Aucun élément ne correspond à ce filtre pour le moment.'})}</div>
   </section>`;
 
+  byId('holiooSharesBtn').onclick=()=>navigate('holiooShares');
   bindListFilter({searchId:'librarySearch',chipsId:'libraryFilters',scope:'#libraryContent',onChange:({shown})=>byId('libraryEmpty').hidden=!!shown});
   document.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>document.querySelector(`#libraryFilters [data-chip="${b.dataset.pick}"]`)?.click());
   document.querySelectorAll('[data-year]').forEach(b=>b.onclick=()=>{currentLibrary={step:'courses',year:b.dataset.year};render()});

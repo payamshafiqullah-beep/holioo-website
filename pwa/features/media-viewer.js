@@ -126,6 +126,7 @@ function openPdfViewer(fileId,returnView='files'){
   currentFileId=fileId;
   if(!state.files.some(f=>f.id===fileId)){showToast('PDF introuvable');return}
   currentPhotoViewer=null;
+  try{localStorage.setItem('holioo_last_pdf',fileId)}catch{}
   currentPdfReturnView=returnView;
   navigate('pdfViewer');
 }

@@ -71,9 +71,16 @@ function attachQuickReading(trigger){
   });
 }
 
-// A page of paper with lines of text on it (not a circle). The row around it says how many PDFs there are.
+// Reprendre: the PDF read last (kept by openPdfViewer), else the newest one.
+function resumeLastReading(){
+  let id='';try{id=localStorage.getItem('holioo_last_pdf')||''}catch{}
+  if(!state.files.some(f=>f.id===id))id=state.files[state.files.length-1]?.id;
+  if(id)openPdfViewer(id,'home');else navigate('files');
+}
+
+// The panel: a violet disc (with two slowly turning rings) that is the radial-menu trigger, the title and the number
+// of PDFs, and the Reprendre button.
 function QuickReadingTrigger({id='readQuick'}={}){
   const n=state.files.length;
-  const page=`<svg class="qr-page" viewBox="0 0 56 72" aria-hidden="true" focusable="false"><path class="qr-sheet" d="M4 2h33l15 15v51a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><path class="qr-fold" d="M37 2v12a3 3 0 0 0 3 3h12"/><rect class="qr-line head" x="9" y="24" width="30" height="3.4" rx="1.7"/><rect class="qr-line" x="9" y="33" width="38" height="2.6" rx="1.3"/><rect class="qr-line" x="9" y="40" width="34" height="2.6" rx="1.3"/><rect class="qr-line" x="9" y="47" width="38" height="2.6" rx="1.3"/><rect class="qr-line" x="9" y="54" width="26" height="2.6" rx="1.3"/><rect class="qr-line" x="9" y="61" width="32" height="2.6" rx="1.3"/></svg>`;
-  return`<div class="list-card static qr-row"><button type="button" class="qr-trigger" id="${id}" aria-label="${esc(camT('rdButton'))}">${page}<small>${esc(camT('rdTrigger'))}</small></button><span class="list-card-copy"><strong>${esc(n?camT('rdSummary',{n}):camT('rdSummaryNone'))}</strong><small>${esc(camT('rdHint'))}</small></span></div>`;
+  return`<div class="qr-row"><button type="button" class="qr-trigger" id="${id}" aria-label="${esc(camT('rdButton'))}"><i class="qr-ring qr-outer" aria-hidden="true"></i><i class="qr-ring qr-inner" aria-hidden="true"></i><span class="qr-page qr-core">${icon('fileText',{size:20})}</span></button><span class="qr-copy"><strong>${esc(camT('rdTrigger'))}</strong><small>${esc(n?camT('rdSummary',{n}):camT('rdSummaryNone'))}</small></span>${n?`<button type="button" class="qr-resume" id="${id}Resume" aria-label="${esc(camT('rdResumeAria'))}"><span class="qr-play">${icon('play',{size:16})}</span><small>${esc(camT('rdResume'))}</small></button>`:''}</div>`;
 }

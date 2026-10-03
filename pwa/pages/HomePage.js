@@ -37,6 +37,7 @@ async function renderHome(){
   const heroQuick=byId('heroQuick');
   attachQuickCapture(heroQuick,heroQuick?.hasAttribute('data-desk-notes')?openQuickNotes:undefined);
   attachQuickReading(byId('readQuick'));
+  byId('readQuickResume')?.addEventListener('click',resumeLastReading);
   byId('heroResume')?.addEventListener('click',()=>{currentCourseId=latest.course.id;currentSectionId=latest.section.id;currentSessionId=latest.session.id;navigate('session')});
   byId('homeInbox').onclick=()=>navigate(inboxCount?'inbox':'capture');
 }

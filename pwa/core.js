@@ -174,17 +174,17 @@ async function runDriveSync(reason='manual'){
     driveStatus=await Drive.status(sb,currentUser.id);if(!driveStatus.connected){if(reason==='manual')showToast('Connectez Google Drive d’abord');return}
     const result=await Drive.syncAll({sb,user:currentUser,state,db:DB,documents:driveDocuments(),
       save:()=>{saveState.quiet=true;try{saveState()}finally{saveState.quiet=false}},
-      onDocument:(d,files)=>{if(typeof notesDocumentSent===’function’)notesDocumentSent(d,files)},
-      onProgress:({checked,total,phase})=>{syncIndicator={cls:’pending’,text:`${phase===’pull’?’Réception’:’Synchronisation’}… ${checked}/${total}`};applyChromeStatus()}});
+      onDocument:(d,files)=>{if(typeof notesDocumentSent==='function')notesDocumentSent(d,files)},
+      onProgress:({checked,total,phase})=>{syncIndicator={cls:'pending',text:`${phase==='pull'?'Réception':'Synchronisation'}… ${checked}/${total}`};applyChromeStatus()}});
     // What the account’s other devices added or removed is now here: show it where that is safe (not in the camera,
     // the photo viewer, a notebook being written in, a form being filled).
     const news=(result.received||0)+(result.changed?1:0);
-    if(news&&[‘home’,’courses’,’course’,’section’,’files’,’inbox’,’sync’,’library’,’profile’].includes(currentView))render();
-    if(result.failed){console.warn(‘Drive sync:’,result.lastError);showToast(`${result.failed} élément(s) non synchronisé(s) — nouvel essai plus tard`)}
+    if(news&&['home','courses','course','section','files','inbox','sync','library','profile'].includes(currentView))render();
+    if(result.failed){console.warn('Drive sync:',result.lastError);showToast(`${result.failed} élément(s) non synchronisé(s) — nouvel essai plus tard`)}
     else if(result.receivedFailed)showToast(`${result.receivedFailed} élément(s) de vos autres appareils n’ont pas pu être reçus — nouvel essai plus tard`);
     else if(result.received)showToast(`${result.received} élément(s) reçu(s) de vos autres appareils`);
-    else if(reason===’manual’||result.synced)showToast(result.synced?`${result.synced} élément(s) synchronisé(s)`:result.changed?’Vos autres appareils sont à jour ici’:’Tout est déjà synchronisé’);
-  }catch(e){console.error(e);syncIndicator={cls:’error’,text:’Erreur de synchronisation’};applyChromeStatus();if(e?.code===’DRIVE_FULL’)showToast(‘Google Drive est plein : libérez de l’espace pour continuer la sauvegarde’);else if(reason===’manual’)showToast(`Sync impossible : ${e.message||e}`)}finally{syncBusy=false;await refreshSyncIndicator();if(currentView===’sync’)render();const again=runDriveSync.again;runDriveSync.again=null;if(again)queueSync(again===’manual’?’auto’:again)}
+    else if(reason==='manual'||result.synced)showToast(result.synced?`${result.synced} élément(s) synchronisé(s)`:result.changed?'Vos autres appareils sont à jour ici':'Tout est déjà synchronisé');
+  }catch(e){console.error(e);syncIndicator={cls:'error',text:'Erreur de synchronisation'};applyChromeStatus();if(e?.code==='DRIVE_FULL')showToast('Google Drive est plein : libérez de l’espace pour continuer la sauvegarde');else if(reason==='manual')showToast(`Sync impossible : ${e.message||e}`)}finally{syncBusy=false;await refreshSyncIndicator();if(currentView==='sync')render();const again=runDriveSync.again;runDriveSync.again=null;if(again)queueSync(again==='manual'?'auto':again)}
 }
 
 function bindCourseCards(){document.querySelectorAll('[data-course]').forEach(b=>b.onclick=()=>{currentCourseId=b.dataset.course;navigate('course')})}

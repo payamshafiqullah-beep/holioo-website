@@ -284,7 +284,7 @@
     if(!r.ok){const e=new Error(`Google Drive ${r.status}`);e.status=r.status;throw e}
     return r;
   }
-  const downloadBlob=(ctx,id)=>retrying(ctx,async()=>(await download(ctx,id)).blob());
+  const cloudBlob=(ctx,id)=>retrying(ctx,async()=>(await download(ctx,id)).blob());
   const downloadJson=(ctx,id)=>retrying(ctx,async()=>JSON.parse(await(await download(ctx,id)).text()));
 
   async function fetchMissing(ctx,{state,db,save,onProgress}){
@@ -300,7 +300,7 @@
           const row=await db.get(store,id);
           if(!row||row.blob){settle(store,id)}                                // gone, or already here
           else{
-            const blob=await downloadBlob(ctx,row.driveFileId);
+            const blob=await cloudBlob(ctx,row.driveFileId);
             // Written into the latest version of the row (the person may have used the photo meanwhile).
             await db.patch(store,id,{blob,placeholder:false});settle(store,id);received++;
           }

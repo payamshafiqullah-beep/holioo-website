@@ -4,7 +4,7 @@ const read=p=>fs.readFileSync(new URL(p,import.meta.url),'utf8');
 
 const pageFiles=[
   './pages/LoginPage.js','./pages/AdminPage.js','./pages/AcademicSetupPage.js','./pages/HomePage.js','./pages/CoursesPage.js',
-  './pages/CourseDetailPage.js','./pages/SectionPage.js','./pages/SessionPage.js','./pages/SessionDeskPage.js','./pages/GalleryDeskPage.js','./pages/NotesCanvasPage.js','./pages/LiveCapturePage.js','./pages/CapturePage.js','./pages/ScanReviewPage.js',
+  './pages/CourseDetailPage.js','./pages/SectionPage.js','./pages/SessionPage.js','./pages/GalleryDeskPage.js','./pages/NotesCanvasPage.js','./pages/LiveCapturePage.js','./pages/CapturePage.js','./pages/ScanReviewPage.js',
   './pages/CaptureCompletePage.js','./pages/SplitBatchPage.js','./pages/OrganizeBatchPage.js','./pages/InboxPage.js',
   './pages/PhotoViewerPage.js','./pages/PdfBuilderPage.js','./pages/PdfViewerPage.js','./pages/FilesPage.js',
   './pages/AcademicLibraryPage.js','./pages/ProfilePage.js','./pages/SyncPage.js'
@@ -28,7 +28,7 @@ const drive=read('./drive.js');
 const html=read('./index.html');
 const sw=read('./sw.js');
 const manifest=JSON.parse(read('./manifest.webmanifest'));
-if(!html.includes('20261003-epure-v5'))throw new Error('Asset cache-bust version missing');
+if(!html.includes('20261003-epure-v6'))throw new Error('Asset cache-bust version missing');
 
 const required=[
   'Diviser le lot','Organiser les photos','Captures à trier','Section personnalisée','Nouvelle séance',
@@ -83,7 +83,7 @@ if(/from\('sync_signals'\)\.insert\(\{[^}]*(title|name|text|blob)/.test(read('./
 {const desk=read('./ui/desk-shell.js'),css=read('./styles.css');
 if(!desk.includes("matchMedia('(min-width:768px)')"))throw new Error('Desk layout must start at 768px');
 if(/bottomNav\.innerHTML|NAV_ITEMS\s*=/.test(desk))throw new Error('The desk layout must not touch the phone navigation');
-for(const s of ['renderSessionDesk','bindNoteField','notesDriveDocuments','pullSessionNotes','syncDesk'])if(!app.includes(s))throw new Error(`Desk / notes missing: ${s}`);
+for(const s of ['bindNoteField','notesDriveDocuments','pullSessionNotes','syncDesk'])if(!app.includes(s))throw new Error(`Desk / notes missing: ${s}`);
 const deskCss=css.slice(css.indexOf('TABLET & COMPUTER'));
 if(!deskCss||/@media\s*\((?!min-width:768px)/.test(deskCss.replace(/@media \(prefers-reduced-motion:reduce\)/g,'')))throw new Error('Desk styles must stay under @media (min-width:768px)');}
 // Live Capture: the phone uploads each photo at once only while a tablet listens (presence), then signals it.

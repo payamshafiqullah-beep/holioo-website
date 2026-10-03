@@ -1,6 +1,6 @@
 'use strict';
 // Typed notes of a séance: one for the séance itself and one beside each photo (tablet / computer layout,
-// pages/SessionDeskPage.js and pages/LiveCapturePage.js).
+// pages/LiveCapturePage.js).
 // Stored on the device in IndexedDB `kv` as notes:<séance id>; a copy goes to the séance's Drive folder as
 // Notes.json (notesDriveDocuments, through drive.js documents like the Carnet). After it is sent, a `note`
 // signal tells the other devices, which read that file from Drive and merge it note by note (newer wins).

@@ -66,7 +66,7 @@ function navigatorRefresh(){
 
 // The one entry point of a choice (tree, breadcrumb): sets the selection and goes to the screen that fits it.
 function navigatorSelect(kind,ids){
-  const next=navIds(kind,ids);let view=navTargetView(currentView,kind);
+  const next=navIds(kind,ids);let view=navTargetView(currentView,kind,isDesk());
   currentCourseId=next.courseId;currentSectionId=next.sectionId;currentSessionId=next.sessionId;
   // The PDF builder works from a séance: given a course or a type, it takes the latest one that has photos.
   if(view==='pdfBuilder'&&kind!=='session'){
@@ -94,7 +94,7 @@ function navigatorAddCourse(){
   openNewCourseSheet(c=>{
     const ids=navIds('course',{courseId:c.id});
     currentCourseId=ids.courseId;currentSectionId=null;currentSessionId=null;
-    currentView=navTargetView(currentView,'course');navigatorState.open.add(c.id);
+    currentView=navTargetView(currentView,'course',isDesk());navigatorState.open.add(c.id);
   });
 }
 

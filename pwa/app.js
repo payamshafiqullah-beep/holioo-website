@@ -1,4 +1,4 @@
-const VIEWS={login:()=>renderLogin(),blocked:()=>renderBlocked(),admin:()=>renderAdmin(),academicSetup:()=>renderAcademicSetup(),home:()=>renderHome(),courses:()=>renderCourses(),course:()=>renderCourse(),section:()=>renderSection(),session:()=>typeof isDesk==='function'&&isDesk()?renderSessionDesk():renderSession(),capture:()=>renderCapture(),scanReview:()=>renderScanReview(),captureComplete:()=>renderCaptureComplete(),split:()=>renderSplit(),organize:()=>renderOrganize(),inbox:()=>renderInbox(),photoViewer:()=>renderPhotoViewer(),pdfBuilder:()=>renderPdfBuilder(),pdfViewer:()=>renderPdfViewer(),files:()=>renderFiles(),library:()=>renderLibrary(),profile:()=>renderProfile(),sync:()=>renderSync(),live:()=>renderLiveCapture(),gallery:()=>renderGallery(),notes:()=>renderNotesCanvas()};
+const VIEWS={login:()=>renderLogin(),blocked:()=>renderBlocked(),admin:()=>renderAdmin(),academicSetup:()=>renderAcademicSetup(),home:()=>renderHome(),courses:()=>renderCourses(),course:()=>renderCourse(),section:()=>renderSection(),session:()=>renderSession(),capture:()=>renderCapture(),scanReview:()=>renderScanReview(),captureComplete:()=>renderCaptureComplete(),split:()=>renderSplit(),organize:()=>renderOrganize(),inbox:()=>renderInbox(),photoViewer:()=>renderPhotoViewer(),pdfBuilder:()=>renderPdfBuilder(),pdfViewer:()=>renderPdfViewer(),files:()=>renderFiles(),library:()=>renderLibrary(),profile:()=>renderProfile(),sync:()=>renderSync(),live:()=>renderLiveCapture(),gallery:()=>renderGallery(),notes:()=>renderNotesCanvas()};
 // Tablet / computer: the course navigator replaces the course page, the type page and the course list — those screens
 // (still the phone's own) open the Galerie on what they were about.
 const DESK_REDIRECT={courses:'gallery',course:'gallery',section:'gallery'};
@@ -11,13 +11,14 @@ async function render(){
   else if(currentView==='login'||currentView==='blocked')currentView='home';
   if(currentView==='admin'&&currentRole!=='admin')currentView='profile';
   if(signedIn&&!state.onboardingComplete&&currentView==='home')currentView='academicSetup';
+  // Tablet / computer: the séance screen does not exist — the Notes page of that séance (currentSessionId kept) is the one notes page.
+  if(currentView==='session'&&typeof isDesk==='function'&&isDesk())currentView='notes';
   if(DESK_REDIRECT[currentView]&&typeof isDesk==='function'&&isDesk()){
     if(currentView!=='section')currentSectionId=null;
     currentSessionId=null;currentView=DESK_REDIRECT[currentView];
   }
   setChrome(['login','blocked','academicSetup','photoViewer','pdfViewer','capture','scanReview','admin'].includes(currentView));
   if(typeof flushNoteSaves==='function')flushNoteSaves();
-  if(typeof deskSessionCleanup==='function'){deskSessionCleanup();deskSessionCleanup=null}
   if(typeof liveCleanup==='function'){liveCleanup();liveCleanup=null}
   if(typeof galleryCleanup==='function'){galleryCleanup();galleryCleanup=null}
   if(typeof canvasCleanup==='function'){canvasCleanup();canvasCleanup=null}

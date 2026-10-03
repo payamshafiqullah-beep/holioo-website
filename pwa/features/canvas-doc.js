@@ -51,24 +51,26 @@ function emptyCanvasDoc(sessionId=''){
 
 // ── Reading a stored or received document: unknown or broken parts are dropped, numbers made safe ──
 const _str=v=>typeof v==='string'?v:'';
+// A colour from a stored or received document ends up in an attribute: only #rgb / #rrggbb(aa) is accepted.
+const _color=v=>typeof v==='string'&&/^#[0-9a-fA-F]{3,8}$/.test(v)?v:CANVAS_COLORS.pen[0];
 function _item(raw){
   if(!raw||typeof raw!=='object'||typeof raw.id!=='string'||!raw.id)return null;
   const type=raw.type,base={id:raw.id,type,x:canvasNum(raw.x),y:Math.max(0,canvasNum(raw.y)),w:Math.max(0,canvasNum(raw.w)),h:Math.max(0,canvasNum(raw.h)),z:canvasNum(raw.z),updatedAt:canvasNum(raw.updatedAt)};
   if(raw.deleted)base.deleted=true;
   if(type==='photo'){if(typeof raw.photoId!=='string')return null;return{...base,photoId:raw.photoId}}
-  if(type==='text')return{...base,text:_str(raw.text),lines:Array.isArray(raw.lines)?raw.lines.map(_str):_str(raw.text).split('\n'),color:_str(raw.color)||CANVAS_COLORS.pen[0],size:canvasClamp(canvasNum(raw.size,CANVAS_SIZES.text[1]),8,120)};
+  if(type==='text')return{...base,text:_str(raw.text),lines:Array.isArray(raw.lines)?raw.lines.map(_str):_str(raw.text).split('\n'),color:_color(raw.color),size:canvasClamp(canvasNum(raw.size,CANVAS_SIZES.text[1]),8,120)};
   if(type==='arrow'){
     const p=Array.isArray(raw.p)&&raw.p.length===4?raw.p.map(v=>canvasNum(v)):null;if(!p)return null;
-    return{...base,...canvasArrowBox(p),p,color:_str(raw.color)||CANVAS_COLORS.pen[0],size:canvasClamp(canvasNum(raw.size,CANVAS_SIZES.shape[1]),1,40)};
+    return{...base,...canvasArrowBox(p),p,color:_color(raw.color),size:canvasClamp(canvasNum(raw.size,CANVAS_SIZES.shape[1]),1,40)};
   }
-  if(type==='rect')return{...base,color:_str(raw.color)||CANVAS_COLORS.pen[0],size:canvasClamp(canvasNum(raw.size,CANVAS_SIZES.shape[1]),1,40)};
+  if(type==='rect')return{...base,color:_color(raw.color),size:canvasClamp(canvasNum(raw.size,CANVAS_SIZES.shape[1]),1,40)};
   return null;
 }
 function _stroke(raw){
   if(!raw||typeof raw!=='object'||typeof raw.id!=='string'||!raw.id||!Array.isArray(raw.pts)||!raw.pts.length)return null;
   const pts=raw.pts.filter(p=>Array.isArray(p)&&p.length>=2&&Number.isFinite(+p[0])&&Number.isFinite(+p[1])).map(p=>[+p[0],+p[1],p.length>2&&Number.isFinite(+p[2])?+p[2]:.5]);
   if(!pts.length)return null;
-  const s={id:raw.id,tool:raw.tool==='highlighter'?'highlighter':'pen',color:_str(raw.color)||CANVAS_COLORS.pen[0],size:canvasClamp(canvasNum(raw.size,CANVAS_SIZES.pen[1]),.5,80),pts,sp:raw.sp?1:0,at:canvasNum(raw.at),updatedAt:canvasNum(raw.updatedAt)};
+  const s={id:raw.id,tool:raw.tool==='highlighter'?'highlighter':'pen',color:_color(raw.color),size:canvasClamp(canvasNum(raw.size,CANVAS_SIZES.pen[1]),.5,80),pts,sp:raw.sp?1:0,at:canvasNum(raw.at),updatedAt:canvasNum(raw.updatedAt)};
   if(raw.deleted)s.deleted=true;
   return s;
 }

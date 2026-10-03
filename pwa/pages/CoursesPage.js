@@ -28,7 +28,7 @@ function renderCourses(){
 }
 
 // Also opened from Quick Capture on Accueil when there is no course yet.
-// `onCreated(course)`: called with the new course just before the screen is drawn again (tablet / computer Galerie) Used as a click handler too, so anything that is not a function is ignored.
+// `onCreated(course)`: called with the new course just before the screen is drawn again (tablet / computer Galerie). Used as a click handler too, so anything that is not a function is ignored.
 function openNewCourseSheet(onCreated=null){
   openSheet({title:'Nouveau cours',subtitle:'Les sections CM, TD et TP sont créées automatiquement.',body:Field({label:'Nom du cours',id:'newCourseName',placeholder:'Ex. Traitement du signal'}),onConfirm:()=>{const name=byId('newCourseName').value.trim();const problem=courseNameProblem(name);if(problem){showToast(problem);return false}const colors=['#5B67F1','#8C5CF5','#FF8A4C','#29ADB5'];const course=sampleCourse(name,colors[state.courses.length%colors.length]);state.courses.push(course);if(typeof onCreated==='function')onCreated(course);saveState();render();queueSync();return true}});
 }

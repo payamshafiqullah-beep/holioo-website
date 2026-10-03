@@ -39,6 +39,19 @@ test('reading a stored document drops broken parts and makes numbers safe', () =
   assert.equal(C.normalizeCanvasDoc(null, 'q').sessionId, 'q');
 });
 
+test('colours are checked when a document is read (they end up in attributes)', () => {
+  const evil = '#fff" onload="alert(1)';
+  const d = C.normalizeCanvasDoc({ items: [
+    { id: 'r', type: 'rect', x: 0, y: 0, w: 10, h: 10, z: 1, color: evil, size: 3 },
+    { id: 't', type: 'text', x: 0, y: 0, w: 100, h: 40, z: 2, text: 'x', lines: ['x'], color: 'red', size: 20 },
+    { id: 'a', type: 'arrow', p: [0, 0, 10, 10], z: 3, color: '#12ab34', size: 3 }],
+  strokes: [{ id: 's', pts: [[1, 1]], color: '"><script>', tool: 'pen', size: 3 }] });
+  assert.equal(d.items.find(i => i.id === 'r').color, '#111827', 'a colour with quotes is replaced');
+  assert.equal(d.items.find(i => i.id === 't').color, '#111827', 'only hex colours are accepted');
+  assert.equal(d.items.find(i => i.id === 'a').color, '#12ab34', 'a normal colour is kept');
+  assert.equal(d.strokes[0].color, '#111827');
+});
+
 test('the newest edit of an id wins when a list holds it twice', () => {
   const d = C.normalizeCanvasDoc({ items: [photo('a', 0, 0, 10, 10, 1, { updatedAt: 5 }), photo('a', 99, 0, 10, 10, 1, { updatedAt: 9 })] });
   assert.equal(d.items.length, 1);

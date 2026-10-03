@@ -28,7 +28,7 @@ const drive=read('./drive.js');
 const html=read('./index.html');
 const sw=read('./sw.js');
 const manifest=JSON.parse(read('./manifest.webmanifest'));
-if(!html.includes('20261003-live-capture-v1'))throw new Error('Asset cache-bust version missing');
+if(!html.includes('20261003-desk-canvas-v1'))throw new Error('Asset cache-bust version missing');
 
 const required=[
   'Diviser le lot','Organiser les photos','Captures à trier','Section personnalisée','Nouvelle séance',
@@ -89,6 +89,19 @@ if(!deskCss||/@media\s*\((?!min-width:768px)/.test(deskCss.replace(/@media \(pre
 // Live Capture: the phone uploads each photo at once only while a tablet listens (presence), then signals it.
 for(const s of ['renderLiveCapture','onPhotoStoredForLive','receiveRemotePhoto','updatePresence','liveListeners'])if(!app.includes(s))throw new Error(`Live Capture missing: ${s}`);
 if(!read('./features/camera-queue.js').includes('onPhotoStoredForLive'))throw new Error('Camera queue must hand stored photos to Live Capture');
+// Galerie + Notes page (tablet / computer): never on phones, scoped styles, model + sync + PDF wired, signal migration shipped.
+{const css=read('./styles.css'),deskCss=css.slice(css.indexOf('TABLET & COMPUTER'));
+for(const s of ['renderGallery','galleryEntries','galleryMoveInList','openQuickCamera(dest)','renderNotesCanvas','canvasMerge','canvasDriveDocuments','canvasDocumentSent','pullSessionCanvas','exportCanvasPdf','canvasRenderSheet','canvasTopBarHtml','deskNotes','deskPdf','deskSync'])if(!app.includes(s))throw new Error(`Galerie / Notes missing: ${s}`);
+if(!read('./pages/GalleryDeskPage.js').includes("if(!isDesk()){navigate('courses')"))throw new Error('Phones must never reach the Galerie');
+if(!read('./pages/NotesCanvasPage.js').includes("if(!isDesk()){navigate('home')"))throw new Error('Phones must never reach the Notes page');
+for(const s of['.gallery-fab','.gallery-grid','.cv-sheet','.cv-tray','.cv-tools','.desk-pill','.desk-menu'])if(!deskCss.includes(s))throw new Error(`Desk style missing (or outside the desk block): ${s}`);
+for(const s of['.gallery-fab','.cv-sheet','.cv-tray','.desk-pill'])if(css.slice(0,css.indexOf('TABLET & COMPUTER')).includes(s))throw new Error(`${s} must only exist in the tablet / computer block`);
+for(const f of['features/canvas-doc.js','features/canvas-render.js','features/canvas-sync.js','features/canvas-export.js','features/gallery-logic.js','pages/GalleryDeskPage.js','pages/NotesCanvasPage.js'])if(!html.includes(`src="./${f}`))throw new Error(`HTML dependency missing: ${f}`);
+if(html.indexOf('features/canvas-doc.js')>html.indexOf('features/canvas-sync.js')||html.indexOf('features/remote-sync.js')>html.indexOf('features/canvas-sync.js'))throw new Error('canvas-sync.js needs canvas-doc.js and remote-sync.js loaded before it');
+if(!fs.existsSync(new URL('../supabase/migrations/20261003120000_sync_signals_canvas.sql',import.meta.url)))throw new Error('The canvas signal needs its migration');
+if(/\(\?<[=!]/.test(read('./features/canvas-doc.js')+read('./features/canvas-render.js')+read('./pages/NotesCanvasPage.js')))throw new Error('No regex look-behind: iPads before Safari 16.4 could not load the file');
+// The phone's own nav and builder are untouched: the Notes option exists only when the desk layout is on.
+if(!read('./pages/PdfBuilderPage.js').includes("typeof isDesk==='function'&&isDesk()"))throw new Error('The PDF builder must offer Notes pages on tablet / computer only');}
 console.log(`Holioo modular smoke test: PASS (${pageFiles.length} page files)`);
 
 for(const s of ['HOLIOO UI v2','--bg:#F7F7FB','--accent:#5B67F1','.bottom-nav','.capture-orb','.shutter','.cam-dest','.cam-sheet'])if(!read('./styles.css').includes(s))throw new Error(`UI v2 style missing: ${s}`);

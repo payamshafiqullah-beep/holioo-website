@@ -70,6 +70,7 @@ async function renderNotesCanvas(){
   }else{rt.course=course;rt.section=section;rt.session=session}
   canvasRuntime=rt;
   canvasBuildDom(rt);
+  rt.viewport.scrollTop=rt.scrollTop||0;      // a redraw (another device's change) never throws the reader back to the top
   canvasBind(rt);
   canvasCleanup=()=>canvasLeave(rt);
 }
@@ -475,13 +476,15 @@ function canvasBind(rt){
   rt.lastW=rt.viewport.clientWidth;ro.observe(rt.viewport);rt.guards.push({disconnect:()=>ro.disconnect()});
   // Photos the phone sends arrive in the tray at once.
   if(typeof onRemoteSignal==='function')rt.unsub.push(onRemoteSignal((sig,got)=>canvasOnSignal(rt,sig,got)));
-  if(typeof pullSessionCanvas==='function')pullSessionCanvas(rt.session.id).catch(e=>console.warn('Canvas pull',e));
+  // What another device wrote since: read when the page opens (not at every redraw, it is a few Drive requests).
+  if(typeof pullSessionCanvas==='function'&&Date.now()-(rt.pulledAt||0)>30000){rt.pulledAt=Date.now();pullSessionCanvas(rt.session.id).catch(e=>console.warn('Canvas pull',e))}
 }
 function canvasLeave(rt){
   canvasCommitText(rt);canvasCancelGesture(rt);
+  rt.scrollTop=rt.viewport?.scrollTop||0;
   for(const g of rt.guards){if(Array.isArray(g))g[0].removeEventListener(g[1],g[2],g[3]);else g.disconnect?.()}
   rt.guards=[];for(const u of rt.unsub)u();rt.unsub=[];
-  if(currentView!=='notes'){for(const id of canvasTrayIds(rt))rt.store.known.add(id);rt.dirty=true}   // seen: no longer "new"
+  if(currentView!=='notes'&&rt.trayShown){for(const id of rt.trayShown)rt.store.known.add(id);rt.dirty=true}   // seen: no longer "new"
   rt.root=null;
   canvasSave(rt);
 }
@@ -769,6 +772,7 @@ function canvasRenderTray(rt,{flash=null}={}){
   const ids=canvasTrayIds(rt),placed=new Set([...rt.store.items.values()].filter(i=>!i.deleted&&i.type==='photo').map(i=>i.photoId));
   const fresh=new Set(ids.filter(id=>!rt.store.known.has(id)&&!placed.has(id)));
   const open=canvasPrefs().tray!=='closed';
+  rt.trayShown=new Set(ids);   // what the tray showed (the badge on the button counts as shown too): "seen" when the page is left
   rt.tray.className=`cv-tray ${open?'open':'closed'}`;
   if(!open){
     rt.tray.innerHTML=`<button class="cv-tray-fab" type="button" data-cv-tray-toggle aria-expanded="false" title="Afficher les photos de la séance" aria-label="Afficher les photos de la séance : ${plural(ids.length,'photo')}${fresh.size?`, ${fresh.size} nouvelle${fresh.size>1?'s':''}`:''}">${icon('images',{size:20})}<b>${ids.length}</b>${fresh.size?'<i class="cv-dot-new" aria-hidden="true"></i>':''}</button>`;

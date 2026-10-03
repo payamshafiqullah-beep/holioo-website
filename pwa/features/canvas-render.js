@@ -42,7 +42,8 @@ function canvasDrawSlice(ctx,doc,{y0,y1,scale,photos}){
       if(bmp){ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(bmp,it.x,it.y,it.w,it.h)}
       else{ctx.fillStyle='#EEF0F7';ctx.fillRect(it.x,it.y,it.w,it.h);ctx.strokeStyle='#C9CEE0';ctx.lineWidth=2;ctx.strokeRect(it.x,it.y,it.w,it.h)}
     }else if(it.type==='text'){
-      ctx.font=canvasFontCss(it.size);ctx.fillStyle=it.color;ctx.textBaseline='alphabetic';ctx.textAlign='left';
+      // geometricPrecision: no font hinting, so the glyphs do not depend on the device's pixel ratio.
+      ctx.font=canvasFontCss(it.size);ctx.fillStyle=it.color;ctx.textBaseline='alphabetic';ctx.textAlign='left';ctx.textRendering='geometricPrecision';ctx.fontKerning='normal';
       const m=measure('Hg'),asc=m.fontBoundingBoxAscent??it.size*.95,desc=m.fontBoundingBoxDescent??it.size*.25,lh=canvasLineHeight(it.size);
       it.lines.forEach((line,i)=>ctx.fillText(line,it.x+CANVAS_TEXT_PAD,it.y+CANVAS_TEXT_PAD+i*lh+(lh-(asc+desc))/2+asc));
     }else if(it.type==='arrow'||it.type==='rect'){

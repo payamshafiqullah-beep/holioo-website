@@ -16,6 +16,8 @@
     --muted:#8E8E93;
     --line:#E5E5E7;
     --accent:#007AFF;
+    /* The pastel tones fold into the palette (flat cards with a 1px border). */
+    --lavender:var(--surface);--mint:var(--surface);--peach:var(--surface);--sky:var(--surface);
   }
 }
 *{box-sizing:border-box}
@@ -36,8 +38,8 @@ a{color:var(--accent)}
 .btn.small{min-height:40px;padding:0 16px;font-size:14px;border-radius:14px;box-shadow:none}
 
 @media (min-width: 761px) {
-  .btn{min-height:32px;padding:0 12px;border-radius:6px;font-size:12px;gap:4px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
-  .btn.small{min-height:28px;padding:0 10px;font-size:11px;border-radius:4px}
+  .btn{min-height:28px;padding:0 12px;border-radius:6px;font-size:13px;gap:6px;box-shadow:none}
+  .btn.small{min-height:28px;padding:0 12px;font-size:12px;border-radius:6px}
 }
 .hero{padding:32px 0 16px}
 .hero h1{margin:0 0 12px;font-size:clamp(32px,7vw,48px);line-height:1.08;letter-spacing:-.04em;font-weight:800}
@@ -49,12 +51,12 @@ a{color:var(--accent)}
 
 @media (min-width: 761px) {
   .hero{padding:1rem 0 .5rem}
-  .hero h1{margin:0 0 .5rem;font-size:1.25rem;line-height:1.2}
-  .hero p{margin:0 0 1rem;font-size:.85rem}
-  .features{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.5rem;margin:1rem 0}
-  .feature{padding:.75rem;border-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
-  .feature b{margin-bottom:.2rem;font-size:.8rem}
-  .feature span{font-size:.7rem}
+  .hero h1{margin:0 0 .5rem;font-size:18px;line-height:1.2}
+  .hero p{margin:0 0 1rem;font-size:13px}
+  .features{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:1rem 0}
+  .feature{padding:12px;border:1px solid var(--line);border-radius:6px;box-shadow:none}
+  .feature b{margin-bottom:4px;font-size:13px}
+  .feature span{font-size:12px}
 }
 .feature:nth-child(1){background:var(--peach)}.feature:nth-child(2){background:var(--lavender)}.feature:nth-child(3){background:var(--mint)}.feature:nth-child(4){background:var(--sky)}
 .doc{padding:8px 0 32px}
@@ -69,11 +71,11 @@ a{color:var(--accent)}
 
 @media (min-width: 761px) {
   .doc{padding:.5rem 0 1.5rem}
-  .doc h1{font-size:1.25rem;margin:.5rem 0 .25rem}
-  .doc .updated{font-size:.7rem;margin:0 0 1rem}
-  .doc h2{font-size:1rem;margin:1rem 0 .4rem}
-  .doc p,.doc li{font-size:.8rem}
-  .doc ul{padding-left:.8rem}
-  .card{padding:.75rem;border-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
-  .site-footer{gap:.5rem 1rem;padding:1rem 0 1.5rem;margin-top:1rem;font-size:.7rem}
+  .doc h1{font-size:18px;margin:.5rem 0 .25rem}
+  .doc .updated{font-size:12px;margin:0 0 1rem}
+  .doc h2{font-size:15px;margin:1rem 0 .4rem}
+  .doc p,.doc li{font-size:13px}
+  .doc ul{padding-left:1.1rem}
+  .card{padding:12px 16px;border:1px solid var(--line);border-radius:6px;box-shadow:none}
+  .site-footer{gap:.5rem 1rem;padding:1rem 0 1.5rem;margin-top:1rem;font-size:12px}
 }

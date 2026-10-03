@@ -165,6 +165,22 @@
   // A file made by Holioo on any device of this account (drive.file), e.g. a photo taken on the phone.
   const downloadFile=(ctx,fileId)=>retrying(ctx,()=>downloadBlob(ctx.token,fileId));
 
+  // A file Holioo put in a folder (e.g. a séance's Notes.json written by another device): {id, md5, parentId} or null.
+  async function findFileAt(ctx,names,name){
+    return retrying(ctx,async()=>{
+      const parent=await findPath(ctx.token,names);if(!parent)return null;
+      const f=await findFile(ctx.token,name,parent);return f?{id:f.id,md5:f.md5Checksum||null,parentId:parent}:null;
+    });
+  }
+  async function fileMeta(ctx,fileId){
+    return retrying(ctx,()=>driveFetch(ctx.token,`${API}/files/${encodeURIComponent(fileId)}?fields=id,parents,md5Checksum,trashed`));
+  }
+  // A document read from Drive (made on another device) is remembered as already sent, so this device
+  // replaces that same file next time instead of uploading a second copy.
+  async function adoptDocument(db,{id,version,folder},rootYear,files){
+    await db.put('kv',{key:docMetaKey({id}),meta:{version,path:docPath(rootYear,{folder}).join('/'),files}});
+  }
+
   // The course structure shared by the devices of an account: Holioo/.holioo/state.json in the user's Drive.
   // `meta` = {id, md5} of what this device last read or wrote; an unchanged file is not downloaded again.
   const STATE_PATH=['Holioo','.holioo'],STATE_NAME='state.json';
@@ -350,7 +366,8 @@
     return true;
   }
 
-  async function syncAll({sb,user,state,db,onProgress,documents=null,cloud=window.CloudSync,save=null}){
+  // onDocument(d, files): a document was sent (files = {name: {id, parentId, sig}}), e.g. to signal other devices.
+  async function syncAll({sb,user,state,db,onProgress,documents=null,cloud=window.CloudSync,save=null,onDocument=null}){
     if(!navigator.onLine||!sb||!user)return {synced:0,pending:0,skipped:true};
     const st=await status(sb,user.id);if(!st.connected)return {synced:0,pending:await pendingCount(state,db,documents),connected:false};
     useFolderCache(user.id);
@@ -398,7 +415,7 @@
     for(const d of docs){
       const names=docPath(rootYear,d),meta=await docMeta(db,d);
       if(docNeedsSync(d,meta,names.join('/'))){
-        try{if(await pushDocument(ctx,db,d,names,meta))synced++}
+        try{if(await pushDocument(ctx,db,d,names,meta)){synced++;try{onDocument?.(d,(await docMeta(db,d))?.files||{})}catch{}}}
         catch(e){
           failed++;lastError=e;
           if(fatal(e))throw e;
@@ -426,5 +443,5 @@
     }
     return n;
   }
-  window.HoliooDrive={status,connect,disconnect,accessToken,forgetToken,context,readState,writeState,downloadFile,pushPhoto,ensureFolder,ensurePath,uploadBlob,moveFile,updateContent,syncAll,pendingCount,safeName};
+  window.HoliooDrive={status,connect,disconnect,accessToken,forgetToken,context,readState,writeState,downloadFile,pushPhoto,findFileAt,fileMeta,adoptDocument,ensureFolder,ensurePath,uploadBlob,moveFile,updateContent,syncAll,pendingCount,safeName};
 })();

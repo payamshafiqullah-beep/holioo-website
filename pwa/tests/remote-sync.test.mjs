@@ -23,7 +23,9 @@ function device(drive,clock,courses){
     const Drive=window.HoliooDrive;
     var state={profile:{academicYear:'2026–2027'},courses:${JSON.stringify(courses)},inbox:[],files:[],settings:{autoDriveSync:true}};
     var stateOwner='u1',guestMode=false,sb=sbStub,currentUser={id:'u1'},driveStatus={connected:true},currentView='courses';
-    var sheetRoot={innerHTML:''},document={querySelector:()=>null,activeElement:null};
+    var sheetRoot={innerHTML:''},document={querySelector:()=>null,activeElement:null,addEventListener(){}};
+    function showToast(){}
+    function findSessionContext(id){for(const course of state.courses)for(const section of course.sections)for(const session of section.sessions)if(session.id===id)return{course,section,session};return null}
     let syncBaseline=null,renders=0,queued=[];
     function saveState(o={}){if(o.remote)syncBaseline=syncFlatten(state);else{const r=syncStamp(state,syncBaseline,++clock.t);syncBaseline=r.flat}}
     function ensureDefaultSections(){}
@@ -31,10 +33,11 @@ function device(drive,clock,courses){
     let renderChain=Promise.resolve();
     function render(){return renderChain=renderChain.then(()=>{renders++;return applyPendingRemote()})}
     function queueSync(r){queued.push(r)}
-    async function fullSync(){await syncStructure({push:false});await render();await Drive.syncAll({sb,user:currentUser,state,db:DB});await syncStructure({push:true})}
+    async function fullSync(){await syncStructure({push:false});await render();await Drive.syncAll({sb,user:currentUser,state,db:DB,documents:notesDriveDocuments,onDocument:notesDocumentSent});await syncStructure({push:true})}
     saveState();
   `,ctx);
   vm.runInContext(src('../features/remote-sync.js'),ctx);
+  vm.runInContext(src('../features/notes.js'),ctx);
   const run=code=>vm.runInContext(code,ctx);
   return{db,sent,run,ctx,
     state:()=>plain(run('state')),
@@ -126,4 +129,34 @@ test('while a remote change waits (camera open), this device never writes over D
 test('signals carry ids only',async()=>{
   const{phone}=setup();await phone.sync();
   for(const s of phone.sent)for(const v of Object.values(s))assert.ok(v===null||typeof v==='number'||/^[\w-]+$/.test(v),`unexpected value ${v}`);
+});
+
+// ── Typed notes (features/notes.js) ──
+test('notes typed on the tablet reach the phone through Drive, and stay one Notes.json',async()=>{
+  const{drive,phone,tablet}=setup();
+  await phone.sync();await tablet.sync();
+  await tablet.run(`updateNote('s1',null,'Intégrales — à revoir')`);
+  await tablet.run(`updateNote('s1','${P1}','Formule de Stokes')`);
+  await tablet.sync();
+  const sig=tablet.sent.find(x=>x.kind==='note');
+  assert.ok(sig&&sig.refId==='s1'&&sig.driveFileId,'a note signal with the file id');
+  await phone.run(`pullSessionNotes('s1',${JSON.stringify(sig.driveFileId)})`);
+  const notes=plain(await phone.run(`notesFor('s1')`));
+  assert.equal(notes.session.text,'Intégrales — à revoir');
+  assert.equal(notes.photos[P1].text,'Formule de Stokes');
+  await phone.sync();
+  assert.equal([...drive.files.values()].filter(f=>f.name==='Notes.json'&&!f.trashed).length,1,'phone did not upload a copy');
+  // The phone edits the photo note: the same file is updated, the tablet finds it in the séance folder.
+  await phone.run(`updateNote('s1','${P1}','Formule de Stokes (corrigée)')`);
+  await phone.sync();
+  assert.equal([...drive.files.values()].filter(f=>f.name==='Notes.json'&&!f.trashed).length,1);
+  await tablet.run(`pullSessionNotes('s1')`);
+  assert.equal(plain(await tablet.run(`notesFor('s1')`)).photos[P1].text,'Formule de Stokes (corrigée)');
+});
+
+test('notes merge note by note: the newer text of each note wins',async()=>{
+  const{phone}=setup();
+  const m=plain(phone.run(`mergeNotes({session:{text:'a',updatedAt:5},photos:{x:{text:'old',updatedAt:1},y:{text:'only a',updatedAt:3}}},{session:{text:'b',updatedAt:4},photos:{x:{text:'new',updatedAt:2},z:{text:'only b',updatedAt:1}}})`));
+  assert.equal(m.session.text,'a');
+  assert.deepEqual(Object.fromEntries(Object.entries(m.photos).map(([k,v])=>[k,v.text])),{x:'new',y:'only a',z:'only b'});
 });

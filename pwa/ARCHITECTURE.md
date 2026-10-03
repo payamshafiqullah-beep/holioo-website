@@ -10,7 +10,7 @@ Examples:
 - Home → `pages/HomePage.js`
 - Courses → `pages/CoursesPage.js`
 - Course detail → `pages/CourseDetailPage.js`
-- Session gallery → `pages/SessionPage.js`
+- Session gallery → `pages/SessionPage.js` (tablet / computer: `pages/SessionDeskPage.js`)
 - Capture → `pages/CapturePage.js`
 - Inbox → `pages/InboxPage.js`
 - PDF builder → `pages/PdfBuilderPage.js`
@@ -20,7 +20,16 @@ Examples:
 
 If only one screen changes, edit that page file first. Do not rewrite unrelated page files.
 
+## Tablet & computer layout (window ≥ 768 px)
+
+Phones (< 768 px, including the 720–767 px left rail) are never touched: `ui/desk-shell.js` builds the desk chrome only when `matchMedia('(min-width:768px)')` matches and removes it below; every desk style is in the `TABLET & COMPUTER` block at the end of `styles.css`, scoped to `.desk` (checked by `smoke-test.mjs`).
+- Top icon toolbar: sidebar toggle, Accueil / Cours / Bibliothèque / Fichiers, Capture, Captures à trier, search (Fichiers), Drive sync, profile. Page headers there hide their own inbox / avatar buttons (and the logo-only header of Accueil).
+- Left sidebar: course → section → séance tree from `state.courses` (filter, unfolded nodes kept in memory, "Nouvelle séance"), long-press / right-click opens the same item menu (`attachItemMenu` + `courseMenu` / `sectionMenu` / `sessionMenu`, i.e. the shared `createRadialMenu`). Docked from 1100 px (hidden with the toggle, `state.settings.deskSidebar`), a drawer below (closes after choosing a screen, Escape, or a tap outside).
+- `app.js` picks `renderSessionDesk()` for the séance at that width: each photo large (preview first, full photo once near the screen) with its typed note beside it (side by side when the canvas is ≥ 620 px wide, `@container`), the séance's own note on top; the Carnet stays one tab away. Other screens render as on phones, in the wider canvas.
+
 ## Shared feature logic
+
+- `notes.js` — typed notes (tablet / computer): one per séance + one per photo, IndexedDB `kv` `notes:<séance id>`, saved 800 ms after the last key and on blur / leaving (`bindNoteField`, `flushNoteSaves` at each render). Copied to the séance's Drive folder as `Notes.json` (`notesDriveDocuments`, sent like the Carnet); once sent, a `note` signal makes the other open devices read it (`pullSessionNotes`, also when a séance is opened) and merge note by note, newer wins (`mergeNotes`). The file read is adopted as this device's copy (`Drive.adoptDocument`) so it is replaced in place, never uploaded twice. Notes are found by the Fichiers search (`searchNotes`).
 
 Shared behavior that several screens use lives in `pwa/features/`:
 

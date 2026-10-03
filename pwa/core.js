@@ -149,8 +149,11 @@ async function bootstrapCloud(){
   }catch(e){console.error(e);cloudReady=false;showToast('Mode local actif — synchronisation plus tard');await refreshSyncIndicator()}
 }
 async function syncProfile(){if(sb&&currentUser&&navigator.onLine){const{error}=await sb.from('profiles').upsert(profilePayload(),{onConflict:'id'});if(error)throw error}}
-// Besides photos and PDFs, Drive keeps the session notebooks (features/notebook-ink.js).
-const driveDocuments=()=>typeof notebookDriveDocuments==='function'?notebookDriveDocuments:null;
+// Besides photos and PDFs, Drive keeps the session notebooks (features/notebook-ink.js) and typed notes (features/notes.js).
+const driveDocuments=()=>{
+  const makers=[typeof notebookDriveDocuments==='function'?notebookDriveDocuments:null,typeof notesDriveDocuments==='function'?notesDriveDocuments:null].filter(Boolean);
+  return makers.length?async s=>(await Promise.all(makers.map(m=>m(s)))).flat():null;
+};
 async function refreshSyncIndicator(){
   let pending=0;try{pending=await Drive.pendingCount(state,DB,driveDocuments())}catch{}
   if(!navigator.onLine)syncIndicator={cls:'offline',text:'Hors ligne'};
@@ -171,6 +174,7 @@ async function runDriveSync(reason='manual'){
     driveStatus=await Drive.status(sb,currentUser.id);if(!driveStatus.connected){if(reason==='manual')showToast('Connectez Google Drive d’abord');return}
     const result=await Drive.syncAll({sb,user:currentUser,state,db:DB,documents:driveDocuments(),
       save:()=>{saveState.quiet=true;try{saveState()}finally{saveState.quiet=false}},
+      onDocument:(d,files)=>{if(typeof notesDocumentSent===’function’)notesDocumentSent(d,files)},
       onProgress:({checked,total,phase})=>{syncIndicator={cls:’pending’,text:`${phase===’pull’?’Réception’:’Synchronisation’}… ${checked}/${total}`};applyChromeStatus()}});
     // What the account’s other devices added or removed is now here: show it where that is safe (not in the camera,
     // the photo viewer, a notebook being written in, a form being filled).

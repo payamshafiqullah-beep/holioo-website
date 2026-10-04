@@ -420,6 +420,7 @@ html.radial-haptic-confirm body{animation:radialHapticConfirm .2s var(--ease)}
 .thumbs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s2)}
 .thumbs.compact{grid-template-columns:repeat(4,minmax(0,1fr))}
 .thumbs:empty{display:none}
+.thumb,.thumb img,.image-tile,.image-tile img,[data-photo-id] img{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-user-drag:none}
 .thumb{position:relative;display:block;aspect-ratio:3/4;padding:0;border-radius:16px;overflow:hidden;background:#E6E7EF;border:3px solid transparent;transition:border-color .2s}
 .thumb img{width:100%;height:100%;object-fit:cover;display:block}
 .thumb .num{position:absolute;left:6px;top:6px;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:rgba(29,33,64,.6);backdrop-filter:blur(8px);color:#fff;font-size:11px;font-weight:700;line-height:22px;text-align:center}
@@ -730,7 +731,7 @@ html.radial-haptic-confirm body{animation:radialHapticConfirm .2s var(--ease)}
 .viewer-title strong{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .viewer-title small{font-size:12px;color:var(--muted)}
 .pdf-frame-wrap{position:relative;flex:1;margin:0 var(--s4);border-radius:var(--r-lg);overflow:hidden;background:var(--surface);box-shadow:var(--shadow-sm)}
-.pdf-pages{height:100%;overflow:auto;-webkit-overflow-scrolling:touch;padding:var(--s3);background:#E9EAF2;position:relative}
+.pdf-pages{touch-action:pan-x pan-y;height:100%;overflow:auto;-webkit-overflow-scrolling:touch;padding:var(--s3);background:#E9EAF2;position:relative}
 .pdf-stage{display:flex;flex-direction:column;align-items:center;gap:var(--s4);width:max-content;min-width:100%}
 .pdf-page{margin:0;display:flex;flex-direction:column;align-items:center;gap:6px}
 .pdf-page-box{background:#fff;border-radius:6px;box-shadow:var(--shadow-sm);overflow:hidden}
@@ -1500,6 +1501,8 @@ body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
   .desk.desk-side-closed:not(.hidden-chrome){grid-template-columns:0 minmax(0,1fr)}
   .desk.hidden-chrome .desk-toolbar,.desk.hidden-chrome .desk-sidebar,.desk.hidden-chrome .desk-crumb{display:none}
   .desk:not(.hidden-chrome) .bottom-nav{display:none}
+  /* Normal PDF view: the reader sits beside the sidebar; fullscreen (hidden-chrome) keeps its inset:0. */
+  .desk:not(.hidden-chrome) .pdf-viewer{inset:calc(var(--desk-top) + var(--desk-crumb-h)) 0 0 var(--desk-side-w)}
   .desk:not(.hidden-chrome) .main{grid-column:2;grid-row:3;width:auto;max-width:none;min-width:0;margin:0;padding:var(--s6) clamp(24px,3vw,48px) calc(var(--s8) + env(safe-area-inset-bottom))}
   .desk:not(.hidden-chrome) .screen{max-width:960px}
   .desk:not(.hidden-chrome) .screen.screen-wide{max-width:1320px}

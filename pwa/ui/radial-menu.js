@@ -20,7 +20,7 @@
 // Angles are in degrees, 0 = right, 90 = straight up, counter-clockwise.
 
 const RADIAL={
-  size:56,minSize:44,gap:8,ringGap:14,
+  size:56,minSize:44,gap:8,ringGap:15,
   margin:10,       // min distance between an item and the screen edge
   stepMax:40,      // widest spacing between two neighbours of the first ring
   anchorR:32,      // radius of the trigger itself: the first ring starts past it
@@ -143,6 +143,46 @@ function radialChildren(k,parentAngle,o,vp,fit,opt=RADIAL,ring=2){
   const capacity=run.full?Math.max(1,Math.floor(360/step)):Math.max(1,Math.floor(run.len/step+1e-9)+1);
   const shown=Math.min(k,capacity),total=(shown-1)*step;
   return{angles:radialAngles(shown,radialCenter(run,parentAngle,total),step),step,shown,capacity};
+}
+
+// ─── Hub rings (stack menus with `hub`) ────────────────────────
+// From the second ring on, a ring is not fanned out from its parent (which pushes the menu to one side of the screen) but laid
+// out as a full circle around the middle zone of the screen, in reach of the thumb whichever side the trigger is on. The ring
+// before it stays where it was, blurred: moving back onto it is the way back.
+const radialHubZone=vp=>({x:vp.w/2,y:(vp.top||0)+(vp.h-(vp.top||0)-(vp.bottom||0))/2});
+
+// n items of `s` px around c: the smallest circle that holds them all and stays on screen, at least one track (item + ringGap)
+// away from the circle of the ring before it (prevR) so the two never overlap. Fewer than n when no circle on screen holds them
+// (`shown` < n: the caller turns the last one into a "more" item). {r, angles, step, shown, capacity, full}
+function radialHubFit(n,c,vp,s,prevR=null,opt=RADIAL){
+  const track=s+opt.ringGap,minR=s+opt.gap+6;
+  const rMax=Math.max(minR,Math.min(vp.w/2,(vp.h-(vp.top||0)-(vp.bottom||0))/2)),best={cap:0};
+  for(let r=minR;r<=rMax+1e-9;r+=2){
+    if(prevR!==null&&Math.abs(r-prevR)<track)continue;
+    const run=radialRun(radialFree(c,r,s,vp,opt));if(!run)continue;
+    const min=radialMinStep(r,s,opt.gap),cap=run.full?Math.floor(360/min+1e-9):Math.floor(run.len/min+1e-9)+1;
+    if(cap>best.cap){best.cap=cap;best.r=r;best.run=run;best.min=min}
+    if(cap>=n)break;
+  }
+  if(!best.cap)return{r:minR,angles:radialAngles(1,90,0),step:0,shown:1,capacity:1,full:false};
+  const{r,run,min}=best,shown=Math.min(n,best.cap);
+  if(run.full){const step=360/shown;return{r,angles:Array.from({length:shown},(_,i)=>90-i*step),step,shown,capacity:best.cap,full:true}}
+  const step=shown>1?Math.max(min,Math.min(run.len/(shown-1),45)):0;
+  return{r,angles:radialAngles(shown,radialCenter(run,90,(shown-1)*step),step),step,shown,capacity:best.cap,full:false};
+}
+
+// What is under p when the rings have their own centers: levels[k-1] = {c, r, angles}. The outermost open ring answers within
+// 0.9 item, the rings before it (blurred) within 0.75; an item of an earlier ring other than the open one is only `tentative`.
+function radialHitLevels(p,levels,act,size,from=1){
+  const n=levels.length;
+  for(let k=n;k>=Math.max(1,from);k--){
+    const L=levels[k-1];let best=-1,dist=Infinity;
+    L.angles.forEach((a,i)=>{const q=radialPoint(L.c,L.r,a),e=Math.hypot(p.x-q.x,p.y-q.y);if(e<dist){dist=e;best=i}});
+    if(best<0||dist>size*(k===n?.9:.75))continue;
+    const active=act[k-1]??-1;
+    return k<n&&active>=0&&best!==active?{ring:k,index:best,tentative:true}:{ring:k,index:best};
+  }
+  return null;
 }
 
 // What is under point p: {center:true}, {ring:1, index}, {ring:2, index} or null (outside).
@@ -294,6 +334,8 @@ function createRadialMenu(o){
   const canOpen=(ring,it)=>!!it?.children&&ring<st.max;
   const fromRing=()=>o.stack?Math.max(1,depth()-1):1;                                // innermost ring that answers (stack: the visible ones)
   const outerR=()=>radialRadius(st.fit,depth(),st.opt);
+  const lvC=k=>st.levels[k-1].c||st.o;                                               // center / radius of ring k (hub rings have their own)
+  const lvR=k=>st.levels[k-1].r??radialRadius(st.fit,k,st.opt);
 
   function itemHtml(it,ring,i,p,from){
     const dx=p.x-st.o.x,dy=p.y-st.o.y,c=it.color||'#5B67F1',t=String(it.short??it.label);
@@ -307,13 +349,13 @@ function createRadialMenu(o){
     if(st)return true;
     const items=o.items();
     if(!items.length){o.onEmpty?.();return false}
-    const vp=viewport(),org=originPoint(),opt={...RADIAL,...(o.fitOptions||{}),rings:o.maxDepth||2},fit=radialFit(items.length,org,vp,opt);
+    const vp=viewport(),org=originPoint(),opt={...RADIAL,...(o.fitOptions||{}),rings:o.hub?1:(o.maxDepth||2)},fit=radialFit(items.length,org,vp,opt);
     const el=document.createElement('div');
     el.className='radial';el.dataset.mode=mode;
     el.setAttribute('role','menu');el.setAttribute('aria-label',o.label||'');
     el.style.setProperty('--s',`${fit.size}px`);
     // levels[k-1] = ring k: its items and angles; act[k-1] = the item of ring k whose children are ring k+1 (-1: none).
-    st={mode,items,fit,opt,max:Math.min(o.maxDepth||2,fit.rings||2),o:org,vp,el,levels:[{items,angles:fit.angles1,step:fit.step1}],act:[-1],hot:null,openedAt:performance.now()};
+    st={mode,items,fit,opt,max:o.hub?(o.maxDepth||2):Math.min(o.maxDepth||2,fit.rings||2),hub:!!o.hub,entered:1,hold:null,o:org,vp,el,levels:[{items,angles:fit.angles1,step:fit.step1}],act:[-1],hot:null,openedAt:performance.now()};
     st.box=menuBox();
     const D=fit.size+2*LENS.grow;
     el.innerHTML=`<div class="radial-backdrop"></div>
@@ -360,7 +402,10 @@ function createRadialMenu(o){
   // the label near the rings must not cover any of them.
   function menuBox(){
     const{fit,o:org,vp}=st,pad=fit.size*.6+4,pts=[org,...fit.angles1.map(a=>radialPoint(org,fit.r1,a))];
-    for(let k=2;k<=st.max;k++)for(const a of fit.angles1)for(const b of radialChildren(4,a,org,vp,fit,st.opt,k).angles)pts.push(radialPoint(org,radialRadius(fit,k,st.opt),b));
+    if(st.hub){   // the hub circles: sampled points on the tracks a ring can take
+      const z=radialHubZone(vp),t=fit.size+st.opt.ringGap,r0=fit.size+st.opt.gap+6;
+      for(const r of[r0+t*.5,r0+t*1.5,r0+t*2.5])for(let a=0;a<360;a+=30)pts.push(radialPoint(z,r,a));
+    }else for(let k=2;k<=st.max;k++)for(const a of fit.angles1)for(const b of radialChildren(4,a,org,vp,fit,st.opt,k).angles)pts.push(radialPoint(org,radialRadius(fit,k,st.opt),b));
     return pts.map(p=>({x0:p.x-pad,x1:p.x+pad,y0:p.y-pad,y1:p.y+pad}));
   }
 
@@ -439,14 +484,19 @@ function createRadialMenu(o){
     const pNode=nodeAt(k,i);pNode?.classList.add('parent');pNode?.setAttribute('aria-expanded','true');
     if(!kids.length||k>=st.max)return;
     const ring=k+1;
-    let layout=radialChildren(kids.length,st.levels[k-1].angles[i],st.o,st.vp,st.fit,st.opt,ring);
+    let layout,c=st.o,rr=radialRadius(st.fit,ring,st.opt);
+    if(st.hub&&ring>=2){
+      c=radialHubZone(st.vp);
+      const hf=radialHubFit(Math.min(kids.length,o.maxKids||Infinity),c,st.vp,st.fit.size,ring>2?lvR(k):null,st.opt);
+      layout={angles:hf.angles,step:hf.step,shown:hf.shown,capacity:hf.capacity};rr=hf.r;
+    }else layout=radialChildren(kids.length,st.levels[k-1].angles[i],st.o,st.vp,st.fit,st.opt,ring);
     const cap=Math.min(layout.shown,o.maxKids||Infinity);
     if(cap<kids.length)kids=o.overflowItem?[...kids.slice(0,Math.max(1,cap-1)),o.overflowItem(parent)]:kids.slice(0,cap);
     if(layout.shown<kids.length||cap<layout.shown)layout={...layout,angles:layout.angles.slice(0,kids.length)};
-    st.levels.push({items:kids,angles:layout.angles,step:layout.step,layout});st.act.push(-1);
-    const r=radialRadius(st.fit,ring,st.opt),from=radialPoint(st.o,radialRadius(st.fit,k,st.opt),st.levels[k-1].angles[i]);
+    st.levels.push({items:kids,angles:layout.angles,step:layout.step,layout,c:st.hub?c:undefined,r:st.hub?rr:undefined});st.act.push(-1);st.entered=Math.min(st.entered,k);
+    const r=rr,from=radialPoint(lvC(k),lvR(k),st.levels[k-1].angles[i]);
     const rel={x:from.x-st.o.x,y:from.y-st.o.y};
-    st.el.insertAdjacentHTML('beforeend',kids.map((it,j)=>itemHtml(it,ring,j,radialPoint(st.o,r,layout.angles[j]),rel)).join(''));
+    st.el.insertAdjacentHTML('beforeend',kids.map((it,j)=>itemHtml(it,ring,j,radialPoint(c,r,layout.angles[j]),rel)).join(''));
     void st.el.offsetWidth;
     st.el.querySelectorAll(`.radial-item.r${ring}.pre`).forEach(n=>n.classList.remove('pre'));
     applyStack();
@@ -456,7 +506,7 @@ function createRadialMenu(o){
     if(!st||(st.act[k-1]??-1)<0)return;
     for(let j=k;j<=depth();j++){const a=st.act[j-1];if(a>=0){const n=nodeAt(j,a);n?.classList.remove('parent');n?.setAttribute('aria-expanded','false')}}
     for(let j=depth();j>k;j--)st.el.querySelectorAll(`.radial-item.r${j}`).forEach(n=>n.remove());
-    st.levels.length=k;st.act.length=k;st.act[k-1]=-1;
+    st.levels.length=k;st.act.length=k;st.act[k-1]=-1;st.entered=Math.min(st.entered,k);
     if(st.hot?.ring>k)st.hot=null;
     applyStack();
   }
@@ -490,8 +540,16 @@ function createRadialMenu(o){
     trackHit(x,y);
     lensPoint(x,y);
   }
+  // Under (x, y): hub menus with an open second ring have rings with their own centers; all others use the single-center test.
+  function hitAt(x,y){
+    if(st.hub&&depth()>=2){
+      if(Math.hypot(x-st.o.x,y-st.o.y)<Math.min(44,st.fit.r1-st.fit.size/2-6))return{center:true};
+      return radialHitLevels({x,y},st.levels.map((L,k)=>({c:L.c||st.o,r:L.r??radialRadius(st.fit,k+1,st.opt),angles:L.angles})),st.act,st.fit.size,fromRing());
+    }
+    return radialHitN({x,y},st.o,st.fit,st.levels,st.act,st.opt,fromRing());
+  }
   function trackHit(x,y){
-    const h=radialHitN({x,y},st.o,st.fit,st.levels,st.act,st.opt,fromRing());
+    const h=hitAt(x,y);
     if(press&&!h?.center)press.out=true;   // the finger went out to the rings (a shaking hand stays in the middle)
     // Passing over another item of a ring whose children are open: switch only if the finger stays there a
     // moment (it may just be on its way to a far child).
@@ -499,7 +557,16 @@ function createRadialMenu(o){
       if(st.dwell?.i!==h.index||st.dwell?.ring!==h.ring){clearTimeout(st.dwell?.t);const i=h.index,ring=h.ring;st.dwell={i,ring,t:setTimeout(()=>{if(st?.dwell?.i===i&&st.dwell.ring===ring){st.dwell=null;openChildren(ring,i);setHot({ring,index:i})}},RADIAL.dwell)}}
       return;
     }
+    if(st.hold&&h?.ring===st.hold.ring&&h.index===st.hold.index){setHot(h);return}   // just came back onto it: stay, do not reopen
+    st.hold=null;
+    // Back onto the blurred ring (its open item) after having been out on the ring it opened: that ring closes, the one
+    // before it reappears (hub menus).
+    if(st.hub&&h?.ring===depth()-1&&h.index===st.act[depth()-2]&&st.entered>=depth()){
+      if(st.dwell?.back!==h.ring){clearTimeout(st.dwell?.t);const ring=h.ring,i=h.index;st.dwell={back:ring,t:setTimeout(()=>{if(st?.dwell?.back===ring){st.dwell=null;closeChildren(ring);st.hold={ring,index:i};setHot({ring,index:i})}},RADIAL.dwell)}}
+      return;
+    }
     if(st.dwell){clearTimeout(st.dwell.t);st.dwell=null}
+    if(h?.ring>st.entered)st.entered=h.ring;
     if(h?.ring){
       if(canOpen(h.ring,itemAt(h.ring,h.index)))openChildren(h.ring,h.index);else closeChildren(h.ring);
       setHot(h);
@@ -520,8 +587,9 @@ function createRadialMenu(o){
   // Still over the menu: on the rings (between items, on an item with children), not past them and
   // not on the middle.
   function overRings(x,y){
-    if(radialHitN({x,y},st.o,st.fit,st.levels,st.act,st.opt,fromRing())?.center)return false;
+    if(hitAt(x,y)?.center)return false;
     const f=st.fit;
+    if(st.hub&&depth()>=2){for(let k=fromRing();k<=depth();k++)if(Math.hypot(x-lvC(k).x,y-lvC(k).y)<=lvR(k)+f.size/2+RADIAL.ringGap)return true;return false}
     return Math.hypot(x-st.o.x,y-st.o.y)<=outerR()+f.size/2+RADIAL.ringGap;
   }
   // Tap mode: the same, except that an item with children opens them (next tap: one of them).
@@ -543,12 +611,11 @@ function createRadialMenu(o){
   function lensPoint(x,y){
     const L=st.lens,s=st.fit.size,R=s/2;
     let best=null,bd=LENS.snap*s;
-    const near=(ring,list,r,angles)=>list.forEach((it,i)=>{if(angles?.[i]==null)return;const p=radialPoint(st.o,r,angles[i]),d=Math.hypot(x-p.x,y-p.y);if(d<=bd){bd=d;best={ring,i,p,item:it}}});
-    for(let k=fromRing();k<=depth();k++)near(k,st.levels[k-1].items,radialRadius(st.fit,k,st.opt),st.levels[k-1].angles);
+    for(let k=fromRing();k<=depth();k++){const L=st.levels[k-1],c=lvC(k),r=lvR(k);L.items.forEach((it,i)=>{if(L.angles?.[i]==null)return;const p=radialPoint(c,r,L.angles[i]),d=Math.hypot(x-p.x,y-p.y);if(d<=bd){bd=d;best={ring:k,i,p,item:it}}})}
     let tx,ty,k,op;
     if(best){tx=best.p.x;ty=best.p.y;k=1;op=1}
     else{
-      const lim=outerR()+R,dx=x-st.o.x,dy=y-st.o.y,d=Math.hypot(dx,dy),f=d>lim?lim/d:1;
+      const lim=st.hub?Infinity:outerR()+R,dx=x-st.o.x,dy=y-st.o.y,d=Math.hypot(dx,dy),f=d>lim?lim/d:1;
       tx=st.o.x+dx*f;ty=st.o.y+dy*f;k=R/(R+LENS.grow);op=LENS.free;
     }
     L.target={x:tx,y:ty,k};
@@ -709,4 +776,4 @@ function createRadialMenu(o){
   return api;
 }
 
-if(typeof module!=='undefined')module.exports={RADIAL,radialMinStep,radialPoint,radialRadius,radialFree,radialRun,radialAngles,radialCenter,radialFit,radialChildren,radialHit,radialHitN,radialInk};
+if(typeof module!=='undefined')module.exports={RADIAL,radialMinStep,radialPoint,radialRadius,radialFree,radialRun,radialAngles,radialCenter,radialFit,radialChildren,radialHit,radialHitN,radialInk,radialHubZone,radialHubFit,radialHitLevels};

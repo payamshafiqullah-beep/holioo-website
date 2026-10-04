@@ -1,7 +1,6 @@
 // Accueil — tableau de bord de l'étudiant.
 async function renderHome(){
   setChrome(false);
-  const inboxCount=state.inbox.reduce((a,b)=>a+b.photoIds.length,0);
   const latest=lastCapturedSession();
   const courses=state.courses.slice(0,3);
 
@@ -18,9 +17,9 @@ async function renderHome(){
       :EmptyState({iconName:'book',title:'Aucun cours',text:'Ajoutez votre premier cours pour commencer.',action:ActionButton({label:'Ajouter un cours',attrs:'data-nav="courses"',full:false})})}
     ${SectionTitle('Révisions du jour')}
     <div class="list-stack">
-      ${ListCard({iconName:'layers',tone:'peach',title:'Captures à trier',meta:inboxCount?`${plural(inboxCount,'photo')} en attente de classement`:'Tout est classé',attrs:'id="homeInbox"'})}
+      ${ListCard({iconName:'users',tone:'peach',title:'Holioo Shares',meta:'Documents partagés avec vous',attrs:'data-nav="holiooShares"'})}
       ${QuickReadingTrigger({id:'readQuick'})}
-      ${ListCard({iconName:'users',tone:'mint',title:'Ressources partagées',meta:'Matériel publié par votre promotion',attrs:'data-nav="library"'})}
+      ${ListCard({iconName:'fileText',tone:'mint',title:'PDF partagés',meta:'Vos PDF publiés ou envoyés',attrs:'data-nav="mySharedPdfs"'})}
     </div>
   </section>`;
 
@@ -37,7 +36,6 @@ async function renderHome(){
   attachQuickReading(byId('readQuick'));
   byId('readQuickResume')?.addEventListener('click',resumeLastReading);
   byId('heroResume')?.addEventListener('click',()=>resumeQuickCapture(latest));
-  byId('homeInbox').onclick=()=>navigate(inboxCount?'inbox':'capture');
 }
 
 function firstName(){const n=(state.profile.displayName||'').trim();return n&&n!=='Étudiant'?n.split(/\s+/)[0]:''}

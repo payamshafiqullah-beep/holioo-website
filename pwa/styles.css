@@ -533,8 +533,8 @@ html.radial-haptic-confirm body{animation:radialHapticConfirm .2s var(--ease)}
 .camera-stage{position:absolute;inset:0;overflow:hidden}
 .camera-stage video{width:100%;height:100%;object-fit:cover;transform-origin:center;transition:transform .12s ease-out}
 .camera-stage::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.45) 0%,rgba(0,0,0,0) 18%,rgba(0,0,0,0) 62%,rgba(0,0,0,.7) 100%)}
-.camera-stage.capture-flash::before{content:"";position:absolute;inset:0;z-index:3;pointer-events:none;background:rgba(255,255,255,.5);-webkit-backdrop-filter:blur(10px) brightness(1.25);backdrop-filter:blur(10px) brightness(1.25);animation:cam-flash .26s ease-out forwards}
-@keyframes cam-flash{0%{opacity:1}35%{opacity:.9}100%{opacity:0}}
+.camera-stage.capture-flash::before{content:"";position:absolute;inset:0;z-index:3;pointer-events:none;background:rgba(255,255,255,.04);-webkit-backdrop-filter:blur(14px) saturate(1.1);backdrop-filter:blur(14px) saturate(1.1);animation:cam-flash .32s ease-out forwards}
+@keyframes cam-flash{0%{opacity:0}25%{opacity:1}100%{opacity:0}}
 .camera-grid{position:absolute;inset:0;pointer-events:none}
 .camera-grid span{position:absolute;background:rgba(255,255,255,.18)}
 .camera-grid span:nth-child(1){left:33.33%;top:0;bottom:0;width:1px}

@@ -317,7 +317,7 @@ function openQrScanSheet(after=()=>{}){
           if(!p){msg('Personne introuvable.');busy=false;await new Promise(r=>setTimeout(r,1500));continue}
           if(p.uid===currentUser.id){msg('C’est votre propre code.');busy=false;await new Promise(r=>setTimeout(r,1500));continue}
           await addPerson(p.uid);
-          stop();sheetRoot.innerHTML='';showToast(`${personName(p)} ajouté(e) comme ami`);after();return;
+          stop();closeSheet();showToast(`${personName(p)} ajouté(e) comme ami`);after();return;
         }catch(e){console.error(e);msg(peopleErrorText(e));busy=false;await new Promise(r=>setTimeout(r,2000))}
       }
     }catch(e){console.error(e);stop();msg(e?.name==='NotAllowedError'?'Autorisez la caméra pour scanner.':'Impossible de lancer la caméra.')}

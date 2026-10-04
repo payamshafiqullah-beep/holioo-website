@@ -24,6 +24,8 @@ const canvasMeasure=size=>t=>{canvasMeasureCtx.font=canvasFontCss(size);return c
 
 // Tool, colour and size are remembered on the device.
 const canvasPrefs=()=>state.settings.canvasPrefs??={tool:'pen',ci:{pen:0,highlighter:0},size:1};
+const canvasHoldSnapOn=()=>state.settings.canvasPrefs?.holdSnap!==false;                  // Forme auto en maintenant (default on): hold still ~1/2 s during a stroke -> the same shape correction
+const CANVAS_HOLD_MS=500,CANVAS_HOLD_SLOP=4,CANVAS_SNAP_MS=180;   // stillness, movement that still counts as still (screen px), morph duration
 const canvasSnapOn=()=>!!state.settings.canvasPrefs?.snap;                         // Formes auto: straighten lines, circles, polygons
 const canvasEraseMode=()=>state.settings.canvasPrefs?.eraseMode==='partial'?'partial':'stroke';   // gomme: whole stroke / touched part only
 const canvasStylusOnly=()=>state.settings.canvasPrefs?.stylusOnly??(navigator.maxTouchPoints>0);
@@ -182,7 +184,11 @@ function canvasInkPath(s){
 function canvasSyncInk(rt){
   const live=new Map([...rt.store.strokes].filter(([,s])=>!s.deleted));
   for(const[id,el]of rt.inkEls)if(!live.has(id)){el.remove();rt.inkEls.delete(id)}
-  for(const[id,s]of live)if(!rt.inkEls.has(id)){const p=canvasInkPath(s);p.setAttribute('d',canvasStrokePathD(s));rt.ink.appendChild(p);rt.inkEls.set(id,p)}
+  for(const[id,s]of live){
+    const el=rt.inkEls.get(id);
+    if(!el){const p=canvasInkPath(s);p.setAttribute('d',canvasStrokePathD(s));p._pts=s.pts;rt.ink.appendChild(p);rt.inkEls.set(id,p)}
+    else if(el._pts&&el._pts!==s.pts){el.setAttribute('d',canvasStrokePathD(s));el._pts=s.pts}   // an undo / redo of a corrected stroke
+  }
 }
 
 // Selection frame, resize handle and the little action bar. Drawn at screen size above the page (not scaled with it).
@@ -227,7 +233,7 @@ function canvasToolsHtml(rt){
     <span class="cv-sep"></span>
     <div class="cv-group" role="group" aria-label="Épaisseur">${['Fin','Moyen','Épais'].map((l,i)=>btn(`data-cv-size="${i}"`,`Épaisseur : ${l.toLowerCase()}`,`<i class="cv-dot" style="--d:${5+i*5}px"></i>`,i===p.size)).join('')}</div>
     ${rt.tool==='pen'||rt.tool==='highlighter'?`<span class="cv-sep"></span>
-    <div class="cv-group" role="group" aria-label="Aide au dessin">${btn('data-cv-snap',canvasSnapOn()?'Formes automatiques activées : lignes, cercles et formes régulières sont redressés (cliquez pour désactiver)':'Formes automatiques désactivées (cliquez pour redresser lignes, cercles et formes régulières)',icon('wand',{size:20}),canvasSnapOn())}</div>`:''}
+    <div class="cv-group" role="group" aria-label="Aide au dessin">${btn('data-cv-snap',canvasSnapOn()?'Formes automatiques activées : lignes, cercles et formes régulières sont redressés (cliquez pour désactiver)':'Formes automatiques désactivées (cliquez pour redresser lignes, cercles et formes régulières)',icon('wand',{size:20}),canvasSnapOn())}${btn('data-cv-hold',canvasHoldSnapOn()?'Forme auto en maintenant activée : gardez le stylet immobile une demi-seconde et le trait devient une forme nette (cliquez pour désactiver)':'Forme auto en maintenant désactivée (cliquez pour l’activer)',icon('clock',{size:20}),canvasHoldSnapOn())}</div>`:''}
     ${rt.tool==='eraser'?`<span class="cv-sep"></span>
     <div class="cv-group" role="group" aria-label="Mode de la gomme">${btn('data-cv-erasemode="stroke"','Gomme trait : efface le trait entier touché',icon('eraser',{size:20}),canvasEraseMode()==='stroke')}${btn('data-cv-erasemode="partial"','Gomme partielle : n’efface que la partie touchée du trait',icon('scissors',{size:20}),canvasEraseMode()==='partial')}</div>`:''}
     <span class="cv-sep"></span>
@@ -468,7 +474,7 @@ function canvasLeave(rt){
 }
 
 function canvasToolsClick(rt,e){
-  const t=e.target.closest('[data-cv-tool],[data-cv-color],[data-cv-size],[data-cv-bg],[data-cv-stylus],[data-cv-space],[data-cv-snap],[data-cv-erasemode]');if(!t)return;
+  const t=e.target.closest('[data-cv-tool],[data-cv-color],[data-cv-size],[data-cv-bg],[data-cv-stylus],[data-cv-space],[data-cv-snap],[data-cv-hold],[data-cv-erasemode]');if(!t)return;
   const d=t.dataset,prefs=canvasPrefs();
   if(d.cvTool){
     canvasCommitText(rt);rt.tool=d.cvTool;prefs.tool=d.cvTool;
@@ -493,6 +499,7 @@ function canvasToolsClick(rt,e){
     canvasRenderTools(rt);return;
   }
   if(d.cvSnap!==undefined){prefs.snap=!prefs.snap;saveState();canvasRenderTools(rt);showToast(prefs.snap?'Formes automatiques activées':'Formes automatiques désactivées');return}
+  if(d.cvHold!==undefined){prefs.holdSnap=!canvasHoldSnapOn();saveState();canvasRenderTools(rt);showToast(prefs.holdSnap?'Forme auto en maintenant activée':'Forme auto en maintenant désactivée');return}
   if(d.cvErasemode){prefs.eraseMode=d.cvErasemode;saveState();canvasRenderTools(rt);return}
   if(d.cvBg){
     if(rt.store.page.bg===d.cvBg)return;
@@ -560,6 +567,8 @@ function canvasMove(rt,e){
   if(rt.drag&&rt.drag.pointerId===e.pointerId){canvasDragMove(rt,e,p);e.preventDefault();return}
   const d=rt.drawing;
   if(d&&d.pointerId===e.pointerId){
+    if(d.snap){e.preventDefault();return}   // the shape is showing: it stays until the pen lifts
+    canvasHoldWatch(rt,d,e);
     const events=e.getCoalescedEvents?.(),list=events?.length?events:[e];
     for(const ev of list){
       const q=canvasPoint(rt,ev),last=d.pts.at(-1);
@@ -652,18 +661,80 @@ function canvasInkDown(rt,e,p){
   const path=canvasInkPath({id:'live',color,tool});
   rt.ink.appendChild(path);
   rt.drawing={pointerId:e.pointerId,tool,color,size,sp:e.pointerType==='pen'?0:1,pts:[[canvasRound(p.x),canvasRound(p.y),canvasPressure(e)]],path,raf:0};
+  rt.drawing.hold={x:e.clientX,y:e.clientY,timer:0};canvasHoldArm(rt,rt.drawing);
   canvasDrawLive(rt.drawing);
   rt.sheet.setPointerCapture(e.pointerId);e.preventDefault();
 }
 function canvasDrawLive(d){d.path.setAttribute('d',canvasOutlinePath(HoliooPerfectFreehand.getStroke(d.pts,{...canvasStrokeOptions(d),last:false})))}
+// Forme auto en maintenant: the pen stays within CANVAS_HOLD_SLOP px for CANVAS_HOLD_MS -> the stroke so far goes through the same
+// canvasSnapShape as the "Formes auto" button (works with that button off). No confident shape -> the stroke is left alone.
+function canvasHoldArm(rt,d){
+  clearTimeout(d.hold.timer);
+  if(!canvasHoldSnapOn())return;
+  d.hold.timer=setTimeout(()=>canvasHoldFire(rt,d),CANVAS_HOLD_MS);
+}
+function canvasHoldWatch(rt,d,e){
+  const h=d.hold;if(!h)return;
+  if(Math.hypot(e.clientX-h.x,e.clientY-h.y)<CANVAS_HOLD_SLOP)return;   // still counts as still (no re-arm, the anchor stays)
+  h.x=e.clientX;h.y=e.clientY;canvasHoldArm(rt,d);
+}
+function canvasHoldFire(rt,d){
+  if(rt.drawing!==d||d.snap)return;
+  const snap=canvasSnapShape(d.pts);if(!snap)return;
+  d.snap=snap;cancelAnimationFrame(d.raf);d.raf=0;
+  canvasMorph(d,d.pts,snap.pts);
+  try{navigator.vibrate?.(8)}catch{}
+}
+// Both outlines resampled to the same number of points, then eased from the hand-drawn one to the clean one.
+function canvasResample(pts,n){
+  const cum=[0];for(let i=1;i<pts.length;i++)cum.push(cum[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));
+  const total=cum.at(-1)||1,out=[];let j=0;
+  for(let k=0;k<n;k++){
+    const at=total*k/(n-1);while(j<pts.length-2&&cum[j+1]<at)j++;
+    const span=cum[j+1]-cum[j]||1,t=Math.min(1,Math.max(0,(at-cum[j])/span)),a=pts[j],b=pts[j+1]||a;
+    out.push([a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t]);
+  }
+  return out;
+}
+function canvasMorph(d,from,to){
+  const N=96,a=canvasResample(from,N);let b=canvasResample(to,N);
+  const closed=Math.hypot(to[0][0]-to.at(-1)[0],to[0][1]-to.at(-1)[1])<1;
+  if(closed){   // start the clean outline where the stroke started, so it does not swirl
+    let best=0,bd=Infinity;for(let i=0;i<N-1;i++){const dd=Math.hypot(b[i][0]-a[0][0],b[i][1]-a[0][1]);if(dd<bd){bd=dd;best=i}}
+    b=[...b.slice(best,N-1),...b.slice(0,best+1)];
+  }
+  const t0=performance.now(),opts={...canvasStrokeOptions({tool:d.tool,size:d.size,sp:0}),last:true};
+  const draw=k=>{
+    const e=1-Math.pow(1-k,3),mix=a.map((p,i)=>[p[0]+(b[i][0]-p[0])*e,p[1]+(b[i][1]-p[1])*e,.5]);
+    d.path.setAttribute('d',canvasOutlinePath(HoliooPerfectFreehand.getStroke(k<1?mix:to,opts)));
+  };
+  const step=now=>{
+    if(!d.path.isConnected)return;
+    const k=Math.min(1,(now-t0)/CANVAS_SNAP_MS);draw(k);
+    d.morph=k<1?requestAnimationFrame(step):0;
+  };
+  d.morph=requestAnimationFrame(step);
+}
 function canvasInkEnd(rt,d){
-  rt.drawing=null;cancelAnimationFrame(d.raf);
+  rt.drawing=null;cancelAnimationFrame(d.raf);clearTimeout(d.hold?.timer);cancelAnimationFrame(d.morph);
   try{rt.sheet.releasePointerCapture(d.pointerId)}catch{}
   const s={id:uid(),tool:d.tool,color:d.color,size:d.size,pts:d.pts,sp:d.sp,at:Date.now(),updatedAt:Date.now()};
+  // Held still: the stroke is first filed as drawn, then corrected by a second history step, so ONE undo gives the original back.
+  if(d.snap){
+    canvasGrowFor(rt,d.snap.pts.reduce((m,p)=>Math.max(m,p[1]),0));
+    d.path.dataset.id=s.id;d.path.setAttribute('d',canvasStrokePathD(s));rt.inkEls.set(s.id,d.path);d.path._pts=s.pts;
+    rt.store.strokes.set(s.id,s);
+    canvasCommit(rt,[canvasChangeCreate('s',s)]);
+    const fixed={...s,pts:d.snap.pts,sp:0};
+    canvasCommit(rt,[canvasChangeUpdate('s',{...rt.store.strokes.get(s.id)},fixed)]);
+    const now=rt.store.strokes.get(s.id);
+    d.path.setAttribute('d',canvasStrokePathD(now));d.path._pts=now.pts;
+    canvasAfterGesture(rt);return;
+  }
   // Formes auto: a line, circle or regular shape is replaced by its clean version (constant pressure, so no tapered ends).
   if(canvasSnapOn()){const snap=canvasSnapShape(d.pts);if(snap){s.pts=snap.pts;s.sp=0}}
   canvasGrowFor(rt,s.pts.reduce((m,p)=>Math.max(m,p[1]),0));
-  d.path.dataset.id=s.id;d.path.setAttribute('d',canvasStrokePathD(s));rt.inkEls.set(s.id,d.path);
+  d.path.dataset.id=s.id;d.path.setAttribute('d',canvasStrokePathD(s));rt.inkEls.set(s.id,d.path);d.path._pts=s.pts;
   rt.store.strokes.set(s.id,s);
   canvasCommit(rt,[canvasChangeCreate('s',s)]);
   canvasAfterGesture(rt);

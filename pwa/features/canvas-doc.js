@@ -175,7 +175,7 @@ function canvasEraseSplit(stroke,x,y,r){
 }
 
 // ── Shape snap: a drawn line, circle / ellipse or polygon becomes the clean shape ──
-// → null (keep the stroke as drawn) or {kind:'line'|'circle'|'ellipse'|'rect'|'polygon', pts:[[x,y,.5]…]}.
+// → null (keep the stroke as drawn) or {kind:'line'|'arrow'|'circle'|'ellipse'|'rect'|'polygon', pts:[[x,y,.5]…]} (a triangle is a 3-corner polygon).
 // Small strokes (handwriting) are never touched: the shape must be at least `minSize` units across.
 function canvasRdp(pts,tol){
   if(pts.length<3)return pts;
@@ -183,6 +183,24 @@ function canvasRdp(pts,tol){
   for(let i=1;i<pts.length-1;i++){const d=canvasSegDist(pts[i][0],pts[i][1],a[0],a[1],b[0],b[1]);if(d>worst){worst=d;at=i}}
   if(worst<=tol)return[a,b];
   return[...canvasRdp(pts.slice(0,at+1),tol).slice(0,-1),...canvasRdp(pts.slice(at),tol)];
+}
+// Arrow, drawn in one stroke: the shaft to the tip, back along one barb, back to the tip, along the other barb. Simplified it has
+// five corners (start, tip, barb end, tip again, barb end); the tip is retraced, the barbs are alike and open at a sensible angle
+// on both sides of the shaft. -> the clean polyline [start, tip, barb, tip, barb] or null.
+function canvasArrowPoints(pts,diag,minSize){
+  const v=canvasRdp(pts,Math.max(3,diag*.04));
+  if(v.length!==5)return null;
+  const[S,T,P1,T2,P2]=v,d=(a,b)=>Math.hypot(b[0]-a[0],b[1]-a[1]);
+  const shaft=d(S,T),b1=d(T,P1),b2=d(T2,P2),bl=(b1+b2)/2;
+  if(shaft<minSize||d(T,T2)>Math.max(8,shaft*.12))return null;
+  if(bl<shaft*.12||bl>shaft*.6||Math.max(b1,b2)>Math.min(b1,b2)*1.7)return null;
+  const ux=(S[0]-T[0])/shaft,uy=(S[1]-T[1])/shaft;
+  const sgn=(P,len)=>{const x=(P[0]-T[0])/len,y=(P[1]-T[1])/len;return Math.atan2(ux*y-uy*x,ux*x+uy*y)*180/Math.PI};
+  const a1=sgn(P1,b1),a2=sgn(P2,b2);
+  if(a1*a2>=0||Math.abs(a1)<15||Math.abs(a1)>65||Math.abs(a2)<15||Math.abs(a2)>65)return null;
+  const half=Math.min(40,Math.max(20,(Math.abs(a1)+Math.abs(a2))/2))*Math.PI/180;
+  const barb=sg=>{const c=Math.cos(sg*half),s=Math.sin(sg*half);return[T[0]+bl*(ux*c-uy*s),T[1]+bl*(ux*s+uy*c)]};
+  return[[S[0],S[1]],[T[0],T[1]],barb(1),[T[0],T[1]],barb(-1)];
 }
 function canvasSnapShape(pts,{minSize=60}={}){
   if(!Array.isArray(pts)||pts.length<6)return null;
@@ -199,6 +217,8 @@ function canvasSnapShape(pts,{minSize=60}={}){
     const e=list.at(-1);dense.push([canvasRound(e[0]),canvasRound(e[1]),.5]);
     return{kind,pts:dense};
   };
+  // Arrow (before the line test: its barbs bring the ends back together, so it is not a straight stroke).
+  const arrow=canvasArrowPoints(pts,diag,minSize);if(arrow)return out('arrow',arrow);
   // Line: the stroke stays close to the straight line between its ends.
   if(gap>=minSize&&gap>=len*.8){
     let dev=0;for(const p of pts)dev=Math.max(dev,canvasSegDist(p[0],p[1],first[0],first[1],last[0],last[1]));
@@ -358,6 +378,6 @@ function canvasPhotoSize(ratio){
 
 if(typeof module!=='undefined')module.exports={canvasFitSheet,canvasSheetRoom,CANVAS_SHEET_GAP,CANVAS_SHEET_PAD,canvasSnapHeight,CANVAS_W,CANVAS_PAGE_H,CANVAS_MAX_H,CANVAS_GROW_MARGIN,CANVAS_GROW_STEP,CANVAS_ADD_SPACE,CANVAS_LINE,CANVAS_TOOLS,CANVAS_BGS,CANVAS_COLORS,CANVAS_SIZES,CANVAS_HIGHLIGHT_ALPHA,CANVAS_TEXT_PAD,CANVAS_TEXT_W,CANVAS_PHOTO_MIN_W,
   canvasKey,canvasKindOf,emptyCanvasDoc,normalizeCanvasDoc,canvasPrune,canvasLive,canvasIsEmpty,canvasContentBottom,canvasGrownHeight,canvasNextZ,canvasSegDist,canvasStrokeHit,canvasHitItem,
-  canvasOutlinePath,canvasStrokeOptions,canvasEraseSplit,canvasSnapShape,canvasRdp,canvasLineHeight,canvasTextHeight,canvasLayoutText,
+  canvasOutlinePath,canvasStrokeOptions,canvasEraseSplit,canvasSnapShape,canvasArrowPoints,canvasRdp,canvasLineHeight,canvasTextHeight,canvasLayoutText,
   canvasStore,canvasSerialize,canvasChangeCreate,canvasChangeRemove,canvasChangeUpdate,canvasChangePage,canvasApplyChanges,canvasHistory,canvasHistoryPush,canvasUndo,canvasRedo,
   canvasMerge,canvasContentJson,canvasSameContent,canvasPdfPageCount,canvasPdfSlices,canvasPlacedPhotoIds,canvasNewPhotoIds,canvasPhotoSize};

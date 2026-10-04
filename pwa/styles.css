@@ -764,8 +764,10 @@ html.radial-haptic-confirm body{animation:radialHapticConfirm .2s var(--ease)}
 .pdf-ink-bar button.active{background:#fff;color:#1D2140}
 .pdf-ink-bar button:disabled{opacity:.35}
 .pdf-ink-bar button{position:relative}
-.pdf-ink-dot{position:absolute;right:6px;bottom:6px;width:9px;height:9px;border-radius:50%;background:var(--ink-c,transparent);box-shadow:0 0 0 1.5px rgba(255,255,255,.9)}
-.pdf-ink-bar button.active .pdf-ink-dot{box-shadow:0 0 0 1.5px rgba(29,33,64,.35)}
+.pdf-ink-bar{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.pdf-ink-dot{position:absolute;right:4px;bottom:4px;width:13px;height:13px;border-radius:50%;background:var(--ink-c,transparent);box-shadow:0 0 0 1.5px rgba(255,255,255,.9),0 0 0 2.5px rgba(29,33,64,.55)}
+.pdf-ink-bar button[data-ink="highlighter"] .pdf-ink-dot{opacity:.6}   /* as the stroke is drawn (CANVAS_HIGHLIGHT_ALPHA) */
+.pdf-ink-bar button.active .pdf-ink-dot{box-shadow:0 0 0 1.5px #fff,0 0 0 2.5px #1D2140}
 .pdf-ink-pop{position:absolute;left:calc(100% + 8px);display:flex;gap:6px;padding:8px;border-radius:16px;background:rgba(29,33,64,.62);border:1px solid rgba(255,255,255,.16);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
 .pdf-ink-pop[hidden]{display:none}
 .pdf-ink-bar .pdf-ink-pop button{width:34px;height:34px;border-radius:50%;background:var(--c);border:2px solid rgba(255,255,255,.55)}

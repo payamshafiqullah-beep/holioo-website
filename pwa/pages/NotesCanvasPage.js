@@ -15,7 +15,7 @@ const CANVAS_PEN_HOLD=800;         // ms after the last pen event during which a
 const CANVAS_MIN_STEP=.8;          // page units between two points of a stroke
 const CANVAS_SVG='http://www.w3.org/2000/svg';
 const CANVAS_TOOL_UI={
-  select:['pointer','Sélection : déplacer, redimensionner'],pen:['penLine','Stylo'],highlighter:['highlighter','Surligneur'],
+  hand:['hand','Main : faire défiler la page sans écrire ni déplacer'],select:['pointer','Sélection : déplacer, redimensionner'],pen:['penLine','Stylo'],highlighter:['highlighter','Surligneur'],
   eraser:['eraser','Gomme : efface le trait entier ou seulement la partie touchée (voir le mode)'],text:['type','Zone de texte : touchez la page, double-cliquez pour modifier']
 };
 const CANVAS_COLOR_NAMES={pen:['Noir','Bleu','Rouge','Vert'],highlighter:['Jaune','Vert','Rose','Bleu']};
@@ -82,7 +82,7 @@ async function canvasCreateRuntime(course,section,session){
   if(!doc){doc=emptyCanvasDoc(session.id);doc.known=[...session.photoIds]}   // photos already there are not "new"
   if(!canvasHistories.has(session.id))canvasHistories.set(session.id,canvasHistory());
   const rt={course,section,session,store:canvasStore(doc),hist:canvasHistories.get(session.id),docStamp:doc.updatedAt,
-    tool:CANVAS_TOOLS.includes(canvasPrefs().tool)?canvasPrefs().tool:'pen',selected:null,editing:null,drawing:null,drag:null,erasing:null,trayDrag:null,
+    tool:'hand',selected:null,editing:null,drawing:null,drag:null,erasing:null,trayDrag:null,
     touches:new Map(),pan:null,penUntil:0,lastTap:null,dirty:false,saveState:'saved',saveTimer:0,syncTimer:0,scale:1,
     itemEls:new Map(),inkEls:new Map(),urls:new Map(),arrivals:new Set(),guards:[],unsub:[],stale:false,exporting:false};
   return rt;
@@ -523,6 +523,7 @@ function canvasDown(rt,e){
   if(e.pointerType==='mouse'&&e.button!==0)return;
   if(e.target.closest('.cv-text-edit,.cv-bar'))return;
   if(rt.editing)canvasCommitText(rt);
+  if(rt.tool==='hand')return;   // the Main tool: the page only scrolls (finger, wheel), nothing is drawn or moved
   if(e.pointerType==='touch'){
     rt.touches.set(e.pointerId,{x:e.clientX,y:e.clientY});
     // Two fingers scroll the page (when a finger may draw): the stroke in progress is dropped.

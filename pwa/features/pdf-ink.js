@@ -196,7 +196,7 @@ async function createPdfInk({fileId,host,boxes,aspects,viewer,frame}){
     pop.innerHTML=PDF_INK_COLORS[t].map((c,i)=>`<button type="button" data-ink-color="${i}" class="${c===cur?'active':''}" style="--c:${c}" aria-label="Couleur ${i+1}"></button>`).join('');
     pop.dataset.for=t;pop.style.top=`${btn.offsetTop}px`;pop.hidden=false;
   };
-  // Long-press on the pen or highlighter that is already picked → its colours; a plain tap still picks / drops the tool.
+  // Long-press on the pen or highlighter that is already picked → its colours (a plain tap on it does the same); a tap on another tool picks it.
   let hold=null,held=false;
   bar.addEventListener('pointerdown',e=>{
     const b=e.target.closest('[data-ink]');held=false;clearTimeout(hold);
@@ -210,7 +210,11 @@ async function createPdfInk({fileId,host,boxes,aspects,viewer,frame}){
     const b=e.target.closest('button');if(!b)return;
     if(b.dataset.inkColor!==undefined){state.settings.pdfInkColor={...state.settings.pdfInkColor,[pop.dataset.for]:+b.dataset.inkColor};saveState();closePop();return refreshBar()}
     if(held){held=false;return}
-    if(b.dataset.ink)return setTool(tool===b.dataset.ink?null:b.dataset.ink);   // again = back to plain reading
+    if(b.dataset.ink){
+      // Tap on the pen / highlighter already picked → its colours (a second tap closes them); eraser again = back to plain reading.
+      if(tool===b.dataset.ink&&tool!=='eraser'){if(pop.dataset.for===tool)closePop();else openPop(b);return}
+      return setTool(tool===b.dataset.ink?null:b.dataset.ink);
+    }
     if(b.dataset.inkMode){state.settings.pdfInkErase=b.dataset.inkMode;saveState();return refreshBar()}
     if(b.hasAttribute('data-ink-undo')){
       endGesture(true);

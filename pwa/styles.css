@@ -1717,8 +1717,8 @@ body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
   .cv-sheet.tool-eraser{cursor:none}
   .cv-world{position:absolute;left:0;top:0;width:1000px;transform-origin:0 0;isolation:isolate;overflow:hidden;border-radius:6px}
   .cv-bg,.cv-items{position:absolute;inset:0}
-  /* Where one A4 sheet ends and the next begins (the PDF is cut exactly here); 1414 = CANVAS_PAGE_H, in page units */
-  .cv-world::after{content:"";position:absolute;inset:0;z-index:3;pointer-events:none;background:repeating-linear-gradient(to bottom,transparent 0,transparent 1410px,rgba(80,107,255,.55) 1410px,rgba(80,107,255,.55) 1414px)}
+  /* The gap between two A4 sheets (64 units centred on the cut, 1414 = CANVAS_PAGE_H; photos keep clear of it): the PDF is cut exactly in its middle */
+  .cv-world::after{content:"";position:absolute;left:0;right:0;top:32px;bottom:0;z-index:3;pointer-events:none;background:repeating-linear-gradient(to bottom,transparent 0,transparent 1350px,rgba(80,107,255,.5) 1350px,rgba(80,107,255,.5) 1353px,#E3E7F3 1353px,#E3E7F3 1411px,rgba(80,107,255,.5) 1411px,rgba(80,107,255,.5) 1414px)}
   /* Items keep their own z-order inside .cv-items (a stacking context of its own); the ink is a layer above all of them. */
   .cv-items{z-index:0}
   .cv-world[data-bg="lines"] .cv-bg{background-image:linear-gradient(to bottom,transparent calc(100% - 1.5px),#D9DEEF calc(100% - 1.5px));background-size:100% 44px}

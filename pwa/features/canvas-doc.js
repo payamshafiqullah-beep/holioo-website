@@ -22,6 +22,16 @@ const CANVAS_W=1000;
 const CANVAS_PAGE_H=Math.round(CANVAS_W*297/210);   // one A4 sheet = 1414 units
 const CANVAS_MAX_H=Math.floor(40000/CANVAS_PAGE_H)*CANVAS_PAGE_H;   // always whole A4 sheets
 const canvasSnapHeight=h=>Math.max(CANVAS_PAGE_H,Math.min(CANVAS_MAX_H,Math.ceil(h/CANVAS_PAGE_H)*CANVAS_PAGE_H));   // a page is a whole number of A4 sheets, on screen as in the PDF
+const CANVAS_SHEET_GAP=64;                          // the band drawn between two A4 sheets; a photo keeps clear of it (half a gap + 12 each side)
+const CANVAS_SHEET_PAD=CANVAS_SHEET_GAP/2+12;
+// A photo never straddles two sheets: it sits on the sheet its middle is on, clear of the band between sheets.
+function canvasFitSheet(y,h){
+  const k=Math.max(0,Math.min(Math.floor(CANVAS_MAX_H/CANVAS_PAGE_H)-1,Math.floor((y+h/2)/CANVAS_PAGE_H)));
+  const lo=k>0?k*CANVAS_PAGE_H+CANVAS_SHEET_PAD:0,hi=(k+1)*CANVAS_PAGE_H-CANVAS_SHEET_PAD-h;
+  return Math.max(lo,Math.min(y,hi));
+}
+// The tallest a photo can be at `y` (its sheet's bottom edge, minus the padding).
+const canvasSheetRoom=y=>(Math.floor(Math.max(0,y)/CANVAS_PAGE_H)+1)*CANVAS_PAGE_H-CANVAS_SHEET_PAD-y;
 const CANVAS_GROW_MARGIN=360;                       // a stroke or photo nearer than this to the bottom makes the page grow
 const CANVAS_GROW_STEP=720;
 const CANVAS_ADD_SPACE=CANVAS_PAGE_H;               // "Ajouter de l'espace": one more A4 sheet
@@ -346,7 +356,7 @@ function canvasPhotoSize(ratio){
   return{w,h:canvasRound(w/r,1)};
 }
 
-if(typeof module!=='undefined')module.exports={canvasSnapHeight,CANVAS_W,CANVAS_PAGE_H,CANVAS_MAX_H,CANVAS_GROW_MARGIN,CANVAS_GROW_STEP,CANVAS_ADD_SPACE,CANVAS_LINE,CANVAS_TOOLS,CANVAS_BGS,CANVAS_COLORS,CANVAS_SIZES,CANVAS_HIGHLIGHT_ALPHA,CANVAS_TEXT_PAD,CANVAS_TEXT_W,CANVAS_PHOTO_MIN_W,
+if(typeof module!=='undefined')module.exports={canvasFitSheet,canvasSheetRoom,CANVAS_SHEET_GAP,CANVAS_SHEET_PAD,canvasSnapHeight,CANVAS_W,CANVAS_PAGE_H,CANVAS_MAX_H,CANVAS_GROW_MARGIN,CANVAS_GROW_STEP,CANVAS_ADD_SPACE,CANVAS_LINE,CANVAS_TOOLS,CANVAS_BGS,CANVAS_COLORS,CANVAS_SIZES,CANVAS_HIGHLIGHT_ALPHA,CANVAS_TEXT_PAD,CANVAS_TEXT_W,CANVAS_PHOTO_MIN_W,
   canvasKey,canvasKindOf,emptyCanvasDoc,normalizeCanvasDoc,canvasPrune,canvasLive,canvasIsEmpty,canvasContentBottom,canvasGrownHeight,canvasNextZ,canvasSegDist,canvasStrokeHit,canvasHitItem,
   canvasOutlinePath,canvasStrokeOptions,canvasEraseSplit,canvasSnapShape,canvasRdp,canvasLineHeight,canvasTextHeight,canvasLayoutText,
   canvasStore,canvasSerialize,canvasChangeCreate,canvasChangeRemove,canvasChangeUpdate,canvasChangePage,canvasApplyChanges,canvasHistory,canvasHistoryPush,canvasUndo,canvasRedo,

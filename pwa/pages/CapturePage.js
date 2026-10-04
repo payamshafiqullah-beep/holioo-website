@@ -72,7 +72,7 @@ function renderCapture(){
   byId('shutter').onclick=()=>capturePhoto();
   byId('flipCam').onclick=async()=>{cameraFacing=cameraFacing==='environment'?'user':'environment';await startCamera();setupPinchZoom()};
   byId('torchBtn').onclick=toggleTorch;
-  byId('galleryBtn').onclick=()=>camDest?byId('galleryInput').click():openDestinationPicker(camT('chooseFirst'));
+  byId('galleryBtn').onclick=()=>byId('galleryInput').click();
   byId('galleryInput').onchange=importGallery;
   byId('cameraFallbackInput').onchange=importGallery;
   byId('finishCapture').onclick=finishCapture;

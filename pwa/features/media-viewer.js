@@ -157,13 +157,14 @@ function loadPdfJs(){
 // drawn when it nears the screen and redrawn sharper once a zoom settles. Returns a controller:
 //   {zoom, setZoom(z), page(), goTo(page, ratio), pageRatio()} — page() = the page most on screen (1-based).
 // Options: onCount(n), onPage(page, n) on scroll, zoom / page / ratio = where to start.
+const PDF_ZOOM_MIN=.5;   // below 100 % the whole page fits (landscape phone, fullscreen)
 async function renderPdfPages(blob,host,{onCount,onPage,zoom=1,page:startPage=1,ratio:startRatio=0}={}){
   const lib=await loadPdfJs();
   const pdf=await lib.getDocument({data:new Uint8Array(await blob.arrayBuffer())}).promise;
   onCount?.(pdf.numPages);
   host.innerHTML='';
   const dpr=Math.min(window.devicePixelRatio||1,2),figs=[],pages=[];
-  let z=Math.max(1,Math.min(4,zoom)),baseWidth=Math.max(200,host.clientWidth-2-(parseFloat(getComputedStyle(host).paddingLeft)||0)*2);
+  let z=Math.max(PDF_ZOOM_MIN,Math.min(4,zoom)),baseWidth=Math.max(200,host.clientWidth-2-(parseFloat(getComputedStyle(host).paddingLeft)||0)*2);
   const stage=document.createElement('div');stage.className='pdf-stage';host.append(stage);
   for(let n=1;n<=pdf.numPages;n++){
     if(!host.isConnected)return null;
@@ -196,7 +197,7 @@ async function renderPdfPages(blob,host,{onCount,onPage,zoom=1,page:startPage=1,
   host.addEventListener('scroll',()=>{const n=cur();if(n!==last){last=n;onPage?.(n,pdf.numPages)}clearTimeout(t1);t1=setTimeout(()=>onPage?.(cur(),pdf.numPages,{settled:true}),400)},{passive:true});
   let redraw=null;
   const setZoom=(nz,anchor=.5,anchorY=.5)=>{
-    nz=Math.max(1,Math.min(4,nz));if(Math.abs(nz-z)<.001)return;
+    nz=Math.max(PDF_ZOOM_MIN,Math.min(4,nz));if(Math.abs(nz-z)<.001)return;
     const n=cur(),r=pageRatio(),cx=(host.scrollLeft+host.clientWidth*anchor)/Math.max(1,host.scrollWidth);
     const cy=(host.scrollTop+host.clientHeight*anchorY)/Math.max(1,host.scrollHeight);
     z=nz;sizeAll();host.scrollTop=cy*host.scrollHeight-host.clientHeight*anchorY;host.scrollLeft=cx*host.scrollWidth-host.clientWidth*anchor;
@@ -207,10 +208,24 @@ async function renderPdfPages(blob,host,{onCount,onPage,zoom=1,page:startPage=1,
   const ro=typeof ResizeObserver==='function'?new ResizeObserver(()=>{if(!host.isConnected){ro.disconnect();io.disconnect();return}resize()}):null;ro?.observe(host);
   // Live zoom: pinch with two fingers, ctrl + wheel / trackpad pinch.
   let pd=0,pz=1;
-  host.addEventListener('touchstart',e=>{if(e.touches.length===2){pd=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);pz=z}},{passive:true});
-  host.addEventListener('touchmove',e=>{if(e.touches.length===2&&pd){e.preventDefault();const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);const r=host.getBoundingClientRect();setZoom(pz*d/pd,((e.touches[0].clientX+e.touches[1].clientX)/2-r.left)/host.clientWidth,((e.touches[0].clientY+e.touches[1].clientY)/2-r.top)/host.clientHeight)}},{passive:false});
-  host.addEventListener('touchend',e=>{if(e.touches.length<2)pd=0},{passive:true});
-  host.addEventListener('wheel',e=>{if(!e.ctrlKey)return;e.preventDefault();setZoom(z*Math.exp(-e.deltaY*.01),(e.clientX-host.getBoundingClientRect().left)/host.clientWidth)},{passive:false});
+  // While two fingers are down the viewer alone moves the page: native scrolling is switched off (a scroll that had already
+  // started cannot be cancelled by preventDefault, so zoom and scroll fought and the page jumped) and the pinch's centre
+  // both anchors the zoom and pans the page. The ink layer (pdf-ink.js) no longer scrolls on its own.
+  let pm=null;
+  const pinchEnd=()=>{pd=0;pm=null;host.style.overflow='';delete host.dataset.pinching};
+  const mid=e=>({x:(e.touches[0].clientX+e.touches[1].clientX)/2,y:(e.touches[0].clientY+e.touches[1].clientY)/2});
+  host.addEventListener('touchstart',e=>{if(e.touches.length===2){pd=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY)||1;pz=z;pm=mid(e);host.style.overflow='hidden';host.dataset.pinching='1'}},{passive:true});
+  host.addEventListener('touchmove',e=>{
+    if(e.touches.length!==2||!pd)return;
+    if(e.cancelable)e.preventDefault();
+    const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY),c=mid(e),r=host.getBoundingClientRect();
+    setZoom(pz*d/pd,(c.x-r.left)/host.clientWidth,(c.y-r.top)/host.clientHeight);
+    if(pm){host.scrollLeft-=c.x-pm.x;host.scrollTop-=c.y-pm.y}
+    pm=c;
+  },{passive:false});
+  host.addEventListener('touchend',e=>{if(e.touches.length<2)pinchEnd()},{passive:true});
+  host.addEventListener('touchcancel',pinchEnd,{passive:true});
+  host.addEventListener('wheel',e=>{if(!e.ctrlKey)return;e.preventDefault();{const r=host.getBoundingClientRect();setZoom(z*Math.exp(-e.deltaY*.01),(e.clientX-r.left)/host.clientWidth,(e.clientY-r.top)/host.clientHeight)}},{passive:false});
   sizeAll();
   await new Promise(r=>requestAnimationFrame(r));
   goTo(startPage,startRatio);last=cur();onPage?.(last,pdf.numPages);

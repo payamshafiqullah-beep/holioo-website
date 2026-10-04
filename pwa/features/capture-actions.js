@@ -6,6 +6,7 @@ let cameraZoomMax=4;
 let camDest=null;        // where the next photo goes: {courseId, sectionId, sessionId|null, source}
 let camEntryDestination=null; // explicit origin, consumed once when opening the camera
 let camReturnView=null;       // tablet / computer: the Galerie or Notes the camera was opened from, shown again when it is left
+let camBatchId=null;     // plain camera: the Captures entry this visit's photos go to (a new one each visit)
 let camShots=[];         // photos taken in this camera visit for the current destination (badge counter)
 let camThumbUrl='';
 let camStartToken=0;
@@ -50,7 +51,7 @@ function initCameraDestination(){
   if(!keep){
     // The plain camera guesses nothing: without a destination named by the caller, photos wait in Captures until the user files them.
     camDest=entry||null;
-    camShots=[];camRetakeId=null;
+    camShots=[];camRetakeId=null;camBatchId=uid();
     setCameraThumb(null);
     if(entry)rememberCameraDestination();
   }else{
@@ -677,7 +678,7 @@ function capturePhoto({auto=false}={}){
     video,sx,sy,sw,sh,0,0,canvas.width,canvas.height
   );
 
-  const dest=cameraDestContext()?destinationForShot():null;   // null: the photo waits in Captures
+  const dest=cameraDestContext()?destinationForShot():{batchId:camBatchId||(camBatchId=uid())};   // no destination: the photo waits in this visit's Captures entry
   if(isScanMode(camMode)||camRetakeId){
     const ids=isScanMode(camMode)?queueScanCapture(canvas,dest):(()=>{const id=camRetakeId;camRetakeId=null;const b=new Promise(r=>canvas.toBlob(r,'image/jpeg',.92));cameraQueue.add({id,blob:b,thumb:canvasToJpeg(scaleCanvas(canvas,canvas.width,canvas.height)),dest,createdAt:now(),replace:true,onStored:()=>{showToast(camT('retaken'));if(currentView==='capture'){camKeepBatch=true;navigate('scanReview')}}});return[]})();
     camShots.push(...ids);
@@ -713,8 +714,8 @@ async function importGallery(e){
   e.target.value='';
   const isPdf=f=>f.type==='application/pdf'||/\.pdf$/i.test(f.name),pdfs=picked.filter(isPdf),files=picked.filter(f=>f.type.startsWith('image/'));
   if(!files.length&&!pdfs.length){if(picked.length)showToast('Format non pris en charge — images ou PDF');return}
-  const dest=cameraDestContext()?destinationForShot():null;
-  if(!dest&&pdfs.length){openDestinationPicker(camT('chooseFirst'));return}
+  const dest=cameraDestContext()?destinationForShot():{batchId:camBatchId||(camBatchId=uid())};
+  if(!dest.sessionId&&pdfs.length){openDestinationPicker(camT('chooseFirst'));return}
   // PDFs are filed in the destination's séance (Fichiers, Lecture rapide, the course), not through the photo queue.
   if(pdfs.length){
     for(const f of pdfs)await storeImportedPdf(f,{courseId:dest.courseId,sessionIds:[dest.sessionId]});
@@ -731,7 +732,7 @@ async function importGallery(e){
   }
   setCameraThumb(files.at(-1));
   updateCaptureCount();
-  showToast(dest?camT('imported',{n:files.length,dest:cameraDestinationLabel(camDest)}):'Photos gardées dans Captures');
+  showToast(dest.sessionId?camT('imported',{n:files.length,dest:cameraDestinationLabel(camDest)}):'Photos gardées dans Captures');
 }
 
 function leaveCamera(){

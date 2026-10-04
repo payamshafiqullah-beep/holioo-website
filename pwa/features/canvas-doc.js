@@ -27,7 +27,7 @@ const CANVAS_ADD_SPACE=700;                         // "Ajouter de l'espace"
 const CANVAS_LINE=44;                               // spacing of the ruled / grid background
 const CANVAS_TOMBSTONE_MS=60*864e5;
 const CANVAS_HISTORY_MAX=300;
-const CANVAS_TOOLS=['select','pen','highlighter','eraser','text'];
+const CANVAS_TOOLS=['hand','select','pen','highlighter','eraser','text'];
 const CANVAS_BGS=['lines','grid','blank'];
 // Four colours per kind of tool, three sizes (thin / medium / thick) per kind; one choice is remembered per kind.
 const CANVAS_COLORS={pen:['#111827','#2563EB','#E5484D','#16A34A'],highlighter:['#FACC15','#4ADE80','#F472B6','#60A5FA']};

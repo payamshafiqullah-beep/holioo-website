@@ -422,6 +422,7 @@ html.radial-haptic-confirm body{animation:radialHapticConfirm .2s var(--ease)}
 .thumbs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s2)}
 .thumbs.compact{grid-template-columns:repeat(4,minmax(0,1fr))}
 .thumbs:empty{display:none}
+.thumb img,.image-tile img{pointer-events:none}
 .thumb,.thumb img,.image-tile,.image-tile img,[data-photo-id] img{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-user-drag:none}
 .thumb{position:relative;display:block;aspect-ratio:3/4;padding:0;border-radius:16px;overflow:hidden;background:#E6E7EF;border:3px solid transparent;transition:border-color .2s}
 .thumb img{width:100%;height:100%;object-fit:cover;display:block}

@@ -9,9 +9,24 @@ const toneAt=i=>TONES[((i%TONES.length)+TONES.length)%TONES.length];
 
 /* ---------- Course presentation helpers (read-only views of course data) ---------- */
 
+// Ten distinct course icons, each with its own tone. New courses get one at creation (course.icon).
+const COURSE_ICONS=[
+  {iconName:'book',tone:'lavender'},{iconName:'cpu',tone:'sky'},{iconName:'calculator',tone:'mint'},{iconName:'languages',tone:'peach'},{iconName:'leaf',tone:'pink'},
+  {iconName:'flask',tone:'yellow'},{iconName:'scale',tone:'lavender'},{iconName:'code',tone:'sky'},{iconName:'cap',tone:'mint'},{iconName:'atom',tone:'peach'}
+];
+// First icon not used by any of these courses; falls back to the least-used one if all ten are taken.
+function nextCourseIcon(courses){
+  const used=courses.map((c,i)=>courseVisual(c,i).iconName);
+  const free=COURSE_ICONS.find(o=>!used.includes(o.iconName));
+  if(free)return free.iconName;
+  return COURSE_ICONS.map(o=>o.iconName).sort((a,b)=>used.filter(x=>x===a).length-used.filter(x=>x===b).length)[0];
+}
+
 function courseVisual(course,index=0){
   const n=(course?.name||'').toLowerCase();
   const pick=(iconName,tone)=>({iconName,tone});
+  const chosen=COURSE_ICONS.find(o=>o.iconName===course?.icon);
+  if(chosen)return{...chosen};
   if(/math|stat|alg[eè]bre|analyse|calcul/.test(n))return pick('calculator','sky');
   if(/vhdl|[ée]lectron|info|num[ée]rique|syst[eè]me|signal|r[ée]seau/.test(n))return pick(/info|code|prog/.test(n)?'code':'cpu','lavender');
   if(/fran[cç]ais|grammaire|vocab|langue|anglais|espagnol|lecture|compr[ée]hension/.test(n))return pick('languages','peach');

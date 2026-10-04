@@ -25,6 +25,14 @@ const fmtShort=s=>{try{return new Date(s).toLocaleDateString('fr-FR',{day:'2-dig
 const sectionClass=n=>n==='CM'?'cm':n==='TD'?'td':n==='TP'?'tp':'custom';
 const sectionColor=n=>n==='CM'?'#506BFF':n==='TD'?'#8C5CF5':n==='TP'?'#FF9E42':'#29ADB5';
 const defaultState=()=>({version:3,onboardingComplete:false,academicSetupSeen:false,profile:{displayName:'Étudiant',holiooId:'',avatarUrl:'',university:'',faculty:'',program:'',level:'',semester:'',academicYear:'2026–2027',publicProfile:false},courses:[sampleCourse('VHDL','#8C5CF5'),sampleCourse('Mathématiques','#506BFF'),sampleCourse('Électronique','#FF9E42')],inbox:[],files:[],favorites:[],settings:{autoDriveSync:true,drawWithFinger:false}});
+const MAX_COURSES=7,COURSE_LIMIT_MESSAGE='Maximum 7 cours';
+const courseLimitReached=()=>state.courses.length>=MAX_COURSES;
+// The only way to add a course: refuses at the limit (the sheet and the buttons check it too), and gives the new course the first icon its owner's other courses do not use.
+function addCourse(name,color){
+  if(courseLimitReached())return null;
+  const course=sampleCourse(name,color);course.icon=nextCourseIcon(state.courses);
+  state.courses.push(course);return course;
+}
 function sampleCourse(name,color){return{id:uid(),name,color,defaultSectionsSeeded:true,sections:['CM','TD','TP'].map((n,i)=>({id:uid(),name:n,type:n,sortOrder:i,sessions:[]}))}}
 // Local data is kept per Google account on this device. The first account to sign in
 // on a device inherits the data saved before accounts existed.

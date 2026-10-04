@@ -10,7 +10,7 @@ function renderCourses(){
     <p class="reorder-hint">Maintenez un cours puis faites-le glisser pour changer l’ordre. Touchez la poignée pour le renommer ou le supprimer.</p>
     <div class="card-stack" id="courseList">${state.courses.map((c,i)=>CourseCard(c,i,true)).join('')}</div>
     <div id="courseEmpty" hidden>${EmptyState({iconName:'search',title:'Aucun cours ici',text:'Essayez un autre filtre ou une autre recherche.'})}</div>
-    ${ActionButton({label:'Ajouter un cours',id:'addCourse',variant:'soft',iconName:'plus'})}
+    ${ActionButton({label:courseLimitReached()?COURSE_LIMIT_MESSAGE:'Ajouter un cours',id:'addCourse',variant:'soft',iconName:'plus',disabled:courseLimitReached()})}
   </section>`;
   bindCourseCards();
   const list=byId('courseList');
@@ -30,7 +30,8 @@ function renderCourses(){
 // Also opened from Quick Capture on Accueil when there is no course yet.
 // `onCreated(course)`: called with the new course just before the screen is drawn again (tablet / computer Galerie). Used as a click handler too, so anything that is not a function is ignored.
 function openNewCourseSheet(onCreated=null){
-  openSheet({title:'Nouveau cours',subtitle:'Les sections CM, TD et TP sont créées automatiquement.',body:Field({label:'Nom du cours',id:'newCourseName',placeholder:'Ex. Traitement du signal'}),onConfirm:()=>{const name=byId('newCourseName').value.trim();const problem=courseNameProblem(name);if(problem){showToast(problem);return false}const colors=['#5B67F1','#8C5CF5','#FF8A4C','#29ADB5'];const course=sampleCourse(name,colors[state.courses.length%colors.length]);state.courses.push(course);if(typeof onCreated==='function')onCreated(course);saveState();render();queueSync();return true}});
+  if(courseLimitReached()){showToast(COURSE_LIMIT_MESSAGE);return}
+  openSheet({title:'Nouveau cours',subtitle:'Les sections CM, TD et TP sont créées automatiquement.',body:Field({label:'Nom du cours',id:'newCourseName',placeholder:'Ex. Traitement du signal'}),onConfirm:()=>{const name=byId('newCourseName').value.trim();const problem=courseNameProblem(name);if(problem){showToast(problem);return false}const colors=['#5B67F1','#8C5CF5','#FF8A4C','#29ADB5'];const course=addCourse(name,colors[state.courses.length%colors.length]);if(!course){showToast(COURSE_LIMIT_MESSAGE);return false}if(typeof onCreated==='function')onCreated(course);saveState();render();queueSync();return true}});
 }
 
 

@@ -35,7 +35,6 @@ async function renderSession(){
         ${ActionButton({label:'Reconnaître le texte',id:'ocrSession',variant:'ghost',iconName:'scan'})}
         ${ActionButton({label:'Exporter les images',id:'exportImages',variant:'ghost',iconName:'share'})}
         ${ActionButton({label:'Partager avec des personnes Holioo',id:'shareSessionPeople',variant:'ghost',iconName:'users'})}`:''}
-        ${ActionButton({label:'Renommer la séance',id:'renameSession',variant:'ghost',iconName:'pencil'})}
       </div>`:'';
   const pdfs=state.files.filter(f=>f.sessionIds?.includes(session.id));
   const pdfRow=pdfRowMarkup(pdfs,'sessionPdfs');
@@ -84,5 +83,4 @@ async function renderSession(){
   byId('shareSessionPeople')?.addEventListener('click',()=>shareSessionWithPeople(course,section,session));
   if(n)updateSessionOcrLabel(session);
   byId('publishSession')?.addEventListener('click',()=>publishSession(course,section,session));
-  byId('renameSession')?.addEventListener('click',()=>openSheet({title:'Renommer la séance',body:Field({label:'Titre',id:'renameValue',value:session.title}),onConfirm:()=>{const title=byId('renameValue').value.trim()||session.title;if(title!==session.title){const problem=sessionTitleProblem(section,title,session.id);if(problem){showToast(problem);return false}}session.title=title;saveState();render();queueSync();return true}}));
 }

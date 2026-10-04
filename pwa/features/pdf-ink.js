@@ -137,7 +137,7 @@ async function createPdfInk({fileId,host,boxes,aspects,viewer,frame}){
     if(e.pointerType==='pen')penUntil=performance.now()+PDF_INK_PEN_HOLD_MS;
     if(e.pointerType==='touch'&&touches.has(e.pointerId)){
       touches.set(e.pointerId,{x:e.clientX,y:e.clientY});
-      if(pan&&touches.size>=2){const c=centroid();host.scrollBy(pan.x-c.x,pan.y-c.y);pan=c;e.preventDefault();return}
+      if(pan&&touches.size>=2){pan=centroid();e.preventDefault();return}   // two fingers: the viewer's pinch zooms and pans, the ink never scrolls
     }
     const g=gesture;if(!g||g.pointerId!==e.pointerId)return;
     e.preventDefault();

@@ -197,9 +197,9 @@ test('the title above the rings follows the path: "Chimie · TD · TD 2" and wha
   assert.match(d({mode:'keys',item:{label:'Corrigé',kind:'pdf',pdfId:'p'},path:[course,section,{label:'TD 1'}]}).sub,/Entrée pour ouvrir/);
 });
 
-test('the menu is configured as stacked and four rings deep; Capture rapide is not',()=>{
+test('the menu is configured as stacked and four rings deep; so is Capture rapide (hub rings); the item menu is not',()=>{
   const src=read('../features/quick-reading.js'),qc=read('../features/quick-capture.js');
   assert.match(src,/maxDepth:4,stack:true/);
-  assert.doesNotMatch(qc,/maxDepth|stack:/);
+  assert.match(src,/hub:true/);assert.match(qc,/stack:true,hub:true/);
   assert.doesNotMatch(read('../features/item-menu.js'),/maxDepth|stack:/);
 });

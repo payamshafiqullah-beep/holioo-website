@@ -221,3 +221,35 @@ test('the stream asked for during the gesture is used by the camera screen',asyn
   assert.equal(calls,1,'no second request: the first-time explanation is skipped, the gesture already asked');
   assert.equal(run('cameraStream'),stream);
 });
+
+// Hub rings (stack menus): from the second ring on, a full circle around the middle of the screen.
+test('hub ring: full circle around the middle, on screen, no overlap, on every phone', () => {
+  for (const [name, vp] of Object.entries(screens)) {
+    const c = R.radialHubZone(vp), s = R.RADIAL.size;
+    for (const n of [2, 3, 5, 8]) {
+      const h = R.radialHubFit(n, c, vp, s);
+      assert.equal(h.shown, n, `${name}: ${n} items fit`);
+      const pts = h.angles.map(a => R.radialPoint(c, h.r, a));
+      pts.forEach(p => assert.ok(inside(p, s, vp), `${name}: item on screen`));
+      for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++)
+        assert.ok(Math.hypot(pts[i].x - pts[j].x, pts[i].y - pts[j].y) >= s, `${name}: ${n} items do not overlap`);
+    }
+  }
+});
+test('hub ring: the next ring takes another track (never over the blurred one); too many items → fewer shown', () => {
+  const vp = screens['iPhone 15 (390×844)'], c = R.radialHubZone(vp), s = R.RADIAL.size;
+  const a = R.radialHubFit(6, c, vp, s), b = R.radialHubFit(6, c, vp, s, a.r);
+  assert.ok(Math.abs(a.r - b.r) >= s + R.RADIAL.ringGap, 'two tracks apart');
+  const many = R.radialHubFit(60, c, vp, s);
+  assert.ok(many.shown < 60 && many.shown >= 8, 'capacity limits what is shown');
+});
+const hit=(...a)=>{const r=R.radialHitLevels(...a);return r&&JSON.parse(JSON.stringify(r))};
+test('hub hit: the open ring wins, the blurred one answers by its other items (tentative) and its open item', () => {
+  const o = { x: 330, y: 250 }, c = { x: 195, y: 420 };
+  const l1 = { c: o, r: 100, angles: [90, 135, 180] }, l2 = { c, r: 100, angles: [90, 210, 330] };
+  const at = (L, i) => R.radialPoint(L.c, L.r, L.angles[i]);
+  assert.deepEqual(hit(at(l2, 1), [l1, l2], [0, -1], 56), { ring: 2, index: 1 });
+  assert.deepEqual(hit(at(l1, 2), [l1, l2], [0, -1], 56), { ring: 1, index: 2, tentative: true });
+  assert.deepEqual(hit(at(l1, 0), [l1, l2], [0, -1], 56), { ring: 1, index: 0 });
+  assert.equal(R.radialHitLevels({ x: 5, y: 5 }, [l1, l2], [0, -1], 56), null);
+});

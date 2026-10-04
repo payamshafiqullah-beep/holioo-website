@@ -45,14 +45,35 @@ async function renderPdfViewer(){
   let ctl=null,ink=null;
   const savePos=()=>{if(!ctl||!host.isConnected)return;try{localStorage.setItem(posKey,JSON.stringify({page:ctl.page(),ratio:+ctl.pageRatio().toFixed(3),zoom:+ctl.zoom.toFixed(2)}))}catch{}};
   // Full screen: the real Fullscreen API where it exists, always the immersive layout (header and dock hidden; iPhone has no element fullscreen).
-  const setImmersive=on=>{viewer.classList.toggle('pdf-immersive',on);if(isDesk())setChrome(on);fsBtn.setAttribute('aria-pressed',String(on));fsBtn.setAttribute('aria-label',on?'Quitter le plein écran':'Plein écran');fsBtn.innerHTML=icon(on?'minimize':'maximize',{size:20});ink?.fullscreen(on||isDesk());setTimeout(()=>host.dispatchEvent(new Event('scroll')),50)};
+  const setImmersive=on=>{viewer.classList.toggle('pdf-immersive',on);if(isDesk())setChrome(on);fsBtn.setAttribute('aria-pressed',String(on));fsBtn.setAttribute('aria-label',on?'Quitter le plein écran':'Plein écran');fsBtn.innerHTML=icon(on?'minimize':'maximize',{size:20});ink?.fullscreen(on||isDesk());wake();setTimeout(()=>host.dispatchEvent(new Event('scroll')),50)};
+  // Fullscreen reading: after IDLE_MS without a touch the controls (pen bar, pager, buttons) fade out; a tap brings them back.
+  // While they are hidden the first touch only wakes them (it never leaves ink), then everything works as usual.
+  const IDLE_MS=3500;let idleT=0,tapAt=null;
+  const idle=()=>viewer.classList.contains('pdf-ui-idle');
+  const sleep=()=>{idleT=0;if(!viewer.classList.contains('pdf-immersive'))return;
+    if(ink?.busy())return arm();   // mid-stroke / colour picker open: try again later
+    viewer.classList.add('pdf-ui-idle')};
+  const arm=()=>{clearTimeout(idleT);idleT=viewer.classList.contains('pdf-immersive')?setTimeout(sleep,IDLE_MS):0};
+  const wake=()=>{viewer.classList.remove('pdf-ui-idle');arm()};
+  viewer.addEventListener('pointerdown',e=>{
+    if(!idle()){arm();return}
+    if(ink?.hasTool()){e.stopPropagation();e.preventDefault();wake();return}   // with a tool: this touch only brings the controls back
+    tapAt={id:e.pointerId,x:e.clientX,y:e.clientY,t:performance.now()};          // reading: a tap wakes them, a scroll / pinch does not
+  },true);
+  viewer.addEventListener('pointerup',e=>{
+    if(tapAt&&tapAt.id===e.pointerId&&performance.now()-tapAt.t<350&&Math.hypot(e.clientX-tapAt.x,e.clientY-tapAt.y)<10)wake();
+    tapAt=null;if(!idle())arm();
+  },true);
+  viewer.addEventListener('pointermove',e=>{if(idle()){if(e.pointerType==='mouse')wake()}else if(e.buttons||e.pointerType==='mouse')arm()},true);
+  viewer.addEventListener('keydown',wake,true);
+  host.addEventListener('scroll',()=>{if(!idle())arm()},{passive:true});   // a scroll the browser took over sends pointercancel, not pointerup
   const onFsChange=()=>{if(!document.fullscreenElement&&viewer.classList.contains('pdf-immersive'))setImmersive(false)};
   document.addEventListener('fullscreenchange',onFsChange);
   fsBtn.onclick=async()=>{
     const on=!viewer.classList.contains('pdf-immersive');setImmersive(on);
     try{if(on)await viewer.requestFullscreen?.();else if(document.fullscreenElement)await document.exitFullscreen()}catch{}
   };
-  const leave=()=>{savePos();ink?.flush();document.removeEventListener('fullscreenchange',onFsChange);if(document.fullscreenElement)document.exitFullscreen?.().catch(()=>{})};
+  const leave=()=>{clearTimeout(idleT);savePos();ink?.flush();document.removeEventListener('fullscreenchange',onFsChange);if(document.fullscreenElement)document.exitFullscreen?.().catch(()=>{})};
   byId('pdfCornerBack').onclick=()=>fsBtn.click();   // fullscreen: back = leave fullscreen only, no navigation
   byId('pdfBack').onclick=()=>{leave();revokeViewerUrl();navigate(currentPdfReturnView||'files')};
   window.addEventListener('pagehide',()=>{savePos();ink?.flush()},{once:true});

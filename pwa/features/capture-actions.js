@@ -153,6 +153,8 @@ function setCameraThumb(blob){
 // The counter opens the review of this capture's pages (reorder, retake, crop, filters…).
 function openCaptureReview(){
   if(!camShots.length)return;
+  // The review works on a séance's pages; photos without a destination wait in Captures.
+  if(!cameraDestContext()){showToast('Photos gardées dans Captures : choisissez une destination pour les revoir');return}
   camKeepBatch=true;
   navigate('scanReview');
 }

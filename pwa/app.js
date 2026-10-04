@@ -2,7 +2,19 @@ const VIEWS={login:()=>renderLogin(),blocked:()=>renderBlocked(),admin:()=>rende
 // Tablet / computer: the course navigator replaces the course page, the type page and the course list — those screens
 // (still the phone's own) open the Galerie on what they were about.
 const DESK_REDIRECT={courses:'gallery',course:'gallery',section:'gallery'};
-async function render(){
+// One screen is drawn at a time. A screen that awaits (Accueil reads the notes) used to finish after the user had already
+// moved on (camera in, camera out…) and paint over the newer one — leaving the bottom menu hidden or the wrong screen up.
+// Calls made while a draw is running are merged into one more draw, which always reads the latest currentView.
+let renderRunning=null,renderAgain=false;
+function render(){
+  if(renderRunning){renderAgain=true;return renderRunning}
+  renderRunning=(async()=>{
+    try{do{renderAgain=false;await renderOnce()}while(renderAgain)}
+    finally{renderRunning=null}
+  })();
+  return renderRunning;
+}
+async function renderOnce(){
   destroyReorderables();
   // Sign-in is mandatory. Offline, the last signed-in account on this device keeps working locally.
   const signedIn=!!currentUser||guestMode||(!navigator.onLine&&!!stateOwner);

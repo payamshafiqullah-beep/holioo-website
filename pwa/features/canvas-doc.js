@@ -20,10 +20,11 @@
 
 const CANVAS_W=1000;
 const CANVAS_PAGE_H=Math.round(CANVAS_W*297/210);   // one A4 sheet = 1414 units
-const CANVAS_MAX_H=40000;
+const CANVAS_MAX_H=Math.floor(40000/CANVAS_PAGE_H)*CANVAS_PAGE_H;   // always whole A4 sheets
+const canvasSnapHeight=h=>Math.max(CANVAS_PAGE_H,Math.min(CANVAS_MAX_H,Math.ceil(h/CANVAS_PAGE_H)*CANVAS_PAGE_H));   // a page is a whole number of A4 sheets, on screen as in the PDF
 const CANVAS_GROW_MARGIN=360;                       // a stroke or photo nearer than this to the bottom makes the page grow
 const CANVAS_GROW_STEP=720;
-const CANVAS_ADD_SPACE=700;                         // "Ajouter de l'espace"
+const CANVAS_ADD_SPACE=CANVAS_PAGE_H;               // "Ajouter de l'espace": one more A4 sheet
 const CANVAS_LINE=44;                               // spacing of the ruled / grid background
 const CANVAS_TOMBSTONE_MS=60*864e5;
 const CANVAS_HISTORY_MAX=300;
@@ -76,7 +77,7 @@ function _byId(list,make){
 function normalizeCanvasDoc(raw,sessionId=''){
   const d=emptyCanvasDoc(sessionId||_str(raw?.sessionId));
   if(!raw||typeof raw!=='object')return d;
-  d.height=canvasClamp(canvasNum(raw.height,CANVAS_PAGE_H),CANVAS_PAGE_H,CANVAS_MAX_H);
+  d.height=canvasSnapHeight(canvasNum(raw.height,CANVAS_PAGE_H));
   d.bg=CANVAS_BGS.includes(raw.bg)?raw.bg:'lines';
   d.bgAt=canvasNum(raw.bgAt);
   d.items=_byId(raw.items,_item).sort((a,b)=>a.z-b.z||(a.id<b.id?-1:1));
@@ -105,7 +106,7 @@ function canvasContentBottom(doc){
 // The page grows when something reaches near its bottom. Returns the new height, or null.
 function canvasGrownHeight(height,reachY){
   if(reachY<=height-CANVAS_GROW_MARGIN||height>=CANVAS_MAX_H)return null;
-  return Math.min(CANVAS_MAX_H,Math.ceil((reachY+CANVAS_GROW_STEP)/10)*10);
+  return canvasSnapHeight(reachY+CANVAS_GROW_MARGIN);
 }
 const canvasNextZ=items=>items.reduce((m,it)=>Math.max(m,it.z),0)+1;
 
@@ -345,7 +346,7 @@ function canvasPhotoSize(ratio){
   return{w,h:canvasRound(w/r,1)};
 }
 
-if(typeof module!=='undefined')module.exports={CANVAS_W,CANVAS_PAGE_H,CANVAS_MAX_H,CANVAS_GROW_MARGIN,CANVAS_GROW_STEP,CANVAS_ADD_SPACE,CANVAS_LINE,CANVAS_TOOLS,CANVAS_BGS,CANVAS_COLORS,CANVAS_SIZES,CANVAS_HIGHLIGHT_ALPHA,CANVAS_TEXT_PAD,CANVAS_TEXT_W,CANVAS_PHOTO_MIN_W,
+if(typeof module!=='undefined')module.exports={canvasSnapHeight,CANVAS_W,CANVAS_PAGE_H,CANVAS_MAX_H,CANVAS_GROW_MARGIN,CANVAS_GROW_STEP,CANVAS_ADD_SPACE,CANVAS_LINE,CANVAS_TOOLS,CANVAS_BGS,CANVAS_COLORS,CANVAS_SIZES,CANVAS_HIGHLIGHT_ALPHA,CANVAS_TEXT_PAD,CANVAS_TEXT_W,CANVAS_PHOTO_MIN_W,
   canvasKey,canvasKindOf,emptyCanvasDoc,normalizeCanvasDoc,canvasPrune,canvasLive,canvasIsEmpty,canvasContentBottom,canvasGrownHeight,canvasNextZ,canvasSegDist,canvasStrokeHit,canvasHitItem,
   canvasOutlinePath,canvasStrokeOptions,canvasEraseSplit,canvasSnapShape,canvasRdp,canvasLineHeight,canvasTextHeight,canvasLayoutText,
   canvasStore,canvasSerialize,canvasChangeCreate,canvasChangeRemove,canvasChangeUpdate,canvasChangePage,canvasApplyChanges,canvasHistory,canvasHistoryPush,canvasUndo,canvasRedo,

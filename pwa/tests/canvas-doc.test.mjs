@@ -167,10 +167,10 @@ test('stroke hit: near the line counts, its own width too', () => {
 test('the page grows near its bottom, by steps, up to a ceiling', () => {
   assert.equal(C.canvasGrownHeight(1414, 500), null);
   assert.equal(C.canvasGrownHeight(1414, 1414 - 361), null);
-  assert.equal(C.canvasGrownHeight(1414, 1055), 1780, 'one unit inside the margin: grows by a step');
-  assert.equal(C.canvasGrownHeight(1414, 5000), 5720);
-  assert.equal(C.canvasGrownHeight(39990, 39990), 40000);
-  assert.equal(C.canvasGrownHeight(40000, 40000), null, 'at the ceiling it stops');
+  assert.equal(C.canvasGrownHeight(1414, 1055), 2828, 'one unit inside the margin: grows by a whole A4 sheet');
+  assert.equal(C.canvasGrownHeight(1414, 5000), 5656);
+  assert.equal(C.canvasGrownHeight(C.CANVAS_MAX_H - 1414, C.CANVAS_MAX_H - 1414), C.CANVAS_MAX_H);
+  assert.equal(C.canvasGrownHeight(C.CANVAS_MAX_H, C.CANVAS_MAX_H), null, 'at the ceiling it stops');
 });
 
 test('z-order: the next item goes on top', () => {
@@ -213,11 +213,11 @@ test('merging two devices: per id, the newest edit wins; deletions travel; nothi
   const a = { sessionId: 's', height: 2000, bg: 'lines', bgAt: 1, updatedAt: 10,
     items: [photo('p1', 0, 0, 100, 100, 1, { updatedAt: 10 }), photo('p2', 0, 0, 100, 100, 2, { updatedAt: 5, x: 1 })],
     strokes: [stroke('s1', [[1, 1]], { updatedAt: 3 })], known: ['k1'] };
-  const b = { sessionId: 's', height: 3500, bg: 'grid', bgAt: 9, updatedAt: 20,
+  const b = { sessionId: 's', height: 4242, bg: 'grid', bgAt: 9, updatedAt: 20,
     items: [photo('p1', 400, 0, 100, 100, 1, { updatedAt: 4 }), photo('p2', 0, 0, 100, 100, 2, { updatedAt: 15, deleted: true }), photo('p3', 0, 0, 10, 10, 3, { updatedAt: 6 })],
     strokes: [stroke('s2', [[2, 2]], { updatedAt: 7, at: 2 })], known: ['k2'] };
   const m = C.canvasMerge(a, b);
-  assert.equal(m.height, 3500, 'the taller page');
+  assert.equal(m.height, 4242, 'the taller page');
   assert.equal(m.bg, 'grid', 'the later background choice');
   assert.equal(m.items.find(i => i.id === 'p1').x, 0, 'a: newer');
   assert.equal(m.items.find(i => i.id === 'p2').deleted, true, 'b deleted it later');
@@ -313,4 +313,12 @@ test('partial eraser cuts the touched part and keeps both ends', () => {
   assert.ok(pieces[0].at(-1)[0] < 40 && pieces[1][0][0] > 60);
   assert.deepEqual(C.canvasEraseSplit(s, 0, 0, 30)?.length, 1, 'cut at the end leaves one piece');
   assert.deepEqual(C.canvasEraseSplit(stroke('t', [[0, 0, .5], [6, 0, .5]]), 3, 0, 30), [], 'all gone');
+});
+
+test('a page is always whole A4 sheets: reading, growing and adding space', () => {
+  assert.equal(C.normalizeCanvasDoc({ height: 2000 }).height, 2828);
+  assert.equal(C.normalizeCanvasDoc({ height: 1 }).height, 1414);
+  assert.equal(C.canvasGrownHeight(2828, 2600) % 1414, 0);
+  assert.equal(C.CANVAS_ADD_SPACE, 1414);
+  assert.equal(C.CANVAS_MAX_H % 1414, 0);
 });

@@ -81,7 +81,7 @@ test('change position moves one photo and keeps the others in order', () => {
   assert.deepEqual(G.galleryMoveInList(['a', 'b'], 'zzz', 0), ['a', 'b']);
 });
 
-test('galleryPdfs: the PDFs of the selected séance or section only; nothing selected, none', () => {
+test('galleryPdfs: the PDFs of the selected séance or section; nothing selected, the whole course', () => {
   const course = { sections: [
     { id: 'td', sessions: [{ id: 's1' }, { id: 's2' }] },
     { id: 'tp', sessions: [{ id: 's3' }] }] };
@@ -91,6 +91,7 @@ test('galleryPdfs: the PDFs of the selected séance or section only; nothing sel
   assert.deepEqual(ids(G.galleryPdfs(files, course, 'td', 's3')), [], 'a séance of another section is not this section\'s');
   assert.deepEqual(ids(G.galleryPdfs(files, course, 'td')), ['a', 'b']);
   assert.deepEqual(ids(G.galleryPdfs(files, course, null, 's3')), ['b']);
-  assert.deepEqual(G.galleryPdfs(files, course), []);
+  assert.deepEqual(ids(G.galleryPdfs(files, course)), ['a', 'b'], 'whole course: every PDF of its séances');
+  assert.deepEqual(ids(G.galleryPdfs([...files, { id: 'e', courseId: 'c1', sessionIds: [] }], { id: 'c1', ...course })), ['a', 'b', 'e'], 'and those filed in the course alone');
   assert.deepEqual(G.galleryPdfs(undefined, undefined, 'td'), []);
 });

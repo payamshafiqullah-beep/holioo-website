@@ -24,13 +24,13 @@ function galleryEntries(course,filter='all',sessionId=null){
 // The PDFs of the selected séance, or of the selected section (a PDF belongs to séances through `sessionIds`).
 // Nothing is selected → none: the row only shows where a séance or a section is picked.
 function galleryPdfs(files,course,sectionId=null,sessionId=null){
-  if(!sessionId&&!sectionId)return[];
   const ids=new Set();
   for(const section of course?.sections||[]){
     if(sectionId&&section.id!==sectionId)continue;
     for(const session of section.sessions||[])if(!sessionId||session.id===sessionId)ids.add(session.id);
   }
-  return(files||[]).filter(f=>(f.sessionIds||[]).some(id=>ids.has(id)));
+  const wholeCourse=!sessionId&&!sectionId;   // nothing selected: every PDF of the course, also those filed in it without a séance
+  return(files||[]).filter(f=>(f.sessionIds||[]).some(id=>ids.has(id))||(wholeCourse&&course?.id&&f.courseId===course.id&&!(f.sessionIds||[]).length));
 }
 
 // The course on screen: the one asked for, else the last used with the camera, else the first one still running.

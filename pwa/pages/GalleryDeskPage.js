@@ -88,7 +88,7 @@ function openPositionSheet(photoId,session){
     byId('posLast').onclick=()=>{pos=n;show()};
     show();
   }
-  byId('posMove').onclick=()=>{sheetRoot.innerHTML='';itemMovePhoto(photoId)};
+  byId('posMove').onclick=()=>{closeSheet();itemMovePhoto(photoId)};
 }
 
 async function renderGallery(){

@@ -242,7 +242,7 @@ function pdfSessionMenu(meta){
 // The row of a séance's PDFs (phone séance screen, Galerie on tablet / computer): a title and one card per PDF.
 function pdfRowMarkup(pdfs,id){
   return pdfs.length?`${SectionTitle('PDF',{count:pdfs.length})}
-      <div class="pdf-row" id="${id}">${pdfs.map(f=>`<div class="thumb pdf-thumb" data-pdf-id="${f.id}" role="button" tabindex="0" aria-label="Ouvrir ${esc(f.title)}"><span class="pdf-thumb-icon">${icon('fileText',{size:30})}</span><strong>${esc(f.title)}</strong><small>${f.pages?esc(plural(f.pages,'page')):'PDF'}</small></div>`).join('')}</div>`:'';
+      <div class="pdf-row" id="${id}">${pdfs.map(f=>`<div class="thumb pdf-thumb" data-pdf-id="${f.id}" role="button" tabindex="0" aria-label="Ouvrir ${esc(f.title)}"><span class="pdf-thumb-icon">${icon('fileText',{size:20})}</span><strong>${esc(f.title)}</strong><small>${f.pages?esc(plural(f.pages,'page')):'PDF'}</small></div>`).join('')}</div>`:'';
 }
 // Wires that row once it is in the page: a tap opens the viewer (back returns to `returnView`), the ⋯ grip opens the menu.
 function bindPdfRow(row,returnView){

@@ -167,10 +167,10 @@ test('stroke hit: near the line counts, its own width too', () => {
 test('the page grows near its bottom, by steps, up to a ceiling', () => {
   assert.equal(C.canvasGrownHeight(1414, 500), null);
   assert.equal(C.canvasGrownHeight(1414, 1414 - 361), null);
-  assert.equal(C.canvasGrownHeight(1414, 1055), 1780, 'one unit inside the margin: grows by a step');
-  assert.equal(C.canvasGrownHeight(1414, 5000), 5720);
-  assert.equal(C.canvasGrownHeight(39990, 39990), 40000);
-  assert.equal(C.canvasGrownHeight(40000, 40000), null, 'at the ceiling it stops');
+  assert.equal(C.canvasGrownHeight(1414, 1055), 2828, 'one unit inside the margin: grows by a whole A4 sheet');
+  assert.equal(C.canvasGrownHeight(1414, 5000), 5656);
+  assert.equal(C.canvasGrownHeight(C.CANVAS_MAX_H - 1414, C.CANVAS_MAX_H - 1414), C.CANVAS_MAX_H);
+  assert.equal(C.canvasGrownHeight(C.CANVAS_MAX_H, C.CANVAS_MAX_H), null, 'at the ceiling it stops');
 });
 
 test('z-order: the next item goes on top', () => {
@@ -213,11 +213,11 @@ test('merging two devices: per id, the newest edit wins; deletions travel; nothi
   const a = { sessionId: 's', height: 2000, bg: 'lines', bgAt: 1, updatedAt: 10,
     items: [photo('p1', 0, 0, 100, 100, 1, { updatedAt: 10 }), photo('p2', 0, 0, 100, 100, 2, { updatedAt: 5, x: 1 })],
     strokes: [stroke('s1', [[1, 1]], { updatedAt: 3 })], known: ['k1'] };
-  const b = { sessionId: 's', height: 3500, bg: 'grid', bgAt: 9, updatedAt: 20,
+  const b = { sessionId: 's', height: 4242, bg: 'grid', bgAt: 9, updatedAt: 20,
     items: [photo('p1', 400, 0, 100, 100, 1, { updatedAt: 4 }), photo('p2', 0, 0, 100, 100, 2, { updatedAt: 15, deleted: true }), photo('p3', 0, 0, 10, 10, 3, { updatedAt: 6 })],
     strokes: [stroke('s2', [[2, 2]], { updatedAt: 7, at: 2 })], known: ['k2'] };
   const m = C.canvasMerge(a, b);
-  assert.equal(m.height, 3500, 'the taller page');
+  assert.equal(m.height, 4242, 'the taller page');
   assert.equal(m.bg, 'grid', 'the later background choice');
   assert.equal(m.items.find(i => i.id === 'p1').x, 0, 'a: newer');
   assert.equal(m.items.find(i => i.id === 'p2').deleted, true, 'b deleted it later');
@@ -305,6 +305,33 @@ test('shape snap leaves handwriting, scribbles and small marks alone', () => {
   assert.equal(C.canvasSnapShape([[0, 0, .5]]), null);
 });
 
+test('shape snap: an arrow drawn in one stroke (shaft, then both barbs) becomes a clean arrow', () => {
+  const seg = (a, b, n = 14) => along(n, t => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
+  const tip = [400, 200];
+  const pts = [...seg([100, 200], tip, 30), ...seg(tip, [350, 160]), ...seg([350, 160], tip), ...seg(tip, [350, 245])];
+  const r = C.canvasSnapShape(pts);
+  assert.equal(r?.kind, 'arrow');
+  assert.equal(C.canvasSnapShape([...seg([100, 200], tip, 30), ...seg(tip, [350, 160])]), null, 'only one barb: not an arrow, not a line');
+});
+
+test('shape snap: a held stroke can be filed as drawn, then corrected: one undo gives the drawn stroke back', () => {
+  const store = C.canvasStore(C.normalizeCanvasDoc({ sessionId: 's1', items: [], strokes: [] }));
+  const h = C.canvasHistory();
+  const drawn = stroke('h1', along(40, t => [100 + 300 * t, 200 + 6 * t]), { sp: 1 });
+  const fixed = { ...drawn, pts: C.canvasSnapShape(drawn.pts).pts, sp: 0 };
+  C.canvasApplyChanges(store, [C.canvasChangeCreate('s', drawn)], true, 5);
+  C.canvasHistoryPush(h, [C.canvasChangeCreate('s', drawn)]);
+  C.canvasApplyChanges(store, [C.canvasChangeUpdate('s', drawn, fixed)], true, 6);
+  C.canvasHistoryPush(h, [C.canvasChangeUpdate('s', drawn, fixed)]);
+  assert.equal(store.strokes.get('h1').pts.length, fixed.pts.length);
+  C.canvasUndo(h, store, 7);
+  const back = store.strokes.get('h1');
+  assert.equal(back.pts, drawn.pts, 'the drawn points are back');
+  assert.ok(!back.deleted, 'still there');
+  C.canvasUndo(h, store, 8);
+  assert.ok(store.strokes.get('h1').deleted, 'the second undo removes it');
+});
+
 test('partial eraser cuts the touched part and keeps both ends', () => {
   const s = stroke('l', [[0, 0, .5], [100, 0, .5]], { size: 4 });
   assert.equal(C.canvasEraseSplit(s, 50, 50, 10), null, 'untouched');
@@ -313,4 +340,25 @@ test('partial eraser cuts the touched part and keeps both ends', () => {
   assert.ok(pieces[0].at(-1)[0] < 40 && pieces[1][0][0] > 60);
   assert.deepEqual(C.canvasEraseSplit(s, 0, 0, 30)?.length, 1, 'cut at the end leaves one piece');
   assert.deepEqual(C.canvasEraseSplit(stroke('t', [[0, 0, .5], [6, 0, .5]]), 3, 0, 30), [], 'all gone');
+});
+
+test('a page is always whole A4 sheets: reading, growing and adding space', () => {
+  assert.equal(C.normalizeCanvasDoc({ height: 2000 }).height, 2828);
+  assert.equal(C.normalizeCanvasDoc({ height: 1 }).height, 1414);
+  assert.equal(C.canvasGrownHeight(2828, 2600) % 1414, 0);
+  assert.equal(C.CANVAS_ADD_SPACE, 1414);
+  assert.equal(C.CANVAS_MAX_H % 1414, 0);
+});
+
+test('a photo never straddles two A4 sheets and keeps clear of the gap between them', () => {
+  const P = 1414, pad = C.CANVAS_SHEET_PAD;
+  assert.equal(C.canvasFitSheet(100, 300), 100, 'inside the first sheet: untouched');
+  assert.equal(C.canvasFitSheet(0, 300), 0, 'the top of the first sheet needs no padding');
+  const low = C.canvasFitSheet(P - 250, 300);   // middle on sheet 1, spills over: pulled up
+  assert.equal(low, P - pad - 300);
+  const high = C.canvasFitSheet(P - 50, 300);   // middle on sheet 2: pushed down below the gap
+  assert.equal(high, P + pad);
+  assert.equal(C.canvasFitSheet(P + 10, 200), P + pad, 'padding below the cut');
+  assert.equal(C.canvasSheetRoom(100), P - pad - 100);
+  assert.equal(C.canvasSheetRoom(P + 100), 2 * P - pad - (P + 100));
 });

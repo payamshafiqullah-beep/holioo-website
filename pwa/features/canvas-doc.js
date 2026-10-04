@@ -20,14 +20,25 @@
 
 const CANVAS_W=1000;
 const CANVAS_PAGE_H=Math.round(CANVAS_W*297/210);   // one A4 sheet = 1414 units
-const CANVAS_MAX_H=40000;
+const CANVAS_MAX_H=Math.floor(40000/CANVAS_PAGE_H)*CANVAS_PAGE_H;   // always whole A4 sheets
+const canvasSnapHeight=h=>Math.max(CANVAS_PAGE_H,Math.min(CANVAS_MAX_H,Math.ceil(h/CANVAS_PAGE_H)*CANVAS_PAGE_H));   // a page is a whole number of A4 sheets, on screen as in the PDF
+const CANVAS_SHEET_GAP=64;                          // the band drawn between two A4 sheets; a photo keeps clear of it (half a gap + 12 each side)
+const CANVAS_SHEET_PAD=CANVAS_SHEET_GAP/2+12;
+// A photo never straddles two sheets: it sits on the sheet its middle is on, clear of the band between sheets.
+function canvasFitSheet(y,h){
+  const k=Math.max(0,Math.min(Math.floor(CANVAS_MAX_H/CANVAS_PAGE_H)-1,Math.floor((y+h/2)/CANVAS_PAGE_H)));
+  const lo=k>0?k*CANVAS_PAGE_H+CANVAS_SHEET_PAD:0,hi=(k+1)*CANVAS_PAGE_H-CANVAS_SHEET_PAD-h;
+  return Math.max(lo,Math.min(y,hi));
+}
+// The tallest a photo can be at `y` (its sheet's bottom edge, minus the padding).
+const canvasSheetRoom=y=>(Math.floor(Math.max(0,y)/CANVAS_PAGE_H)+1)*CANVAS_PAGE_H-CANVAS_SHEET_PAD-y;
 const CANVAS_GROW_MARGIN=360;                       // a stroke or photo nearer than this to the bottom makes the page grow
 const CANVAS_GROW_STEP=720;
-const CANVAS_ADD_SPACE=700;                         // "Ajouter de l'espace"
+const CANVAS_ADD_SPACE=CANVAS_PAGE_H;               // "Ajouter de l'espace": one more A4 sheet
 const CANVAS_LINE=44;                               // spacing of the ruled / grid background
 const CANVAS_TOMBSTONE_MS=60*864e5;
 const CANVAS_HISTORY_MAX=300;
-const CANVAS_TOOLS=['select','pen','highlighter','eraser','text'];
+const CANVAS_TOOLS=['hand','select','pen','highlighter','eraser','text'];
 const CANVAS_BGS=['lines','grid','blank'];
 // Four colours per kind of tool, three sizes (thin / medium / thick) per kind; one choice is remembered per kind.
 const CANVAS_COLORS={pen:['#111827','#2563EB','#E5484D','#16A34A'],highlighter:['#FACC15','#4ADE80','#F472B6','#60A5FA']};
@@ -76,7 +87,7 @@ function _byId(list,make){
 function normalizeCanvasDoc(raw,sessionId=''){
   const d=emptyCanvasDoc(sessionId||_str(raw?.sessionId));
   if(!raw||typeof raw!=='object')return d;
-  d.height=canvasClamp(canvasNum(raw.height,CANVAS_PAGE_H),CANVAS_PAGE_H,CANVAS_MAX_H);
+  d.height=canvasSnapHeight(canvasNum(raw.height,CANVAS_PAGE_H));
   d.bg=CANVAS_BGS.includes(raw.bg)?raw.bg:'lines';
   d.bgAt=canvasNum(raw.bgAt);
   d.items=_byId(raw.items,_item).sort((a,b)=>a.z-b.z||(a.id<b.id?-1:1));
@@ -105,7 +116,7 @@ function canvasContentBottom(doc){
 // The page grows when something reaches near its bottom. Returns the new height, or null.
 function canvasGrownHeight(height,reachY){
   if(reachY<=height-CANVAS_GROW_MARGIN||height>=CANVAS_MAX_H)return null;
-  return Math.min(CANVAS_MAX_H,Math.ceil((reachY+CANVAS_GROW_STEP)/10)*10);
+  return canvasSnapHeight(reachY+CANVAS_GROW_MARGIN);
 }
 const canvasNextZ=items=>items.reduce((m,it)=>Math.max(m,it.z),0)+1;
 
@@ -164,7 +175,7 @@ function canvasEraseSplit(stroke,x,y,r){
 }
 
 // ── Shape snap: a drawn line, circle / ellipse or polygon becomes the clean shape ──
-// → null (keep the stroke as drawn) or {kind:'line'|'circle'|'ellipse'|'rect'|'polygon', pts:[[x,y,.5]…]}.
+// → null (keep the stroke as drawn) or {kind:'line'|'arrow'|'circle'|'ellipse'|'rect'|'polygon', pts:[[x,y,.5]…]} (a triangle is a 3-corner polygon).
 // Small strokes (handwriting) are never touched: the shape must be at least `minSize` units across.
 function canvasRdp(pts,tol){
   if(pts.length<3)return pts;
@@ -172,6 +183,24 @@ function canvasRdp(pts,tol){
   for(let i=1;i<pts.length-1;i++){const d=canvasSegDist(pts[i][0],pts[i][1],a[0],a[1],b[0],b[1]);if(d>worst){worst=d;at=i}}
   if(worst<=tol)return[a,b];
   return[...canvasRdp(pts.slice(0,at+1),tol).slice(0,-1),...canvasRdp(pts.slice(at),tol)];
+}
+// Arrow, drawn in one stroke: the shaft to the tip, back along one barb, back to the tip, along the other barb. Simplified it has
+// five corners (start, tip, barb end, tip again, barb end); the tip is retraced, the barbs are alike and open at a sensible angle
+// on both sides of the shaft. -> the clean polyline [start, tip, barb, tip, barb] or null.
+function canvasArrowPoints(pts,diag,minSize){
+  const v=canvasRdp(pts,Math.max(3,diag*.04));
+  if(v.length!==5)return null;
+  const[S,T,P1,T2,P2]=v,d=(a,b)=>Math.hypot(b[0]-a[0],b[1]-a[1]);
+  const shaft=d(S,T),b1=d(T,P1),b2=d(T2,P2),bl=(b1+b2)/2;
+  if(shaft<minSize||d(T,T2)>Math.max(8,shaft*.12))return null;
+  if(bl<shaft*.12||bl>shaft*.6||Math.max(b1,b2)>Math.min(b1,b2)*1.7)return null;
+  const ux=(S[0]-T[0])/shaft,uy=(S[1]-T[1])/shaft;
+  const sgn=(P,len)=>{const x=(P[0]-T[0])/len,y=(P[1]-T[1])/len;return Math.atan2(ux*y-uy*x,ux*x+uy*y)*180/Math.PI};
+  const a1=sgn(P1,b1),a2=sgn(P2,b2);
+  if(a1*a2>=0||Math.abs(a1)<15||Math.abs(a1)>65||Math.abs(a2)<15||Math.abs(a2)>65)return null;
+  const half=Math.min(40,Math.max(20,(Math.abs(a1)+Math.abs(a2))/2))*Math.PI/180;
+  const barb=sg=>{const c=Math.cos(sg*half),s=Math.sin(sg*half);return[T[0]+bl*(ux*c-uy*s),T[1]+bl*(ux*s+uy*c)]};
+  return[[S[0],S[1]],[T[0],T[1]],barb(1),[T[0],T[1]],barb(-1)];
 }
 function canvasSnapShape(pts,{minSize=60}={}){
   if(!Array.isArray(pts)||pts.length<6)return null;
@@ -188,6 +217,8 @@ function canvasSnapShape(pts,{minSize=60}={}){
     const e=list.at(-1);dense.push([canvasRound(e[0]),canvasRound(e[1]),.5]);
     return{kind,pts:dense};
   };
+  // Arrow (before the line test: its barbs bring the ends back together, so it is not a straight stroke).
+  const arrow=canvasArrowPoints(pts,diag,minSize);if(arrow)return out('arrow',arrow);
   // Line: the stroke stays close to the straight line between its ends.
   if(gap>=minSize&&gap>=len*.8){
     let dev=0;for(const p of pts)dev=Math.max(dev,canvasSegDist(p[0],p[1],first[0],first[1],last[0],last[1]));
@@ -345,8 +376,8 @@ function canvasPhotoSize(ratio){
   return{w,h:canvasRound(w/r,1)};
 }
 
-if(typeof module!=='undefined')module.exports={CANVAS_W,CANVAS_PAGE_H,CANVAS_MAX_H,CANVAS_GROW_MARGIN,CANVAS_GROW_STEP,CANVAS_ADD_SPACE,CANVAS_LINE,CANVAS_TOOLS,CANVAS_BGS,CANVAS_COLORS,CANVAS_SIZES,CANVAS_HIGHLIGHT_ALPHA,CANVAS_TEXT_PAD,CANVAS_TEXT_W,CANVAS_PHOTO_MIN_W,
+if(typeof module!=='undefined')module.exports={canvasFitSheet,canvasSheetRoom,CANVAS_SHEET_GAP,CANVAS_SHEET_PAD,canvasSnapHeight,CANVAS_W,CANVAS_PAGE_H,CANVAS_MAX_H,CANVAS_GROW_MARGIN,CANVAS_GROW_STEP,CANVAS_ADD_SPACE,CANVAS_LINE,CANVAS_TOOLS,CANVAS_BGS,CANVAS_COLORS,CANVAS_SIZES,CANVAS_HIGHLIGHT_ALPHA,CANVAS_TEXT_PAD,CANVAS_TEXT_W,CANVAS_PHOTO_MIN_W,
   canvasKey,canvasKindOf,emptyCanvasDoc,normalizeCanvasDoc,canvasPrune,canvasLive,canvasIsEmpty,canvasContentBottom,canvasGrownHeight,canvasNextZ,canvasSegDist,canvasStrokeHit,canvasHitItem,
-  canvasOutlinePath,canvasStrokeOptions,canvasEraseSplit,canvasSnapShape,canvasRdp,canvasLineHeight,canvasTextHeight,canvasLayoutText,
+  canvasOutlinePath,canvasStrokeOptions,canvasEraseSplit,canvasSnapShape,canvasArrowPoints,canvasRdp,canvasLineHeight,canvasTextHeight,canvasLayoutText,
   canvasStore,canvasSerialize,canvasChangeCreate,canvasChangeRemove,canvasChangeUpdate,canvasChangePage,canvasApplyChanges,canvasHistory,canvasHistoryPush,canvasUndo,canvasRedo,
   canvasMerge,canvasContentJson,canvasSameContent,canvasPdfPageCount,canvasPdfSlices,canvasPlacedPhotoIds,canvasNewPhotoIds,canvasPhotoSize};

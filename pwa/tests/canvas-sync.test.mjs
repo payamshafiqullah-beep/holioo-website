@@ -105,7 +105,7 @@ test('both devices edit apart, then sync: everything is kept on both, the newest
   await desktop.pull(pageFiles(drive)[0].id);
   // apart: the tablet draws and moves p1 (older edit); the desktop moves p1 (newer) and deletes p2 and draws
   const t=plain(tablet.page());t.strokes.push(stroke('tab',20));t.items[0]={...t.items[0],x:111,updatedAt:20};t.updatedAt=20;tablet.write(t);
-  const d=plain(desktop.page());d.strokes.push(stroke('desk',25));d.items[0]={...d.items[0],x:222,updatedAt:30};d.items[1]={...d.items[1],deleted:true,updatedAt:31};d.height=3000;d.updatedAt=31;desktop.write(d);
+  const d=plain(desktop.page());d.strokes.push(stroke('desk',25));d.items[0]={...d.items[0],x:222,updatedAt:30};d.items[1]={...d.items[1],deleted:true,updatedAt:31};d.height=4242;d.updatedAt=31;desktop.write(d);
   const fileId=pageFiles(drive)[0].id;
   await desktop.sync();                      // the desktop (newer edits) sends first
   await tablet.sync();                       // then the tablet sends its page over the same file
@@ -118,7 +118,7 @@ test('both devices edit apart, then sync: everything is kept on both, the newest
     assert.deepEqual(live(x,'strokes'),['desk','s1','tab'],'both strokes, nothing lost');
     assert.deepEqual(live(x,'items'),['p1'],'p2 was deleted on the desktop');
     assert.equal(x.items.find(i=>i.id==='p1').x,222,'the newest edit of p1 (desktop, 30) wins over the tablet\'s (20)');
-    assert.equal(x.height,3000);
+    assert.equal(x.height,4242);
   }
   // and it settles: nothing more to send, no ping-pong
   assert.equal((await tablet.sync()).synced,0);assert.equal((await desktop.sync()).synced,0);

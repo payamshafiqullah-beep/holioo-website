@@ -195,10 +195,11 @@ async function renderPdfPages(blob,host,{onCount,onPage,zoom=1,page:startPage=1,
   let last=0,t1=null;
   host.addEventListener('scroll',()=>{const n=cur();if(n!==last){last=n;onPage?.(n,pdf.numPages)}clearTimeout(t1);t1=setTimeout(()=>onPage?.(cur(),pdf.numPages,{settled:true}),400)},{passive:true});
   let redraw=null;
-  const setZoom=(nz,anchor=.5)=>{
+  const setZoom=(nz,anchor=.5,anchorY=.5)=>{
     nz=Math.max(1,Math.min(4,nz));if(Math.abs(nz-z)<.001)return;
     const n=cur(),r=pageRatio(),cx=(host.scrollLeft+host.clientWidth*anchor)/Math.max(1,host.scrollWidth);
-    z=nz;sizeAll();goTo(n,r);host.scrollLeft=cx*host.scrollWidth-host.clientWidth*anchor;
+    const cy=(host.scrollTop+host.clientHeight*anchorY)/Math.max(1,host.scrollHeight);
+    z=nz;sizeAll();host.scrollTop=cy*host.scrollHeight-host.clientHeight*anchorY;host.scrollLeft=cx*host.scrollWidth-host.clientWidth*anchor;
     clearTimeout(redraw);redraw=setTimeout(()=>figs.forEach((f,i)=>f.visible&&draw(i)),180);
     onPage?.(cur(),pdf.numPages,{zoom:z});
   };
@@ -207,7 +208,7 @@ async function renderPdfPages(blob,host,{onCount,onPage,zoom=1,page:startPage=1,
   // Live zoom: pinch with two fingers, ctrl + wheel / trackpad pinch.
   let pd=0,pz=1;
   host.addEventListener('touchstart',e=>{if(e.touches.length===2){pd=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);pz=z}},{passive:true});
-  host.addEventListener('touchmove',e=>{if(e.touches.length===2&&pd){e.preventDefault();const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);const r=host.getBoundingClientRect();setZoom(pz*d/pd,((e.touches[0].clientX+e.touches[1].clientX)/2-r.left)/host.clientWidth)}},{passive:false});
+  host.addEventListener('touchmove',e=>{if(e.touches.length===2&&pd){e.preventDefault();const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);const r=host.getBoundingClientRect();setZoom(pz*d/pd,((e.touches[0].clientX+e.touches[1].clientX)/2-r.left)/host.clientWidth,((e.touches[0].clientY+e.touches[1].clientY)/2-r.top)/host.clientHeight)}},{passive:false});
   host.addEventListener('touchend',e=>{if(e.touches.length<2)pd=0},{passive:true});
   host.addEventListener('wheel',e=>{if(!e.ctrlKey)return;e.preventDefault();setZoom(z*Math.exp(-e.deltaY*.01),(e.clientX-host.getBoundingClientRect().left)/host.clientWidth)},{passive:false});
   sizeAll();

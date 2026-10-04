@@ -20,8 +20,13 @@ const cameraQueue=(()=>{
     const ctx=dest&&findSessionContext(dest.sessionId);
     if(ctx){ctx.session.photoIds.push(id);state.cameraShot={sessionId:dest.sessionId};return}
     // No destination (plain camera) or the session was deleted while the photo was saving: it waits in Captures to be filed later.
-    let batch=state.inbox.find(b=>b.id===CAMERA_ORPHAN_BATCH);
-    if(!batch){batch={id:CAMERA_ORPHAN_BATCH,title:'Capture',photoIds:[],createdAt:now()};state.inbox.unshift(batch)}
+    // Photos without a destination: one Captures entry per camera visit (dest.batchId), so a new visit opens a new entry.
+    const bid=dest?.batchId||CAMERA_ORPHAN_BATCH;
+    let batch=state.inbox.find(b=>b.id===bid);
+    if(!batch){
+      const t=now(),label=(()=>{try{return new Date(t).toLocaleString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}catch{return''}})();
+      batch={id:bid,title:dest?.batchId?`Capture ${label}`.trim():'Capture',photoIds:[],createdAt:t};state.inbox.unshift(batch)
+    }
     batch.photoIds.push(id);
   }
 

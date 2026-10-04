@@ -60,7 +60,7 @@ test('pending photo retains its session when the user switches to another sessio
 
 for(const count of [0,1,5])test(`session camera button stays visible with ${count} photos`,async()=>{
   const{ctx}=setup();ctx.findSessionContext().session.photoIds=Array.from({length:count},(_,i)=>String(i));
-  Object.assign(ctx,{app:{innerHTML:''},PageHeader:()=>'',PageIntro:()=>'',SectionTitle:()=>'',pdfRowMarkup:()=>'',EmptyState:()=>'',ActionButton:({id,attrs,label})=>`<button id="${id}" ${attrs||''}>${label}</button>`,plural:()=>'',fmtDate:()=>'',icon:()=>'',byId:()=>({addEventListener(){}}),fillSessionThumbs:async()=>{},updateSessionOcrLabel(){},isDesk:()=>false});ctx.state.files=ctx.state.files||[];
+  Object.assign(ctx,{enableMultiSelect:()=>null,bulkRemovePhotos:()=>{},app:{innerHTML:''},PageHeader:()=>'',PageIntro:()=>'',SectionTitle:()=>'',pdfRowMarkup:()=>'',EmptyState:()=>'',ActionButton:({id,attrs,label})=>`<button id="${id}" ${attrs||''}>${label}</button>`,plural:()=>'',fmtDate:()=>'',icon:()=>'',byId:()=>({addEventListener(){}}),fillSessionThumbs:async()=>{},updateSessionOcrLabel(){},isDesk:()=>false});ctx.state.files=ctx.state.files||[];
   vm.runInContext(read('../pages/SessionPage.js'),ctx);await ctx.renderSession();
   assert.match(ctx.app.innerHTML,/id="addSessionPhotos" data-nav="capture"/);
   assert.equal((ctx.app.innerHTML.match(/id="addSessionPhotos"/g)||[]).length,1);

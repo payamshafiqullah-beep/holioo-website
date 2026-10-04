@@ -97,6 +97,7 @@ function navigate(view,payload={}){
   if(view==='capture'&&currentView!=='capture')prepareCameraEntry(currentView,payload.cameraDest);
   appShell.classList.toggle('capture-active',view==='capture');
   if(view!=='capture')stopCamera();if(currentView==='scanReview'&&view!=='scanReview'&&typeof flushScanDelete==='function')flushScanDelete();if(currentView==='session'&&view!=='session'&&typeof flushNotebook==='function')flushNotebook();currentView=view;
+  if(['home','courses','library','files'].includes(view)&&typeof sessionReturnView!=='undefined')sessionReturnView=null;
   if(payload.courseId)currentCourseId=payload.courseId;if(payload.sectionId)currentSectionId=payload.sectionId;if(payload.sessionId)currentSessionId=payload.sessionId;
   const mainViews=['home','courses','capture','library','files'];setNav(mainViews.includes(view)?view:'');setChrome(['login','blocked','academicSetup','photoViewer','pdfViewer','capture','scanReview','admin','sharedViewer'].includes(view));window.scrollTo(0,0);render().catch(e=>{console.error(e);showToast('Une erreur est survenue')});
 }

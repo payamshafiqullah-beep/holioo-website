@@ -35,10 +35,6 @@ async function renderPdfBuilder(){
     ${SectionTitle('Mise en page')}
     <div class="list-stack">
       ${toggle('pdfCover','Page de couverture','Page de titre sans photo, au début du PDF',false)}
-      ${toggle('pdfToc','Table des matières','Liste des séances, sans photo',false)}
-      ${toggle('pdfNumbers','Numéroter les pages','« 3 / 12 » en bas de chaque page')}
-      ${toggle('pdfSearchable','Texte recherchable','Le texte est lu sur chaque photo à la création du PDF (quelques secondes par photo) et ajouté, invisible : recherche et copie dans le PDF')}
-      ${canvasSessions.size?toggle('pdfCanvas','Pages de notes','Les pages libres de la séance (photos placées, écriture, texte, formes) telles qu’elles sont, après ses photos'):''}
     </div>
     ${SectionTitle('Export')}
     <div class="form-card">
@@ -94,10 +90,10 @@ async function renderPdfBuilder(){
     try{await generatePdfFile(course,ids,{
       title:byId('pdfTitle').value.trim()||course.name,
       cover:byId('pdfCover').checked,
-      toc:byId('pdfToc').checked,
-      numbers:byId('pdfNumbers').checked,
-      searchable:byId('pdfSearchable').checked,
-      canvasPages:desk&&(byId('pdfCanvas')?.checked??true),
+      toc:false,
+      numbers:true,
+      searchable:true,
+      canvasPages:desk,
       pageSize:'a4',
       quality:byId('pdfQuality').value,
       photoOrder:[...photoOrder]

@@ -38,7 +38,7 @@ async function renderFiles(){
       </div>
       <div data-filter-group>
         ${SectionTitle('PDF',{count:rows.length})}
-        <div class="list-stack">${rows.map(r=>pdfCard(r,'pdf')).join('')}</div>
+        <div class="list-stack" id="pdfList">${rows.map(r=>pdfCard(r,'pdf')).join('')}</div>
       </div>
       <div data-filter-group>
         <div class="section-title-row"><h2 class="section-title files-image-heading">${icon('image',{size:18})}<span>Images</span> <span class="count">${photoRefs.length}</span></h2></div>
@@ -73,6 +73,8 @@ async function renderFiles(){
     imageGroup(ref).querySelector('.image-grid').appendChild(b);
   }
 
+  enableMultiSelect({root:byId('pdfList'),itemSelector:'.file-card',idOf:el=>el.querySelector('[data-file-open]')?.dataset.fileOpen,noun:['PDF','PDF'],remove:bulkRemovePdfs});
+  enableMultiSelect({root:grid,itemSelector:'.image-tile',idOf:el=>el.dataset.photoId,noun:['image','images'],remove:bulkRemovePhotos});
   bindCourseCards();
   bindListFilter({searchId:'fileSearch',scope:'#filesContent',onChange:({shown})=>byId('filesEmpty').hidden=!!shown});
   // The recognised text of photos is searched too.

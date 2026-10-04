@@ -24,6 +24,7 @@ function renderCourses(){
   });
   list.querySelectorAll('[data-course]').forEach(card=>{const c=state.courses.find(x=>x.id===card.dataset.course);if(c)attachItemMenu(card,courseMenu(c),{press:false})});
   bindListFilter({searchId:'courseSearch',chipsId:'courseFilters',scope:'#courseList',onChange:({kind,shown})=>{coursesFilter=kind;byId('courseEmpty').hidden=!!shown}});
+  enableMultiSelect({root:list,itemSelector:'[data-course]',idOf:el=>el.dataset.course,noun:['cours','cours'],remove:bulkRemoveCourses});
   byId('addCourse').onclick=openNewCourseSheet;
 }
 

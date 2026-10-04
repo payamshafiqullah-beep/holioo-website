@@ -2,7 +2,7 @@
 // Privacy model (supabase/migrations/20261004120000_people_and_shares.sql):
 //  - a person is only ever seen as {uid, holioo_id, display_name, avatar_url} (table public_profiles — no e-mail);
 //  - the lookup is ONE exact-match RPC, never a list or a prefix search;
-//  - connections (my list of people) are private to me; adding is instant and one-way;
+//  - connections (my list of people) are private to me; adding is instant and two-way (RPC add_friend: no request, no approval);
 //  - a share = a row per (document, recipient) + files in the PRIVATE bucket `shared-items`, readable only by the owner
 //    and by a recipient of a share that lists that file; the recipient cannot share onward; the owner revokes.
 
@@ -65,15 +65,16 @@ async function findPerson(rawId){
   return data?.[0]||null;
 }
 async function addPerson(uidToAdd){
-  const{error}=await sb.from('connections').insert({person_id:uidToAdd});
-  if(error&&error.code!=='23505')throw error; // already added = fine
+  // Two-way at once (RPC add_friend): both people get each other in their list, no request, no approval. Already friends = fine.
+  const{error}=await sb.rpc('add_friend',{p_uid:uidToAdd});
+  if(error)throw error;
   peopleCache=null;
 }
 async function removePerson(person){
   // Removing someone also withdraws what was shared with them.
   const{data:rows}=await sb.from('shares').select('id,paths').eq('owner_id',currentUser.id).eq('recipient_id',person.uid);
   for(const r of rows||[])await revokeShare(r);
-  const{error}=await sb.from('connections').delete().eq('owner_id',currentUser.id).eq('person_id',person.uid);
+  const{error}=await sb.rpc('remove_friend',{p_uid:person.uid});   // ends the link on both sides
   if(error)throw error;
   peopleCache=null;
 }
@@ -118,7 +119,7 @@ async function shareWithPeople(spec){
   let people;
   try{people=await loadPeople()}catch(e){console.error(e);showToast('Liste de personnes indisponible');return}
   if(!people.length){
-    openSheet({title:'Aucune personne ajoutée',subtitle:'Ajoutez d’abord quelqu’un avec son identifiant Holioo.',body:'',confirmText:'Ajouter une personne',onConfirm:()=>{openPeopleSearchSheet(()=>shareWithPeople(spec));return false}});
+    openSheet({title:'Aucune personne ajoutée',subtitle:'Ajoutez d’abord un ami avec son identifiant Holioo.',body:'',confirmText:'Ajouter une personne',onConfirm:()=>{openPeopleSearchSheet(()=>shareWithPeople(spec));return false}});
     return;
   }
   const picked=new Set();
@@ -266,6 +267,61 @@ function openMyQrSheet(){
   openSheet({title:'Mon code Holioo',subtitle:'Faites-le scanner avec l’appareil photo : l’ajout s’ouvre directement.',
     body:`<div class="ppl-qr-wrap">${qrSvg(holiooAddLink(id))}<p class="ppl-qr-id">@${esc(id)}</p><button class="action-btn ghost" type="button" id="pplQrCopy">${icon('copy',{size:18})}<span>Copier l’identifiant</span></button></div>`,confirmText:'Fermer',secondaryText:'',onConfirm:()=>true});
   byId('pplQrCopy')?.addEventListener('click',()=>copyHoliooId(id));
+}
+
+// ---------- scan someone's QR code → find them → add as a friend (two-way, instant) ----------
+const QR_SCAN_JSQR='https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js';
+let qrLibPromise=null;
+function loadJsQR(){
+  if(window.jsQR)return Promise.resolve(window.jsQR);
+  return qrLibPromise||(qrLibPromise=new Promise((ok,no)=>{const t=document.createElement('script');t.src=QR_SCAN_JSQR;t.onload=()=>ok(window.jsQR);t.onerror=()=>{qrLibPromise=null;no(new Error('jsqr'))};document.head.append(t)}));
+}
+// A scanned text is my QR link (#add=<id>) or a bare Holioo ID; anything else is ignored.
+function holiooIdFromScan(text){
+  const t=String(text||'').trim();
+  try{const id=new URLSearchParams(new URL(t).hash.slice(1)).get('add');if(id&&/^[a-z0-9]{4,40}$/i.test(id))return id.toLowerCase()}catch{}
+  const m=t.replace(/^@/,'');return/^[a-z0-9]{4,40}$/i.test(m)?m.toLowerCase():null;
+}
+function openQrScanSheet(after=()=>{}){
+  if(guestMode||!currentUser){showToast('Connectez-vous avec Google pour ajouter des amis');return}
+  if(!needOnline())return;
+  if(!navigator.mediaDevices?.getUserMedia){showToast('Caméra indisponible ici');return}
+  let stream=null,stopped=false,busy=false;
+  const stop=()=>{stopped=true;stream?.getTracks().forEach(t=>t.stop());stream=null};
+  openSheet({title:'Scanner un code QR',subtitle:'Visez le code QR Holioo d’un ami : il est ajouté tout de suite.',
+    body:`<div class="ppl-scan"><video id="pplScanVideo" playsinline muted autoplay></video></div><p class="ppl-note" id="pplScanMsg" aria-live="polite">Démarrage de la caméra…</p>`,
+    confirmText:'Fermer',secondaryText:'',onConfirm:()=>{stop();return true}});
+  // Closing the sheet any other way (backdrop tap) also ends the camera.
+  const watch=setInterval(()=>{if(!byId('pplScanVideo')){clearInterval(watch);stop()}},400);
+  const msg=t=>{const m=byId('pplScanMsg');if(m)m.textContent=t};
+  (async()=>{
+    try{
+      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+      const v=byId('pplScanVideo');if(stopped||!v){stop();return}
+      v.srcObject=stream;await v.play().catch(()=>{});msg('Cherchez le code QR…');
+      const det=window.BarcodeDetector?new BarcodeDetector({formats:['qr_code']}):null;
+      const jsqr=det?null:await loadJsQR();
+      const cv=document.createElement('canvas'),cx=cv.getContext('2d',{willReadFrequently:true});
+      while(!stopped&&byId('pplScanVideo')){
+        await new Promise(r=>setTimeout(r,200));
+        if(busy||!v.videoWidth)continue;
+        let text=null;
+        if(det){try{text=(await det.detect(v))[0]?.rawValue||null}catch{}}
+        else{const k=Math.min(1,640/v.videoWidth);cv.width=Math.round(v.videoWidth*k);cv.height=Math.round(v.videoHeight*k);cx.drawImage(v,0,0,cv.width,cv.height);text=jsqr(cx.getImageData(0,0,cv.width,cv.height).data,cv.width,cv.height)?.data||null}
+        if(!text)continue;
+        const id=holiooIdFromScan(text);
+        if(!id){msg('Ce code n’est pas un code Holioo.');continue}
+        busy=true;msg('Code lu, recherche…');
+        try{
+          const p=await findPerson(id);
+          if(!p){msg('Personne introuvable.');busy=false;await new Promise(r=>setTimeout(r,1500));continue}
+          if(p.uid===currentUser.id){msg('C’est votre propre code.');busy=false;await new Promise(r=>setTimeout(r,1500));continue}
+          await addPerson(p.uid);
+          stop();sheetRoot.innerHTML='';showToast(`${personName(p)} ajouté(e) comme ami`);after();return;
+        }catch(e){console.error(e);msg(peopleErrorText(e));busy=false;await new Promise(r=>setTimeout(r,2000))}
+      }
+    }catch(e){console.error(e);stop();msg(e?.name==='NotAllowedError'?'Autorisez la caméra pour scanner.':'Impossible de lancer la caméra.')}
+  })();
 }
 // A scanned link (#add=<id>) is kept until the user is signed in (the Google round trip drops the address), then opens the Add sheet.
 const PENDING_ADD_KEY='holioo-pending-add';

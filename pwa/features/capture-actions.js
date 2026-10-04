@@ -153,8 +153,14 @@ function setCameraThumb(blob){
 // The counter opens the review of this capture's pages (reorder, retake, crop, filters…).
 function openCaptureReview(){
   if(!camShots.length)return;
-  // The review works on a séance's pages; photos without a destination wait in Captures.
-  if(!cameraDestContext()){showToast('Photos gardées dans Captures : choisissez une destination pour les revoir');return}
+  // The review works on a séance's pages; photos without a destination wait in Captures: show them there (once saved), no destination asked.
+  if(!cameraDestContext()){
+    leaveCamera();camShots=[];
+    navigate('inbox');
+    // Photos still being saved appear in Captures as soon as they are stored.
+    if(cameraQueue.pending()){const off=cameraQueue.subscribe(st=>{if(!st.pending){off();if(currentView==='inbox')render()}})}
+    return;
+  }
   camKeepBatch=true;
   navigate('scanReview');
 }

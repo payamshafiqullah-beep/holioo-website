@@ -42,6 +42,10 @@ async function renderOnce(){
   if(typeof updatePresence==='function')updatePresence();
   applyChromeStatus();
   if(typeof syncQuickCapture==='function')syncQuickCapture();
+  // Whatever a screen did meanwhile, the menus follow the screen that is up now (and no menu lock is left behind).
+  const bare=['login','blocked','academicSetup','photoViewer','pdfViewer','capture','scanReview','admin','sharedViewer'].includes(currentView);
+  setChrome(bare);appShell.classList.toggle('capture-active',currentView==='capture');
+  if(!radialOpen.size)document.documentElement.classList.remove('radial-lock');
 }
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e});
 window.addEventListener('online',async()=>{offlineBanner.classList.add('hidden');if(!cloudReady){await bootstrapCloud();render()}else{try{driveStatus=await Drive.status(sb,currentUser.id)}catch{}await refreshSyncIndicator();if(state.settings.autoDriveSync)queueSync('online')}});

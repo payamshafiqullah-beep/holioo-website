@@ -6,7 +6,7 @@ async function renderPdfViewer(){
   revokeViewerUrl();viewerObjectUrl=URL.createObjectURL(row.blob);
   const status=row.driveFileId?{label:'Drive',tone:'mint'}:row.syncState==='drive_full'?{label:'Drive plein',tone:'pink'}:row.syncState==='error'?{label:'Erreur',tone:'pink'}:{label:'Local',tone:'neutral'};
   const course=state.courses.find(c=>c.id===meta.courseId);
-  app.innerHTML=`<div class="pdf-viewer">
+  app.innerHTML=`<div class="pdf-viewer${isDesk()?' pdf-ink-desk':''}">
     <header class="page-header">
       <div class="page-header-left"><button class="icon-btn" id="pdfBack" aria-label="Retour">${icon('chevronLeft',{size:22})}</button><span class="viewer-title"><strong>${esc(meta.title)}</strong><small>${esc(course?.name||'PDF')} · <span id="pdfPageCount">${meta.pages?plural(meta.pages,'page'):'—'}</span></small></span></div>
       <div class="page-header-right">${Tag(status.label,status.tone)}<button class="icon-btn danger" id="pdfDelete" aria-label="Supprimer le PDF">${icon('trash',{size:22})}</button></div>
@@ -45,7 +45,7 @@ async function renderPdfViewer(){
   let ctl=null,ink=null;
   const savePos=()=>{if(!ctl||!host.isConnected)return;try{localStorage.setItem(posKey,JSON.stringify({page:ctl.page(),ratio:+ctl.pageRatio().toFixed(3),zoom:+ctl.zoom.toFixed(2)}))}catch{}};
   // Full screen: the real Fullscreen API where it exists, always the immersive layout (header and dock hidden; iPhone has no element fullscreen).
-  const setImmersive=on=>{viewer.classList.toggle('pdf-immersive',on);if(isDesk())setChrome(on);fsBtn.setAttribute('aria-pressed',String(on));fsBtn.setAttribute('aria-label',on?'Quitter le plein écran':'Plein écran');fsBtn.innerHTML=icon(on?'minimize':'maximize',{size:20});ink?.fullscreen(on);setTimeout(()=>host.dispatchEvent(new Event('scroll')),50)};
+  const setImmersive=on=>{viewer.classList.toggle('pdf-immersive',on);if(isDesk())setChrome(on);fsBtn.setAttribute('aria-pressed',String(on));fsBtn.setAttribute('aria-label',on?'Quitter le plein écran':'Plein écran');fsBtn.innerHTML=icon(on?'minimize':'maximize',{size:20});ink?.fullscreen(on||isDesk());setTimeout(()=>host.dispatchEvent(new Event('scroll')),50)};
   const onFsChange=()=>{if(!document.fullscreenElement&&viewer.classList.contains('pdf-immersive'))setImmersive(false)};
   document.addEventListener('fullscreenchange',onFsChange);
   fsBtn.onclick=async()=>{
@@ -67,7 +67,7 @@ async function renderPdfViewer(){
     if(!ctl||!host.isConnected)return;
     try{ink=await createPdfInk({fileId:meta.id,host,boxes:ctl.boxes,aspects:ctl.aspects,viewer,frame:host.parentElement})}catch(err){console.warn(err)}   // no ink must never cost the reader
     if(!host.isConnected){ink?.destroy();return}
-    ink?.fullscreen(viewer.classList.contains('pdf-immersive'));
+    ink?.fullscreen(viewer.classList.contains('pdf-immersive')||isDesk());   // tablet / computer: pen, highlighter and eraser work in the normal view too
     byId('pdfPager').hidden=false;
     byId('pdfZoomNow').textContent=`${Math.round(ctl.zoom*100)} %`;
     byId('pdfPrev').onclick=()=>ctl.goTo(Math.max(1,(ctl.pageRatio()>.05?ctl.page():ctl.page()-1)));

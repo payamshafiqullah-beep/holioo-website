@@ -440,8 +440,8 @@ html.radial-haptic-confirm body{animation:radialHapticConfirm .2s var(--ease)}
 /* Photo reordering — press, hold and drag (ui/reorder.js). Used by every photo grid. */
 .pdf-row{display:flex;gap:var(--s2);overflow-x:auto;padding-bottom:var(--s1);scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
 .pdf-row:empty{display:none}
-.pdf-thumb{flex:none;width:calc((100% - 2 * var(--s2)) / 3);min-width:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:var(--s2);text-align:center;scroll-snap-align:start;cursor:pointer;background:var(--lavender);color:var(--ink)}
-.pdf-thumb-icon{display:grid;place-items:center;width:48px;height:48px;border-radius:14px;background:#fff;color:var(--accent)}
+.pdf-thumb{flex:none;width:104px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:var(--s2) var(--s1);text-align:center;scroll-snap-align:start;cursor:pointer;background:var(--lavender);color:var(--ink)}
+.pdf-thumb-icon{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:#fff;color:var(--accent)}
 .pdf-thumb strong{max-width:100%;font-size:12px;line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;word-break:break-word}
 .pdf-thumb small{font-size:11px;color:var(--muted)}
 .pdf-thumb .reorder-handle{color:#1D2140}
@@ -1668,7 +1668,7 @@ body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
   .gallery-count{background:var(--surface);border:1px solid var(--line);color:var(--muted)}
   /* The PDF row above the photos: cards the size of a photo tile, not a third of a wide screen. */
   .gallery-screen .pdf-row{margin-bottom:var(--s4)}
-  .gallery-screen .pdf-thumb{width:168px;min-width:0}
+  .gallery-screen .pdf-thumb{width:116px;min-width:0}
   .gallery-grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:var(--s3)}
   .gallery-tile{position:relative;aspect-ratio:4/3;border-radius:18px;overflow:hidden;background:#E6E7EF;box-shadow:var(--shadow-sm);-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;transition:box-shadow .2s var(--ease)}
   .gallery-tile:hover{box-shadow:var(--shadow-md)}

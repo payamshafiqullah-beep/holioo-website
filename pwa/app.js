@@ -44,7 +44,8 @@ async function renderOnce(){
   if(typeof syncQuickCapture==='function')syncQuickCapture();
   // Whatever a screen did meanwhile, the menus follow the screen that is up now (and no menu lock is left behind).
   const bare=['login','blocked','academicSetup','photoViewer','pdfViewer','capture','scanReview','admin','sharedViewer'].includes(currentView);
-  setChrome(bare);appShell.classList.toggle('capture-active',currentView==='capture');
+  if(currentView!=='pdfViewer')setChrome(bare);   // the PDF reader decides itself (tablet: the course menu stays outside fullscreen)
+  appShell.classList.toggle('capture-active',currentView==='capture');
   if(!radialOpen.size)document.documentElement.classList.remove('radial-lock');
 }
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e});

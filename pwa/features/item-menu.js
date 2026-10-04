@@ -27,6 +27,9 @@ let itemMenuRadial=null,itemMenuCur=null,itemMenuSwallow=0,itemMenuHeld=null,ite
 if(typeof window!=='undefined'&&window.addEventListener){
   // The click that follows a long-press (touch or mouse) must not open or select anything.
   window.addEventListener('click',e=>{if(performance.now()<itemMenuSwallow&&!e.target.closest?.('[data-haptic]')){e.preventDefault();e.stopImmediatePropagation()}},true);
+  // No native image menu / drag / selection on photos: only our own long-press.
+  const photoSel='.thumb,.image-tile,[data-photo-id]';
+  for(const t of['contextmenu','dragstart','selectstart'])document.addEventListener(t,e=>{if(e.target.closest?.(photoSel)&&(t!=='contextmenu'||e.target.tagName==='IMG'||e.target.closest('.thumb,.image-tile')))e.preventDefault()},true);
   const held=e=>itemMenuHeld!==null&&e.pointerId===itemMenuHeld;
   const letGo=()=>{itemMenuHeld=null;itemMenuSwallow=performance.now()+500};
   // Slide: the lens follows. Lift: an action is chosen, or the menu stays open for taps / closes

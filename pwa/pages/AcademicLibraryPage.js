@@ -13,10 +13,20 @@ function toggleFavorite(item){
   saveState();
 }
 
+// Bibliothèque as left: scroll, search text and filter chip are kept per step and put back when the view is rendered again.
+const libraryUi={};
+const libraryKey=()=>`${currentLibrary.step}|${currentLibrary.year||''}|${currentLibrary.course||''}|${currentLibrary.section||''}`;
+window.addEventListener('scroll',()=>{if(currentView==='library'&&app.firstElementChild){(libraryUi[libraryKey()]??={}).y=window.scrollY}},{passive:true});
+function libraryRestore(){
+  const u=libraryUi[libraryKey()];if(!u)return;
+  if(u.q&&byId('librarySearch')){byId('librarySearch').value=u.q;byId('librarySearch').dispatchEvent(new Event('input'))}
+  if(u.chip&&u.chip!=='all')document.querySelector(`#libraryFilters [data-chip="${u.chip}"]`)?.click();
+  if(u.y)requestAnimationFrame(()=>window.scrollTo(0,u.y));
+}
 async function renderLibrary(){
   setChrome(false);
   const p=state.profile;
-  if(currentLibrary.step!=='years')return renderLibraryDrill();
+  if(currentLibrary.step!=='years')return renderLibraryDrill().then(libraryRestore);
 
   const cloud=navigator.onLine&&sb;
   const profileReady=!!(p.university&&p.program);
@@ -78,6 +88,8 @@ async function renderLibrary(){
   byId('holiooSharesBtn').onclick=()=>navigate('holiooShares');
   if(currentUser&&!guestMode)refreshSharesBadge();
   bindListFilter({searchId:'librarySearch',chipsId:'libraryFilters',scope:'#libraryContent',onChange:({shown})=>byId('libraryEmpty').hidden=!!shown});
+  byId('librarySearch')?.addEventListener('input',e=>{(libraryUi[libraryKey()]??={}).q=e.target.value});
+  document.querySelectorAll('#libraryFilters .chip').forEach(c=>c.addEventListener('click',()=>{(libraryUi[libraryKey()]??={}).chip=c.dataset.chip}));
   document.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>document.querySelector(`#libraryFilters [data-chip="${b.dataset.pick}"]`)?.click());
   document.querySelectorAll('[data-year]').forEach(b=>b.onclick=()=>{currentLibrary={step:'courses',year:b.dataset.year};render()});
   document.querySelectorAll('[data-libcourse-direct]').forEach(b=>b.onclick=()=>{currentLibrary={step:'sections',year:p.academicYear,course:b.dataset.libcourseDirect};render()});
@@ -87,6 +99,7 @@ async function renderLibrary(){
   document.querySelectorAll('[data-note-open]').forEach(b=>b.onclick=()=>{const ctx=findSessionContext(b.dataset.noteOpen);if(!ctx)return;currentCourseId=ctx.course.id;currentSectionId=ctx.section.id;currentSessionId=ctx.session.id;navigate('session')});
   const all=[...materials,...state.favorites];
   document.querySelectorAll('[data-libitem-open]').forEach(b=>b.onclick=()=>{const item=all.find(x=>x.id===b.dataset.libitemOpen);if(item){currentLibrary={step:'item',year:item.academic_year,course:item.course,section:item.section,item,from:'years'};render()}});
+  libraryRestore();
 }
 
 async function renderLibraryDrill(){

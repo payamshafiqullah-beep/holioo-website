@@ -60,7 +60,7 @@ function deskUnmount(){
 }
 
 // The navigator is shown by default (hidden by default in a narrow window); the toolbar button remembers the choice.
-const deskSidebarClosed=()=>(state.settings.deskSidebar||(window.innerWidth<1000?'closed':'open'))==='closed';
+const deskSidebarClosed=()=>currentView!=='pdfViewer'&&(state.settings.deskSidebar||(window.innerWidth<1000?'closed':'open'))==='closed';
 function deskToggleSidebar(){state.settings.deskSidebar=deskSidebarClosed()?'open':'closed';saveState();deskApplySidebar()}
 function deskApplySidebar(){
   const closed=deskSidebarClosed();

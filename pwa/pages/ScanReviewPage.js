@@ -172,7 +172,7 @@ async function applyFilterToAll(ids,filter){
 }
 function chooseFilterForAll(ids){
   openSheet({title:camT('reviewFilterAll'),body:`<div class="sheet-list">${SCAN_FILTERS.map(f=>`<button class="sheet-row" data-all-filter="${f}">${esc(SCAN_FILTER_LABELS[f])}</button>`).join('')}</div>`,confirmText:camT('cancel'),secondaryText:''});
-  document.querySelectorAll('[data-all-filter]').forEach(b=>b.onclick=()=>{sheetRoot.innerHTML='';applyFilterToAll(ids,b.dataset.allFilter)});
+  document.querySelectorAll('[data-all-filter]').forEach(b=>b.onclick=()=>{closeSheet();applyFilterToAll(ids,b.dataset.allFilter)});
 }
 
 // Delete with undo: the page leaves the list at once and is really deleted a few seconds later.

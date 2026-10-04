@@ -190,8 +190,8 @@ function bindListFilter({searchId,chipsId,scope,onChange}){
 
 // Bottom sheet with a list of actions: [{label,iconName,tone,danger,onClick}]
 function openActionSheet(title,actions,subtitle=''){
-  sheetRoot.innerHTML=`<div class="sheet" id="activeSheet"><div class="sheet-card"><div class="sheet-handle"></div><h2 class="sheet-title">${esc(title)}</h2>${subtitle?`<p class="sheet-sub">${esc(subtitle)}</p>`:''}<div class="sheet-list">${actions.map((a,i)=>`<button class="sheet-row${a.danger?' danger':''}" data-sheet-action="${i}">${IconBadge(a.iconName||'chevronRight',a.danger?'pink':a.tone||'lavender','sm')}<span>${esc(a.label)}</span></button>`).join('')}</div><div class="sheet-actions"><button class="action-btn ghost full" id="sheetCancel">Annuler</button></div></div></div>`;
-  const close=()=>sheetRoot.innerHTML='';
+  mountSheet(`<div class="sheet" id="activeSheet"><div class="sheet-card"><div class="sheet-handle"></div><h2 class="sheet-title">${esc(title)}</h2>${subtitle?`<p class="sheet-sub">${esc(subtitle)}</p>`:''}<div class="sheet-list">${actions.map((a,i)=>`<button class="sheet-row${a.danger?' danger':''}" data-sheet-action="${i}">${IconBadge(a.iconName||'chevronRight',a.danger?'pink':a.tone||'lavender','sm')}<span>${esc(a.label)}</span></button>`).join('')}</div><div class="sheet-actions"><button class="action-btn ghost full" id="sheetCancel">Annuler</button></div></div></div>`);
+  const close=closeSheet;
   byId('sheetCancel').onclick=close;
   byId('activeSheet').onclick=e=>{if(e.target.id==='activeSheet')close()};
   sheetRoot.querySelectorAll('[data-sheet-action]').forEach(b=>b.onclick=async()=>{close();await actions[Number(b.dataset.sheetAction)].onClick?.()});

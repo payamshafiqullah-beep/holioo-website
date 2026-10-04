@@ -732,7 +732,7 @@ function canvasRenderTray(rt,{flash=null}={}){
   if(!rt.tray||rt.trayDrag?.started)return;
   const ids=canvasTrayIds(rt),placed=new Set([...rt.store.items.values()].filter(i=>!i.deleted&&i.type==='photo').map(i=>i.photoId));
   const fresh=new Set(ids.filter(id=>!rt.store.known.has(id)&&!placed.has(id)));
-  const open=canvasPrefs().tray!=='closed',pdfs=state.files.filter(f=>f.sessionIds?.includes(rt.session.id));   // the séance's PDFs, as on the phone's séance screen
+  const open=canvasPrefs().tray!=='closed';
   rt.trayShown=new Set(ids);   // what the tray showed (the badge on the button counts as shown too): "seen" when the page is left
   rt.tray.className=`cv-tray ${open?'open':'closed'}`;
   if(!open){
@@ -741,17 +741,10 @@ function canvasRenderTray(rt,{flash=null}={}){
   }
   rt.tray.innerHTML=`<div class="cv-tray-panel">
     <header><strong>Photos</strong><span class="cv-tray-n">${ids.length}</span><button class="cv-tray-close" type="button" data-cv-tray-toggle aria-expanded="true" title="Réduire" aria-label="Réduire les photos">${icon('chevronLeft',{size:18})}</button></header>
-    ${pdfs.length?`<ul class="cv-pdf-list" aria-label="PDF de la séance">${pdfs.map(f=>`<li class="cv-pdf" data-pdf-id="${f.id}"><button class="cv-pdf-open" type="button" aria-label="Ouvrir ${esc(f.title)}">${icon('fileText',{size:18})}<span>${esc(f.title)}</span></button><button class="cv-pdf-more" type="button" aria-label="Plus d’actions pour ${esc(f.title)}">${icon('more',{size:16})}</button></li>`).join('')}</ul>`:''}
     ${ids.length?`<ul class="cv-tray-list">${ids.map((id,i)=>`<li><button class="cv-thumb${placed.has(id)?' placed':''}${fresh.has(id)?' is-new':''}" type="button" data-photo-id="${id}" aria-label="Photo ${i+1}${fresh.has(id)?', nouvelle':''}${placed.has(id)?', déjà placée':''} : toucher pour placer sur la page, ou glisser"><img alt="" draggable="false"><span class="cv-skel"></span>${fresh.has(id)?'<span class="cv-badge new">Nouveau</span>':placed.has(id)?`<span class="cv-badge check" aria-hidden="true">${icon('check',{size:13,stroke:3})}</span>`:''}</button></li>`).join('')}</ul>
     <p class="cv-tray-hint">Touchez une photo pour la placer, ou glissez-la sur la page.</p>`
       :`<p class="cv-tray-empty">Aucune photo dans cette séance. Prenez-en avec le téléphone : elles arrivent ici.</p>`}
   </div>`;
-  rt.tray.querySelectorAll('.cv-pdf').forEach(li=>{
-    const meta=state.files.find(f=>f.id===li.dataset.pdfId);if(!meta)return;
-    li.querySelector('.cv-pdf-open').onclick=()=>openPdfViewer(meta.id,'session');
-    attachItemMenu(li,pdfSessionMenu(meta),{press:false});   // Déplacer / Supprimer, same as on the phone
-    li.querySelector('.cv-pdf-more').onclick=()=>itemMenuFromHandle(li,li.querySelector('.cv-pdf-more'));
-  });
   rt.tray.querySelectorAll('.cv-thumb').forEach(b=>{
     const id=b.dataset.photoId,img=b.querySelector('img');
     photoThumbUrl(id).then(url=>{if(url&&img.isConnected){img.src=url;b.classList.add('loaded')}}).catch(()=>{});

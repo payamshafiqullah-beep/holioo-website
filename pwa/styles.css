@@ -1003,7 +1003,7 @@ body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
 .scan-overlay[data-page=""] .scan-guide{opacity:1;animation:scan-breathe 2.6s ease-in-out infinite}
 .scan-guide-under{fill:none;stroke:rgba(0,0,0,.28);stroke-width:7;stroke-linecap:round;stroke-linejoin:round}
 .scan-guide-path{fill:none;stroke:rgba(255,255,255,.85);stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round}
-.scan-snap{fill:rgba(255,255,255,.55);stroke:#fff;stroke-width:2;stroke-linejoin:round}
+.scan-snap{fill:rgba(255,255,255,.1);stroke:rgba(255,255,255,.6);stroke-width:1.5;stroke-linejoin:round}
 @keyframes scan-breathe{0%,100%{opacity:.5}50%{opacity:1}}
 @keyframes scan-march{to{stroke-dashoffset:-32}}
 .focus-ring{position:absolute;z-index:3;width:72px;height:72px;margin:-36px 0 0 -36px;border:2px solid #FFD66B;border-radius:14px;pointer-events:none;opacity:0}

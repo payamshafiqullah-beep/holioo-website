@@ -226,6 +226,9 @@ async function createPdfInk({fileId,host,boxes,aspects,viewer,frame}){
   return{
     // Entering or leaving fullscreen; leaving puts the reader back to plain reading.
     fullscreen(on){fullscreen=on;if(!on){endGesture(true);tool=null}refreshBar()},
+    // For the viewer's idle hiding: is a tool picked, and is the user in the middle of something (a stroke, the colour picker)?
+    hasTool:()=>!!tool&&fullscreen,
+    busy:()=>!!gesture||!pop.hidden,
     flush:save,
     destroy(){host.removeEventListener('touchstart',lock);host.removeEventListener('touchmove',lock);document.removeEventListener('touchend',forget,true);document.removeEventListener('touchcancel',forget,true);host.removeEventListener('pointerdown',onDown);host.removeEventListener('pointermove',onMove);host.removeEventListener('pointerup',onUp);host.removeEventListener('pointercancel',onUp);bar.remove();viewer.classList.remove('ink-on')}
   };

@@ -784,6 +784,9 @@ html.radial-haptic-confirm body{animation:radialHapticConfirm .2s var(--ease)}
 .pdf-viewer.pdf-immersive .pdf-corner-back{position:absolute;top:calc(var(--s3) + env(safe-area-inset-top));left:calc(var(--s3) + env(safe-area-inset-left));z-index:3;display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:rgba(29,33,64,.72);color:#fff;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 .pdf-viewer.pdf-immersive .pdf-pill{position:absolute;left:50%;bottom:calc(var(--s3) + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:3;display:block;padding:6px 14px;border-radius:16px;background:rgba(29,33,64,.6);color:#fff;font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);pointer-events:none}
 .pdf-viewer.pdf-immersive .pdf-pager{bottom:calc(var(--s3) + env(safe-area-inset-bottom))}
+/* Idle fullscreen (pages/PdfViewerPage.js): the controls fade out; a tap brings them back. */
+.pdf-viewer.pdf-immersive .pdf-ink-bar,.pdf-viewer.pdf-immersive .pdf-fs-btn,.pdf-viewer.pdf-immersive .pdf-corner-back,.pdf-viewer.pdf-immersive .pdf-pager{transition:opacity .25s var(--ease)}
+.pdf-viewer.pdf-ui-idle .pdf-ink-bar,.pdf-viewer.pdf-ui-idle .pdf-fs-btn,.pdf-viewer.pdf-ui-idle .pdf-corner-back,.pdf-viewer.pdf-ui-idle .pdf-pager{opacity:0;pointer-events:none}
 .pdf-viewer.pdf-immersive .pdf-pill{display:none}
 .pdf-page figcaption{font-size:12px;font-weight:600;color:var(--muted)}
 .pdf-loading{margin:auto;color:var(--muted);font-size:14px}

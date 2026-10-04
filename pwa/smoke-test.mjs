@@ -7,7 +7,7 @@ const pageFiles=[
   './pages/CourseDetailPage.js','./pages/SectionPage.js','./pages/SessionPage.js','./pages/GalleryDeskPage.js','./pages/NotesCanvasPage.js','./pages/LiveCapturePage.js','./pages/CapturePage.js','./pages/ScanReviewPage.js',
   './pages/CaptureCompletePage.js','./pages/SplitBatchPage.js','./pages/OrganizeBatchPage.js','./pages/InboxPage.js',
   './pages/PhotoViewerPage.js','./pages/PdfBuilderPage.js','./pages/PdfViewerPage.js','./pages/FilesPage.js',
-  './pages/AcademicLibraryPage.js','./pages/ProfilePage.js','./pages/SyncPage.js','./pages/PeoplePage.js','./pages/HolioSharesPage.js','./pages/SharedViewerPage.js'
+  './pages/AcademicLibraryPage.js','./pages/ProfilePage.js','./pages/SyncPage.js','./pages/PeoplePage.js','./pages/HolioSharesPage.js','./pages/MySharedPdfsPage.js','./pages/SharedViewerPage.js'
 ];
 const uiFiles=['./ui/icons.js','./ui/components.js','./ui/reorder.js','./ui/shell.js','./ui/desk-shell.js','./ui/course-navigator.js','./ui/camera-picker.js','./ui/radial-menu.js','./ui/photo-editor.js'];
 const featureFiles=[
@@ -100,7 +100,7 @@ if(/\bcommit\s*;/i.test(verify))throw new Error('The real-database check must ne
 if(!read('./pages/PeoplePage.js').includes('pplQrBtn')||!read('./pages/HolioSharesPage.js').includes('markSharesSeen')||!read('./pages/AcademicLibraryPage.js').includes('refreshSharesBadge'))throw new Error('QR / unread badge wiring missing');
 if(!sw.includes('./vendor/qrcode.js')||!html.includes('vendor/qrcode.js'))throw new Error('QR generator must be loaded and cached offline');
 if(/https?:\/\/[^'"]*qr[^'"]*\.(png|svg)|api\.qrserver|chart\.googleapis/i.test(people))throw new Error('The QR code is drawn locally: no third-party QR service');}
-for(const f of ['./pages/PeoplePage.js','./pages/HolioSharesPage.js','./pages/SharedViewerPage.js','./features/people.js'])if(!sw.includes(f.slice(1)))throw new Error(`Offline cache missing: ${f}`);}
+for(const f of ['./pages/PeoplePage.js','./pages/HolioSharesPage.js','./pages/MySharedPdfsPage.js','./pages/SharedViewerPage.js','./features/people.js'])if(!sw.includes(f.slice(1)))throw new Error(`Offline cache missing: ${f}`);}
 // Lecture rapide: the Accueil reading shortcut is the paper-page trigger of a 4-ring stacked radial menu; Capture rapide stays 2 rings.
 {const home=read('./pages/HomePage.js'),rd=read('./features/quick-reading.js'),radial=read('./ui/radial-menu.js'),css=read('./styles.css');
 if(home.includes('Relire mes PDF')||!home.includes('QuickReadingTrigger')||!home.includes('attachQuickReading'))throw new Error('Accueil must use the Lecture rapide trigger in place of "Relire mes PDF"');

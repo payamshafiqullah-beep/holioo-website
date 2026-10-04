@@ -4,11 +4,12 @@ async function renderPeople(){
   setChrome(false);
   app.innerHTML=`<section class="screen people-screen">${PageHeader({back:true,title:'Personnes',actions:false})}
     ${PageIntro({eyebrow:'HOLIOO',title:'Personnes',subtitle:'Les personnes que vous avez ajoutées avec leur identifiant. Elles ne voient ni votre e-mail ni vos données.'})}
-    <div class="button-stack">${ActionButton({label:'Ajouter une personne',id:'pplAddBtn',iconName:'plus'})}${ActionButton({label:'Mon code QR',id:'pplQrBtn',variant:'ghost',iconName:'qrCode'})}</div>
+    <div class="button-stack">${ActionButton({label:'Ajouter une personne',id:'pplAddBtn',iconName:'plus'})}<div class="ppl-qr-row">${ActionButton({label:'Mon code QR',id:'pplQrBtn',variant:'ghost',iconName:'qrCode'})}<button class="icon-btn ppl-scan-btn" id="pplScanBtn" type="button" aria-label="Scanner un code QR" title="Scanner un code QR">${icon('scan',{size:22})}</button></div></div>
     <div id="pplBody">${guestMode?'':peopleSkeleton()}</div></section>`;
   byId('backBtn').onclick=()=>navigate('profile');
   byId('pplQrBtn').onclick=openMyQrSheet;
-  const off=html=>{byId('pplBody').innerHTML=html;byId('pplAddBtn').disabled=true};
+  byId('pplScanBtn').onclick=()=>openQrScanSheet(()=>{if(currentView==='people')render()});
+  const off=html=>{byId('pplBody').innerHTML=html;byId('pplAddBtn').disabled=true;byId('pplScanBtn').disabled=true};
   if(guestMode||!currentUser){off(Notice(`${icon('user',{size:18})}<span>Connectez-vous avec Google pour ajouter des personnes.</span>`,'peach'));return}
   if(!peopleReady()){off(Notice(`${icon('wifiOff',{size:18})}<span>Connexion Internet nécessaire pour afficher vos personnes.</span>`,'peach'));return}
   byId('pplAddBtn').onclick=()=>openPeopleSearchSheet(()=>{if(currentView==='people')render()});

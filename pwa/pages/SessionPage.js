@@ -66,6 +66,7 @@ async function renderSession(){
   if(pdfs.length)bindPdfRow(byId('sessionPdfs'),'session');
   if(active==='gallery'&&n){
     await fillSessionThumbs(session);
+    enableMultiSelect({root:byId('sessionThumbs'),itemSelector:'.thumb',idOf:el=>el.dataset.photoId,noun:['photo','photos'],remove:bulkRemovePhotos});
     byId('openFirstPhoto').onclick=()=>openPhotoViewer(session.photoIds,0,{title:session.title,source:'session',sourceId:session.id,editable:true,returnView:'session',courseId:course.id,sectionId:section.id,sessionId:session.id});
   }
   if(active==='notebook'){

@@ -1458,6 +1458,17 @@ body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
 .hs-new{padding:2px 8px;border-radius:99px;background:var(--accent-soft);color:var(--accent);font-size:11px;font-weight:700;white-space:nowrap}
 .hs-sender .hs-block{margin-left:auto;flex:none;width:32px;height:32px;color:var(--muted)}
 .ppl-qr-wrap{display:flex;flex-direction:column;align-items:center;gap:var(--s3);margin:var(--s3) 0}
+.ppl-qr-row{display:flex;gap:var(--s2);align-items:stretch}.ppl-qr-row .action-btn{flex:1}.ppl-scan-btn{flex:none;width:52px;border:1px solid var(--line,rgba(0,0,0,.12));border-radius:var(--r-md,14px)}
+.ppl-scan{border-radius:var(--r-md,14px);overflow:hidden;background:#000;aspect-ratio:1/1;max-height:50vh;margin:var(--s3) 0}.ppl-scan video{width:100%;height:100%;object-fit:cover}
+.msel-top{display:flex;justify-content:flex-end;margin:0 0 var(--s2)}
+.msel-on{-webkit-user-select:none;user-select:none}
+.msel-on>*{cursor:pointer}
+.msel-picked{outline:3px solid var(--accent);outline-offset:-3px;position:relative}
+.msel-picked::after{content:"✓";position:absolute;right:8px;top:8px;display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;font-size:14px;font-weight:800;pointer-events:none}
+.msel-bar{position:fixed;z-index:130;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;align-items:center;gap:12px;max-width:94%;padding:8px 8px 8px 16px;border-radius:16px;background:#1D2140;color:#fff;font-size:14px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.msel-bar button{min-height:40px;padding:0 14px;border-radius:12px;font-weight:800;display:inline-flex;align-items:center;gap:6px;color:#fff;background:rgba(255,255,255,.14)}
+.msel-bar .msel-del{background:#E5484D}
+.msel-bar button:disabled{opacity:.45}
 .ppl-qr{width:min(260px,70vw);height:auto;border-radius:var(--r-md);border:1px solid var(--line);background:#fff}
 .ppl-qr-id{margin:0;font-weight:600;overflow-wrap:anywhere;text-align:center}
 :root[data-theme="dark"] .ppl-error,:root[data-theme="dark"] .ppl-row{background:var(--surface)}
@@ -1965,3 +1976,14 @@ body.pe-lock .toast{top:calc(env(safe-area-inset-top) + 68px);bottom:auto}
   .desk-logo,.desk-tool,.desk-tab,.cv-btn,.cv-bar button,.cv-tray-close,.cnav-add,.cnav-twisty{position:relative}
   .desk-logo::after,.desk-tool::after,.desk-tab::after,.cv-btn::after,.cv-bar button::after,.cv-tray-close::after,.cnav-add::after,.cnav-twisty::after{content:"";position:absolute;inset:-6px -2px}
 }
+
+/* ⋯ grip: the same blue, smaller, as frosted glass (translucent + blur + hairline border) */
+.reorder-handle .grip,.course-managed .reorder-handle .grip,.pdf-thumb .reorder-handle .grip{width:22px;height:22px;background:rgba(80,107,255,.38);border:1px solid rgba(255,255,255,.5);-webkit-backdrop-filter:blur(8px) saturate(1.6);backdrop-filter:blur(8px) saturate(1.6);box-shadow:0 2px 8px rgba(80,107,255,.25),inset 0 1px 0 rgba(255,255,255,.35)}
+.reorder-handle .grip::before,.reorder-handle .grip::after{width:4px;height:4px;margin-left:-2px}
+.reorder-handle .grip::before{top:calc(50% - 5px)}
+.reorder-handle .grip::after{top:calc(50% + 1px)}
+.reorder-handle,.course-managed .reorder-handle,.pdf-thumb .reorder-handle{color:#fff}
+@media (min-width:768px){.reorder-handle .grip{width:18px;height:18px}.reorder-handle .grip::before,.reorder-handle .grip::after{width:3px;height:3px;margin-left:-1.5px}.reorder-handle .grip::before{top:calc(50% - 4px)}.reorder-handle .grip::after{top:calc(50% + 1px)}}
+/* ⋯ menu actions (Renommer / Déplacer, Supprimer): light frosted glass; the lensed action keeps its colour */
+.radial.item-menu .radial-item.r1:not(.hot):not(.parent){background:rgba(255,255,255,.55);-webkit-backdrop-filter:blur(10px) saturate(1.5);backdrop-filter:blur(10px) saturate(1.5);box-shadow:0 8px 22px rgba(29,33,64,.18),inset 0 0 0 2px var(--c),inset 0 1px 0 rgba(255,255,255,.6)}
+[data-theme="dark"] .radial.item-menu .radial-item.r1:not(.hot):not(.parent){background:rgba(36,39,66,.55)}

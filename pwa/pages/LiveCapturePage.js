@@ -46,6 +46,7 @@ async function renderLiveCapture(){
   const sub=ctx?`${ctx.course.name} · ${ctx.section.name} · ${plural(ids.length,'photo')}`:'Les photos prises sur votre téléphone s’affichent ici aussitôt.';
   app.innerHTML=`<section class="screen screen-wide live-screen">
     <div class="live-head">
+      <button class="icon-btn" id="liveBack" type="button" aria-label="Retour">${icon('chevronLeft',{size:22})}</button>
       <div class="page-intro"><p class="eyebrow">CAPTURE EN DIRECT</p><h1 class="hero-title">${esc(title)}</h1><p class="lead" id="liveSub">${esc(sub)}</p></div>
       <span class="live-status ${status.cls}" id="liveStatus" role="status" aria-live="polite"><i class="live-pulse" aria-hidden="true"></i><span>${esc(status.text)}</span></span>
     </div>
@@ -62,6 +63,7 @@ async function renderLiveCapture(){
       </div>`}
   </section>`;
   const cleanups=[],fields=new Map();
+  byId('liveBack').onclick=()=>navigate('home');
   const box=byId('liveRows');
   const wireRow=row=>{
     const id=row.dataset.photoId,t=row.querySelector('textarea');

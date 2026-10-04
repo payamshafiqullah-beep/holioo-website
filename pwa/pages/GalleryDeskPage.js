@@ -124,6 +124,7 @@ async function renderGallery(){
       attachItemMenu(tile,galleryPhotoMenu(e.id,e.session));
     });
     galleryCleanup=galleryLoadThumbs(box);
+    enableMultiSelect({root:box,itemSelector:'.gallery-tile',idOf:el=>el.dataset.photoId,noun:['photo','photos'],remove:bulkRemovePhotos});
   }
   // Press, drag to a course then a section, release: the notes of that séance (same gesture as Capture rapide).
   attachQuickCapture(byId('galleryFab'),openQuickNotes);

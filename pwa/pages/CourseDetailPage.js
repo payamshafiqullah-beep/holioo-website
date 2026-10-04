@@ -21,6 +21,7 @@ function renderCourse(){
   byId('backBtn').onclick=()=>navigate('courses');
   document.querySelectorAll('[data-section]').forEach(b=>b.onclick=()=>{currentSectionId=b.dataset.section;navigate('section')});
   document.querySelectorAll('[data-section]').forEach(b=>{const x=c.sections.find(s=>s.id===b.dataset.section);if(x)attachItemMenu(b,sectionMenu(c,x))});
+  enableMultiSelect({root:document.querySelector('.list-stack'),itemSelector:'[data-section]',idOf:el=>el.dataset.section,noun:['section','sections'],remove:ids=>bulkRemoveSections(c,ids)});
   byId('toggleDone').onclick=()=>{c.done=!c.done;saveState();queueSync();showToast(c.done?'Cours marqué comme terminé':'Cours réactivé');render()};
   byId('addSection').onclick=()=>openSheet({title:'Section personnalisée',subtitle:'Projet, Révision, Examen, Tutorat, Lab…',body:Field({label:'Nom de la section',id:'sectionName',placeholder:'Ex. Projet'}),onConfirm:()=>{const n=byId('sectionName').value.trim();const problem=sectionNameProblem(c,n);if(problem){showToast(problem);return false}c.sections.push({id:uid(),name:n,type:'CUSTOM',sortOrder:c.sections.length,sessions:[]});saveState();render();return true}});
 }

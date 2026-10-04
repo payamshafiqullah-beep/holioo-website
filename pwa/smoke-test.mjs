@@ -13,7 +13,7 @@ const uiFiles=['./ui/icons.js','./ui/components.js','./ui/reorder.js','./ui/shel
 const featureFiles=[
   './features/media-viewer.js','./features/course-actions.js','./features/image-pipeline.js','./features/photo-edits.js','./features/thumbs.js','./features/camera-i18n.js','./features/camera-destination.js','./features/gallery-logic.js','./features/navigator-logic.js','./features/canvas-doc.js','./features/pdf-ink.js','./features/canvas-render.js','./features/canvas-sync.js','./features/canvas-export.js',
   './features/camera-queue.js','./features/scan-core.js','./features/scanner.js','./features/scan-ml.js','./features/ocr.js','./features/text-actions.js','./features/capture-actions.js','./features/quick-capture.js','./features/item-menu.js',
-  './features/pdf-actions.js','./features/cloud-sync.js','./features/community-actions.js','./features/state-merge.js','./features/remote-sync.js','./features/notes.js','./features/people.js','./features/reading-logic.js','./features/quick-reading.js'
+  './features/pdf-actions.js','./features/cloud-sync.js','./features/community-actions.js','./features/state-merge.js','./features/remote-sync.js','./features/notes.js','./features/people.js','./features/multi-select.js','./features/reading-logic.js','./features/quick-reading.js'
 ];
 
 const app=[
@@ -28,7 +28,7 @@ const drive=read('./drive.js');
 const html=read('./index.html');
 const sw=read('./sw.js');
 const manifest=JSON.parse(read('./manifest.webmanifest'));
-if(!html.includes('20261004-epure-v23'))throw new Error('Asset cache-bust version missing');
+if(!html.includes('20261004-epure-v24'))throw new Error('Asset cache-bust version missing');
 
 const required=[
   'Diviser le lot','Organiser les photos','Captures à trier','Section personnalisée','Nouvelle séance',

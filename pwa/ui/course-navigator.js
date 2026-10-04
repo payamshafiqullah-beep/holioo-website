@@ -54,6 +54,7 @@ function navigatorRefresh(){
   if(navigatorShows()&&sel.course&&sel.course.id!==navigatorState.lastCourse){navigatorState.lastCourse=sel.course.id;navigatorState.open.add(sel.course.id)}
   const top=box.scrollTop;
   box.innerHTML=CourseNavigatorTree();box.scrollTop=top;
+  const add=byId('cnavAddCourse');if(add){const full=courseLimitReached();add.disabled=full;add.querySelector('span').textContent=full?COURSE_LIMIT_MESSAGE:'Ajouter un cours'}
   box.querySelectorAll('[data-nav-course],[data-nav-section],[data-nav-session]').forEach(el=>{
     const d=el.dataset,c=getCourse(d.courseId||d.navCourse);if(!c)return;
     const s=d.navSection?getSection(c,d.navSection):d.sectionId?getSection(c,d.sectionId):null,q=d.navSession&&s?getSession(s,d.navSession):null;

@@ -320,14 +320,17 @@ function canvasPlacePhotoAt(rt,photoId,center){
     if(!blob){showToast('Photo indisponible sur cet appareil');return}
     const bmp=await createImageBitmap(blob),ratio=bmp.width/bmp.height;bmp.close?.();
     const{w,h}=canvasPhotoSize(ratio),c=center||canvasVisibleCenter(rt);
-    let x=canvasClamp(c.x-w/2,0,CANVAS_W-w),y=Math.max(0,c.y-h/2);
+    const maxH=CANVAS_PAGE_H-2*CANVAS_SHEET_PAD,k=h>maxH?maxH/h:1,pw=w*k,ph=h*k;   // never taller than a sheet
+    let x=canvasClamp(c.x-pw/2,0,CANVAS_W-pw),y=canvasFitSheet(Math.max(0,c.y-ph/2),ph);
     const same=()=>canvasItemList(rt).some(i=>i.type==='photo'&&Math.abs(i.x-x)<6&&Math.abs(i.y-y)<6);
-    for(let n=0;n<8&&same();n++){x=Math.min(CANVAS_W-w,x+28);y+=28}
-    const it={id:uid(),type:'photo',photoId,x:canvasRound(x),y:canvasRound(y),w,h,z:canvasNextZ([...rt.store.items.values()]),updatedAt:Date.now()};
+    for(let n=0;n<8&&same();n++){x=Math.min(CANVAS_W-pw,x+28);y=canvasFitSheet(y+28,ph)}
+    const it={id:uid(),type:'photo',photoId,x:canvasRound(x),y:canvasRound(y),w:canvasRound(pw),h:canvasRound(ph),z:canvasNextZ([...rt.store.items.values()]),updatedAt:Date.now()};
     canvasGrowFor(rt,it.y+it.h);
     rt.store.items.set(it.id,it);rt.store.known.add(photoId);
     canvasCommit(rt,[canvasChangeCreate('i',it)]);
-    rt.selected=it.id;canvasSyncItems(rt);canvasRenderOverlay(rt);canvasRenderTray(rt);
+    rt.selected=it.id;
+    if(rt.tool!=='select'){rt.tool='select';canvasPrefs().tool='select';saveState();canvasLayout(rt);canvasRenderTools(rt)}   // a placed photo is moved with the pointer: the Sélection tool takes over from Main
+    canvasSyncItems(rt);canvasRenderOverlay(rt);canvasRenderTray(rt);
   })().catch(e=>{console.warn(e);showToast('Photo non placée')});
 }
 function canvasVisibleCenter(rt){
@@ -614,9 +617,9 @@ function canvasDragMove(rt,e,p){
   g.moved=true;
   const o=g.orig,dx=p.x-g.sx,dy=p.y-g.sy,it={...o};
   if(g.mode==='move'){
-    it.x=canvasRound(canvasClamp(o.x+dx,0,Math.max(0,CANVAS_W-o.w)));it.y=canvasRound(Math.max(0,o.y+dy));
+    it.x=canvasRound(canvasClamp(o.x+dx,0,Math.max(0,CANVAS_W-o.w)));it.y=canvasRound(o.type==='photo'?canvasFitSheet(Math.max(0,o.y+dy),o.h):Math.max(0,o.y+dy));
   }else if(o.type==='photo'){
-    const ratio=o.w/o.h,w=canvasClamp(o.w+dx,CANVAS_PHOTO_MIN_W,CANVAS_W-o.x);it.w=canvasRound(w);it.h=canvasRound(w/ratio);
+    const ratio=o.w/o.h,w=canvasClamp(o.w+dx,CANVAS_PHOTO_MIN_W,Math.max(CANVAS_PHOTO_MIN_W,Math.min(CANVAS_W-o.x,canvasSheetRoom(o.y)*ratio)));it.w=canvasRound(w);it.h=canvasRound(w/ratio);
   }else if(o.type==='text'){
     it.w=canvasRound(canvasClamp(o.w+dx,120,CANVAS_W-o.x));
     it.lines=canvasLayoutText(it.text,it.w-2*CANVAS_TEXT_PAD,canvasMeasure(it.size));it.h=canvasTextHeight(it.lines.length,it.size);

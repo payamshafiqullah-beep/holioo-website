@@ -322,3 +322,16 @@ test('a page is always whole A4 sheets: reading, growing and adding space', () =
   assert.equal(C.CANVAS_ADD_SPACE, 1414);
   assert.equal(C.CANVAS_MAX_H % 1414, 0);
 });
+
+test('a photo never straddles two A4 sheets and keeps clear of the gap between them', () => {
+  const P = 1414, pad = C.CANVAS_SHEET_PAD;
+  assert.equal(C.canvasFitSheet(100, 300), 100, 'inside the first sheet: untouched');
+  assert.equal(C.canvasFitSheet(0, 300), 0, 'the top of the first sheet needs no padding');
+  const low = C.canvasFitSheet(P - 250, 300);   // middle on sheet 1, spills over: pulled up
+  assert.equal(low, P - pad - 300);
+  const high = C.canvasFitSheet(P - 50, 300);   // middle on sheet 2: pushed down below the gap
+  assert.equal(high, P + pad);
+  assert.equal(C.canvasFitSheet(P + 10, 200), P + pad, 'padding below the cut');
+  assert.equal(C.canvasSheetRoom(100), P - pad - 100);
+  assert.equal(C.canvasSheetRoom(P + 100), 2 * P - pad - (P + 100));
+});

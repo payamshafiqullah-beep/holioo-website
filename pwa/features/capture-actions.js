@@ -48,7 +48,8 @@ function initCameraDestination(){
   const entry=camEntryDestination;camEntryDestination=null;
   const keep=!entry&&camKeepBatch&&camDest;camKeepBatch=false;
   if(!keep){
-    camDest=entry||resolveCameraDestination({courses:state.courses,timetable:state.timetable,last:state.cameraLast});
+    // The plain camera guesses nothing: without a destination named by the caller, photos wait in Captures until the user files them.
+    camDest=entry||null;
     camShots=[];camRetakeId=null;
     setCameraThumb(null);
     if(entry)rememberCameraDestination();
@@ -218,7 +219,7 @@ function showCameraPanel(kind){
   // same crop / filter / text recognition pipeline.
   if(kind!=='ask'){
     panel.querySelector('.cam-panel-card').insertAdjacentHTML('beforeend',`<button class="cam-btn ghost" id="camFallbackBtn">${icon('camera',{size:18})} ${esc(camT('fallbackCamera'))}</button><p class="cam-panel-note">${esc(camT('fallbackHint'))}</p>`);
-    byId('camFallbackBtn').onclick=()=>camDest?byId('cameraFallbackInput')?.click():openDestinationPicker(camT('chooseFirst'));
+    byId('camFallbackBtn').onclick=()=>byId('cameraFallbackInput')?.click();
   }
   panel.classList.remove('hidden');
   const b=byId('camPanelBtn');
@@ -270,7 +271,8 @@ async function startCamera({userAction=false}={}){
   if(!pre){
     const perm=await cameraPermissionState();
     if(token!==camStartToken)return;
-    if(perm==='denied'){showCameraPanel('blocked');watchCameraPermission();return}
+    // A refusal is not final: a retry asks again (the browser may prompt again); the panel only comes back if it refuses again.
+    if(perm==='denied'&&!userAction)watchCameraPermission();
     let asked=false;try{asked=localStorage.getItem('holioo_cam_asked')==='1'}catch{}
     // First time ever: explain why before the browser asks.
     if(perm==='prompt'&&!asked&&!userAction){showCameraPanel('ask');return}
@@ -645,7 +647,6 @@ async function importScanFiles(files,dest){
 function capturePhoto({auto=false}={}){
   // The shutter is always there: in QR mode (codes are read by themselves) it switches back to Photo and shoots.
   if(camMode==='qr'){if(auto)return;applyCameraMode('photo')}
-  if(!cameraDestContext()){if(!auto)openDestinationPicker(camT('chooseFirst'));return}
   const video=byId('cameraVideo');
   if(!cameraStream||!video?.videoWidth){
     showToast(camT('notReady'));
@@ -668,8 +669,7 @@ function capturePhoto({auto=false}={}){
     video,sx,sy,sw,sh,0,0,canvas.width,canvas.height
   );
 
-  const dest=destinationForShot();
-  if(!dest)return;
+  const dest=cameraDestContext()?destinationForShot():null;   // null: the photo waits in Captures
   if(isScanMode(camMode)||camRetakeId){
     const ids=isScanMode(camMode)?queueScanCapture(canvas,dest):(()=>{const id=camRetakeId;camRetakeId=null;const b=new Promise(r=>canvas.toBlob(r,'image/jpeg',.92));cameraQueue.add({id,blob:b,thumb:canvasToJpeg(scaleCanvas(canvas,canvas.width,canvas.height)),dest,createdAt:now(),replace:true,onStored:()=>{showToast(camT('retaken'));if(currentView==='capture'){camKeepBatch=true;navigate('scanReview')}}});return[]})();
     camShots.push(...ids);
@@ -694,7 +694,7 @@ function captureFeedback(auto){
   const stage=byId('cameraStage');
   stage?.classList.remove('capture-flash');void stage?.offsetWidth;
   stage?.classList.add('capture-flash');
-  setTimeout(()=>stage?.classList.remove('capture-flash'),120);
+  setTimeout(()=>stage?.classList.remove("capture-flash"),300);
   updateCaptureCount();
   navigator.vibrate?.(auto?[12,40,12]:18);
 }
@@ -705,8 +705,8 @@ async function importGallery(e){
   e.target.value='';
   const isPdf=f=>f.type==='application/pdf'||/\.pdf$/i.test(f.name),pdfs=picked.filter(isPdf),files=picked.filter(f=>f.type.startsWith('image/'));
   if(!files.length&&!pdfs.length){if(picked.length)showToast('Format non pris en charge — images ou PDF');return}
-  const dest=destinationForShot();
-  if(!dest){openDestinationPicker(camT('chooseFirst'));return}
+  const dest=cameraDestContext()?destinationForShot():null;
+  if(!dest&&pdfs.length){openDestinationPicker(camT('chooseFirst'));return}
   // PDFs are filed in the destination's séance (Fichiers, Lecture rapide, the course), not through the photo queue.
   if(pdfs.length){
     for(const f of pdfs)await storeImportedPdf(f,{courseId:dest.courseId,sessionIds:[dest.sessionId]});
@@ -723,7 +723,7 @@ async function importGallery(e){
   }
   setCameraThumb(files.at(-1));
   updateCaptureCount();
-  showToast(camT('imported',{n:files.length,dest:cameraDestinationLabel(camDest)}));
+  showToast(dest?camT('imported',{n:files.length,dest:cameraDestinationLabel(camDest)}):'Photos gardées dans Captures');
 }
 
 function leaveCamera(){
@@ -754,6 +754,7 @@ function closeCaptureScreen(){
 function finishCapture(){
   const ctx=camShots.length&&camDest?.sessionId&&findSessionContext(camDest.sessionId);
   if(ctx)showToast(camT('savedTo',{dest:cameraDestinationLabel(camDest)}));
+  else if(camShots.length)showToast('Photos gardées dans Captures');
   leaveCamera();
   if(cameraReturn(ctx||null))return;
   if(ctx)navigate('session',{courseId:ctx.course.id,sectionId:ctx.section.id,sessionId:ctx.session.id});

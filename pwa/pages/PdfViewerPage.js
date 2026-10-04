@@ -1,6 +1,6 @@
 // Lecteur PDF plein écran.
 async function renderPdfViewer(){
-  setChrome(true);
+  setChrome(!isDesk());   // tablet / computer: the toolbar and the matières sidebar stay in the normal view; only fullscreen hides them
   const meta=state.files.find(f=>f.id===currentFileId),row=meta?await DB.get('files',meta.id):null;
   if(!meta||!row?.blob){showToast('PDF introuvable sur cet appareil');navigate('files');return}
   revokeViewerUrl();viewerObjectUrl=URL.createObjectURL(row.blob);
@@ -45,7 +45,7 @@ async function renderPdfViewer(){
   let ctl=null,ink=null;
   const savePos=()=>{if(!ctl||!host.isConnected)return;try{localStorage.setItem(posKey,JSON.stringify({page:ctl.page(),ratio:+ctl.pageRatio().toFixed(3),zoom:+ctl.zoom.toFixed(2)}))}catch{}};
   // Full screen: the real Fullscreen API where it exists, always the immersive layout (header and dock hidden; iPhone has no element fullscreen).
-  const setImmersive=on=>{viewer.classList.toggle('pdf-immersive',on);fsBtn.setAttribute('aria-pressed',String(on));fsBtn.setAttribute('aria-label',on?'Quitter le plein écran':'Plein écran');fsBtn.innerHTML=icon(on?'minimize':'maximize',{size:20});ink?.fullscreen(on);setTimeout(()=>host.dispatchEvent(new Event('scroll')),50)};
+  const setImmersive=on=>{viewer.classList.toggle('pdf-immersive',on);if(isDesk())setChrome(on);fsBtn.setAttribute('aria-pressed',String(on));fsBtn.setAttribute('aria-label',on?'Quitter le plein écran':'Plein écran');fsBtn.innerHTML=icon(on?'minimize':'maximize',{size:20});ink?.fullscreen(on);setTimeout(()=>host.dispatchEvent(new Event('scroll')),50)};
   const onFsChange=()=>{if(!document.fullscreenElement&&viewer.classList.contains('pdf-immersive'))setImmersive(false)};
   document.addEventListener('fullscreenchange',onFsChange);
   fsBtn.onclick=async()=>{
@@ -53,7 +53,8 @@ async function renderPdfViewer(){
     try{if(on)await viewer.requestFullscreen?.();else if(document.fullscreenElement)await document.exitFullscreen()}catch{}
   };
   const leave=()=>{savePos();ink?.flush();document.removeEventListener('fullscreenchange',onFsChange);if(document.fullscreenElement)document.exitFullscreen?.().catch(()=>{})};
-  byId('pdfBack').onclick=byId('pdfCornerBack').onclick=()=>{leave();revokeViewerUrl();navigate(currentPdfReturnView||'files')};
+  byId('pdfCornerBack').onclick=()=>fsBtn.click();   // fullscreen: back = leave fullscreen only, no navigation
+  byId('pdfBack').onclick=()=>{leave();revokeViewerUrl();navigate(currentPdfReturnView||'files')};
   window.addEventListener('pagehide',()=>{savePos();ink?.flush()},{once:true});
   try{
     ctl=await renderPdfPages(row.blob,host,{zoom:saved.zoom||1,page:saved.page||1,ratio:saved.ratio||0,

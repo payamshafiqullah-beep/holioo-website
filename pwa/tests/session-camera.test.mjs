@@ -37,10 +37,10 @@ test('section camera creates a session in that section, ignoring stale session I
   assert.equal(ctx.destinationForShot().sessionId,'new-session');
 });
 
-test('home camera still uses automatic destination, not stale navigation IDs or batch',()=>{
+test('plain camera (home) has no destination: photos wait in Captures, no stale navigation IDs or batch',()=>{
   const{ctx,run}=setup();ctx.resolveCameraDestination=()=>({courseId:'course',sectionId:'CM',sessionId:'CM1'});
   run("camKeepBatch=true; prepareCameraEntry('home'); initCameraDestination()");
-  assert.equal(run('camDest.sessionId'),'CM1');
+  assert.equal(run('camDest'),null);
 });
 
 for(const view of ['scanReview','photoViewer'])test(`${view}: returning keeps pages, destination and retake`,()=>{

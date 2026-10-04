@@ -207,7 +207,7 @@ async function renderPdfPages(blob,host,{onCount,onPage,zoom=1,page:startPage=1,
   // Live zoom: pinch with two fingers, ctrl + wheel / trackpad pinch.
   let pd=0,pz=1;
   host.addEventListener('touchstart',e=>{if(e.touches.length===2){pd=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);pz=z}},{passive:true});
-  host.addEventListener('touchmove',e=>{if(e.touches.length===2&&pd){e.preventDefault();const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);setZoom(pz*d/pd)}},{passive:false});
+  host.addEventListener('touchmove',e=>{if(e.touches.length===2&&pd){e.preventDefault();const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);const r=host.getBoundingClientRect();setZoom(pz*d/pd,((e.touches[0].clientX+e.touches[1].clientX)/2-r.left)/host.clientWidth)}},{passive:false});
   host.addEventListener('touchend',e=>{if(e.touches.length<2)pd=0},{passive:true});
   host.addEventListener('wheel',e=>{if(!e.ctrlKey)return;e.preventDefault();setZoom(z*Math.exp(-e.deltaY*.01),(e.clientX-host.getBoundingClientRect().left)/host.clientWidth)},{passive:false});
   sizeAll();

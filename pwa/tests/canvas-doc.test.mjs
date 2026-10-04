@@ -305,6 +305,33 @@ test('shape snap leaves handwriting, scribbles and small marks alone', () => {
   assert.equal(C.canvasSnapShape([[0, 0, .5]]), null);
 });
 
+test('shape snap: an arrow drawn in one stroke (shaft, then both barbs) becomes a clean arrow', () => {
+  const seg = (a, b, n = 14) => along(n, t => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
+  const tip = [400, 200];
+  const pts = [...seg([100, 200], tip, 30), ...seg(tip, [350, 160]), ...seg([350, 160], tip), ...seg(tip, [350, 245])];
+  const r = C.canvasSnapShape(pts);
+  assert.equal(r?.kind, 'arrow');
+  assert.equal(C.canvasSnapShape([...seg([100, 200], tip, 30), ...seg(tip, [350, 160])]), null, 'only one barb: not an arrow, not a line');
+});
+
+test('shape snap: a held stroke can be filed as drawn, then corrected: one undo gives the drawn stroke back', () => {
+  const store = C.canvasStore(C.normalizeCanvasDoc({ sessionId: 's1', items: [], strokes: [] }));
+  const h = C.canvasHistory();
+  const drawn = stroke('h1', along(40, t => [100 + 300 * t, 200 + 6 * t]), { sp: 1 });
+  const fixed = { ...drawn, pts: C.canvasSnapShape(drawn.pts).pts, sp: 0 };
+  C.canvasApplyChanges(store, [C.canvasChangeCreate('s', drawn)], true, 5);
+  C.canvasHistoryPush(h, [C.canvasChangeCreate('s', drawn)]);
+  C.canvasApplyChanges(store, [C.canvasChangeUpdate('s', drawn, fixed)], true, 6);
+  C.canvasHistoryPush(h, [C.canvasChangeUpdate('s', drawn, fixed)]);
+  assert.equal(store.strokes.get('h1').pts.length, fixed.pts.length);
+  C.canvasUndo(h, store, 7);
+  const back = store.strokes.get('h1');
+  assert.equal(back.pts, drawn.pts, 'the drawn points are back');
+  assert.ok(!back.deleted, 'still there');
+  C.canvasUndo(h, store, 8);
+  assert.ok(store.strokes.get('h1').deleted, 'the second undo removes it');
+});
+
 test('partial eraser cuts the touched part and keeps both ends', () => {
   const s = stroke('l', [[0, 0, .5], [100, 0, .5]], { size: 4 });
   assert.equal(C.canvasEraseSplit(s, 50, 50, 10), null, 'untouched');

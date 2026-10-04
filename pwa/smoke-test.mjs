@@ -7,7 +7,7 @@ const pageFiles=[
   './pages/CourseDetailPage.js','./pages/SectionPage.js','./pages/SessionPage.js','./pages/GalleryDeskPage.js','./pages/NotesCanvasPage.js','./pages/LiveCapturePage.js','./pages/CapturePage.js','./pages/ScanReviewPage.js',
   './pages/CaptureCompletePage.js','./pages/SplitBatchPage.js','./pages/OrganizeBatchPage.js','./pages/InboxPage.js',
   './pages/PhotoViewerPage.js','./pages/PdfBuilderPage.js','./pages/PdfViewerPage.js','./pages/FilesPage.js',
-  './pages/AcademicLibraryPage.js','./pages/ProfilePage.js','./pages/SyncPage.js','./pages/PeoplePage.js','./pages/HolioSharesPage.js','./pages/SharedViewerPage.js'
+  './pages/AcademicLibraryPage.js','./pages/ProfilePage.js','./pages/SyncPage.js','./pages/PeoplePage.js','./pages/HolioSharesPage.js','./pages/MySharedPdfsPage.js','./pages/SharedViewerPage.js'
 ];
 const uiFiles=['./ui/icons.js','./ui/components.js','./ui/reorder.js','./ui/shell.js','./ui/desk-shell.js','./ui/course-navigator.js','./ui/camera-picker.js','./ui/radial-menu.js','./ui/photo-editor.js'];
 const featureFiles=[
@@ -28,7 +28,7 @@ const drive=read('./drive.js');
 const html=read('./index.html');
 const sw=read('./sw.js');
 const manifest=JSON.parse(read('./manifest.webmanifest'));
-if(!html.includes('20261004-epure-v32'))throw new Error('Asset cache-bust version missing');
+if(!html.includes('20261004-epure-v36'))throw new Error('Asset cache-bust version missing');
 
 const required=[
   'Diviser le lot','Organiser les photos','Captures à trier','Section personnalisée','Nouvelle séance',

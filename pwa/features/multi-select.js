@@ -81,3 +81,23 @@ function bulkRemoveCourses(ids){
   ids.forEach(removeCourse);saveState();queueSync();render();
   return{undo:()=>{restore();saveState();render()},commit:()=>purgeSessionInk(sessionIds)};
 }
+function bulkRemoveSessions(course,section,ids){
+  const restore=itemSnapshot(),gone=section.sessions.filter(q=>ids.includes(q.id));
+  removeSessions(course,section,gone);saveState();queueSync();render();
+  return{undo:()=>{restore();saveState();render()},commit:()=>purgeSessionInk(gone.map(q=>q.id))};
+}
+function bulkRemoveSections(course,ids){
+  const restore=itemSnapshot(),sessionIds=[];
+  for(const s of course.sections.filter(x=>ids.includes(x.id)))sessionIds.push(...removeSection(course,s));
+  saveState();queueSync();render();
+  return{undo:()=>{restore();saveState();render()},commit:()=>purgeSessionInk(sessionIds)};
+}
+// Captures: a whole batch goes; its photos are deleted from the device unless a séance still holds them.
+function bulkRemoveBatches(ids){
+  const restore=itemPhotoSnapshot(),gone=state.inbox.filter(b=>ids.includes(b.id)),photoIds=[...new Set(gone.flatMap(b=>b.photoIds||[]))];
+  state.inbox=state.inbox.filter(b=>!ids.includes(b.id));saveState();queueSync();render();
+  return{undo:()=>{restore();saveState();render()},commit:()=>{
+    const kept=new Set([...state.inbox.flatMap(b=>b.photoIds||[]),...state.courses.flatMap(c=>c.sections.flatMap(s=>s.sessions.flatMap(q=>q.photoIds||[])))]);
+    return Promise.all(photoIds.filter(id=>!kept.has(id)).map(id=>removeLocalPhoto(id)));
+  }};
+}

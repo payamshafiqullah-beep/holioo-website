@@ -11,5 +11,6 @@ function renderSection(){
   byId('backBtn').onclick=()=>navigate('course');
   document.querySelectorAll('[data-session]').forEach(b=>b.onclick=()=>{currentSessionId=b.dataset.session;navigate('session')});
   document.querySelectorAll('[data-session]').forEach(b=>{const q=s.sessions.find(x=>x.id===b.dataset.session);if(q)attachItemMenu(b,sessionMenu(c,s,q))});
+  enableMultiSelect({root:document.querySelector('.list-stack'),itemSelector:'[data-session]',idOf:el=>el.dataset.session,noun:['séance','séances'],remove:ids=>bulkRemoveSessions(c,s,ids)});
   byId('newSession').onclick=()=>{const num=(s.sessions.at(-1)?.number||0)+1;openSheet({title:`Nouvelle séance ${s.name}`,subtitle:`Le titre automatique sera « ${s.name} ${num} ».`,body:Field({label:'Titre personnalisé (facultatif)',id:'sessionTitle',placeholder:`${s.name} ${num} — sujet`}),confirmText:'Créer',onConfirm:()=>{const title=byId('sessionTitle').value.trim()||`${s.name} ${num}`,problem=sessionTitleProblem(s,title);if(problem){showToast(problem);return false}const q={id:uid(),number:num,title,photoIds:[],createdAt:now(),visibility:'private'};s.sessions.push(q);saveState();currentSessionId=q.id;navigate('session');return true}})};
 }

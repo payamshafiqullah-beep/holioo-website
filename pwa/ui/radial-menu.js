@@ -167,8 +167,8 @@ function createRadialMenu(o){
   function menuBox(){
     const{fit,o:org,vp}=st,pad=fit.size*.6+4,pts=[org,...fit.angles1.map(a=>radialPoint(org,fit.r1,a))];
     if(st.hub){   // the hub circles: sampled points on the tracks a ring can take
-      const z=radialHubZone(vp),t=fit.size+st.opt.ringGap,r0=fit.size+st.opt.gap+6;
-      for(const r of[r0+t*.5,r0+t*1.5,r0+t*2.5])for(let a=0;a<360;a+=30)pts.push(radialPoint(z,r,a));
+      const t=fit.size+st.opt.ringGap,r0=fit.size+st.opt.gap+6;
+      for(const q of[...pts.slice(1)])for(const r of[r0,r0+t])for(let a=0;a<360;a+=45)pts.push(radialPoint(q,r,a));
     }else for(let k=2;k<=st.max;k++)for(const a of fit.angles1)for(const b of radialChildren(4,a,org,vp,fit,st.opt,k).angles)pts.push(radialPoint(org,radialRadius(fit,k,st.opt),b));
     return pts.map(p=>({x0:p.x-pad,x1:p.x+pad,y0:p.y-pad,y1:p.y+pad}));
   }
@@ -250,8 +250,8 @@ function createRadialMenu(o){
     const ring=k+1;
     let layout,c=st.o,rr=radialRadius(st.fit,ring,st.opt);
     if(st.hub&&ring>=2){
-      c=radialHubZone(st.vp);
-      const hf=radialHubFit(Math.min(kids.length,o.maxKids||Infinity),c,st.vp,st.fit.size,ring>2?lvR(k):null,st.opt);
+      c=radialPoint(lvC(k),lvR(k),st.levels[k-1].angles[i]);   // a small circle right round the parent item
+      const hf=radialHubFit(Math.min(kids.length,o.maxKids||Infinity),c,st.vp,st.fit.size,null,st.opt);
       layout={angles:hf.angles,step:hf.step,shown:hf.shown,capacity:hf.capacity};rr=hf.r;
     }else layout=radialChildren(kids.length,st.levels[k-1].angles[i],st.o,st.vp,st.fit,st.opt,ring);
     const cap=Math.min(layout.shown,o.maxKids||Infinity);
@@ -278,7 +278,7 @@ function createRadialMenu(o){
   function applyStack(){
     if(!o.stack||!st)return;
     const n=depth();st.el.dataset.depth=n;
-    st.el.querySelectorAll('.radial-item').forEach(b=>{const r=+b.dataset.ring;b.classList.toggle('blurred',r===n-1);b.classList.toggle('gone',r<n-1);if(r<n-1)b.setAttribute('aria-hidden','true');else b.removeAttribute('aria-hidden')});
+    st.el.querySelectorAll('.radial-item').forEach(b=>{const r=+b.dataset.ring;b.classList.toggle('blurred',o.hub?r<n:r===n-1);b.classList.toggle('gone',!o.hub&&r<n-1);if(!o.hub&&r<n-1)b.setAttribute('aria-hidden','true');else b.removeAttribute('aria-hidden')});
   }
 
   const sameHot=(a,b)=>(a?.ring??(a?.center?0:-1))===(b?.ring??(b?.center?0:-1))&&(a?.index??-1)===(b?.index??-1);

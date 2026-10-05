@@ -27,7 +27,7 @@ const RADIAL={
   minR1:96,
   maxR1:260,       // beyond this the ring is out of thumb reach: items shrink instead
   maxItems:7,
-  localMaxR:2.4,   // local rings: farthest a ring of children may sit from its picked item, in item sizes (beyond: fewer items, then "•••")
+  localMaxR:3.6,   // local rings: farthest a ring of children may sit from its picked item, in item sizes (beyond: fewer items, then "•••")
   localGap:6,      // local rings: free space between the picked item and the ring of its children
   dwell:180,       // ms the finger rests on another course before its sections replace the open ones
   anim:150
@@ -149,27 +149,48 @@ function radialChildren(k,parentAngle,o,vp,fit,opt=RADIAL,ring=2){
 
 // ─── Local rings (menus with `local`) ────────────────────────
 // From the second ring on, the children of an item are laid out as a ring right round THAT item (the smallest circle that holds
-// them and stays on screen: clamped at the screen edges, never moved to the middle of the screen). Every ring before stays where
-// it was, blurred: moving back onto the open item (the middle of the ring) is the way back.
+// them, clamped at the screen edges, never moved to the middle of the screen) and never on top of another icon. Every ring before
+// stays where it was, blurred: moving back onto the open item (the middle of the ring) is the way back.
 
-// n items of `s` px around c (the picked item): the smallest circle that holds them all and stays on screen, an item plus
-// `localGap` away from c; when prevR is given, also at least one track (item + ringGap) away from that radius. Fewer than n when no circle on screen holds them
-// (`shown` < n: the caller turns the last one into a "more" item). {r, angles, step, shown, capacity, full}
-function radialLocalFit(n,c,vp,s,prevR=null,opt=RADIAL){
-  const track=s+opt.ringGap,minR=s+(opt.localGap??RADIAL.localGap);
-  const rMax=Math.max(minR,Math.min(vp.w/2,(vp.h-(vp.top||0)-(vp.bottom||0))/2,s*(opt.localMaxR??RADIAL.localMaxR))),best={cap:0};
-  for(let r=minR;r<=rMax+1e-9;r+=2){
-    if(prevR!==null&&Math.abs(r-prevR)<track)continue;
-    const run=radialRun(radialFree(c,r,s,vp,opt));if(!run)continue;
-    const min=radialMinStep(r,s,opt.gap),cap=run.full?Math.floor(360/min+1e-9):Math.floor(run.len/min+1e-9)+1;
-    if(cap>best.cap){best.cap=cap;best.r=r;best.run=run;best.min=min}
-    if(cap>=n)break;
+// n items of `s` px around c (the picked item): the smallest circle on which they all fit, an item plus `localGap` away from c,
+// entirely on screen and touching nothing else: `obstacles` = [{x, y, r?}] are the other circles already on screen (every earlier
+// ring, the middle button; r defaults to half an item), and no new item may overlap one. The ring prefers the side `away` (degrees,
+// 90 = up; the direction from the trigger through c, so it opens away from the hand) and grows (up to `localMaxR` items) when the
+// free side is too short. Fewer than n when no circle holds them (`shown` < n: the caller turns the last one into a "more" item).
+// {r, angles, step, shown, capacity, full}
+function radialLocalFit(n,c,vp,s,opt=RADIAL,obstacles=[],away=90){
+  const gap=opt.localGap??RADIAL.localGap,minR=s+gap,half=s/2+opt.margin;
+  const x0=half,x1=vp.w-half,y0=(vp.top||0)+half,y1=vp.h-(vp.bottom||0)-half;
+  const rMax=Math.max(minR,Math.min(vp.w/2,(vp.h-(vp.top||0)-(vp.bottom||0))/2,s*(opt.localMaxR??RADIAL.localMaxR)));
+  const need=q=>(q.r??s/2)+s/2+gap,SAMPLE=2,N=360/SAMPLE;
+  let best=null;
+  const rHard=Math.max(rMax,Math.hypot(vp.w,vp.h));   // only when nothing at all fits within rMax
+  for(let r=minR;r<=rHard+1e-9;r+=2){
+    if(r>rMax+1e-9&&best?.slots.length)break;
+    const min=radialMinStep(r,s,opt.gap)*1.06,ok=[];
+    for(let k=0;k<N;k++){const p=radialPoint(c,r,k*SAMPLE);ok.push(p.x>=x0&&p.x<=x1&&p.y>=y0&&p.y<=y1&&!obstacles.some(q=>Math.hypot(p.x-q.x,p.y-q.y)<need(q)-.01))}
+    const slots=[];
+    if(ok.every(Boolean)){const k=Math.floor(360/min+1e-9);for(let i=0;i<k;i++)slots.push(radNorm(away+i*360/k))}
+    else{
+      // Runs of free angles (circular): each holds as many items as fit at the minimum step, centred in the run.
+      const first=ok.findIndex(v=>!v);
+      for(let t=0;t<N;){
+        const k0=(first+t)%N;if(!ok[k0]){t++;continue}
+        let len=0;while(t+len<N&&ok[(first+t+len)%N])len++;
+        const L=(len-1)*SAMPLE,k=Math.floor(L/min+1e-9)+1,a0=k0*SAMPLE+(L-(k-1)*min)/2;
+        for(let i=0;i<k;i++)slots.push(radNorm(a0+i*min));
+        t+=len;
+      }
+    }
+    // The ends of two runs can be closer than one step across a narrow blocked gap: keep the slots nearest to `away`, none too close.
+    const kept=[];for(const a of[...slots].sort((x,y)=>radDiff(x,away)-radDiff(y,away)))if(kept.every(b=>radDiff(a,b)>=min-1e-6))kept.push(a);
+    if(!best||kept.length>best.slots.length)best={r,slots:kept,min};
+    if(kept.length>=n)break;
   }
-  if(!best.cap)return{r:minR,angles:radialAngles(1,90,0),step:0,shown:1,capacity:1,full:false};
-  const{r,run,min}=best,shown=Math.min(n,best.cap);
-  if(run.full){const step=360/shown;return{r,angles:Array.from({length:shown},(_,i)=>90-i*step),step,shown,capacity:best.cap,full:true}}
-  const step=shown>1?Math.max(min,Math.min(run.len/(shown-1),45)):0;
-  return{r,angles:radialAngles(shown,radialCenter(run,90,(shown-1)*step),step),step,shown,capacity:best.cap,full:false};
+  if(!best||!best.slots.length)return{r:minR,angles:[away],step:0,shown:1,capacity:1,full:false};
+  const{r,slots,min}=best,shown=Math.min(n,slots.length);
+  const picked=[...slots].sort((a,b)=>radDiff(a,away)-radDiff(b,away)).slice(0,shown).sort((a,b)=>radNorm(90-a)-radNorm(90-b));
+  return{r,angles:picked,step:min,shown,capacity:slots.length,full:shown===slots.length&&slots.length*min>=359};
 }
 
 // What is under p when the rings have their own centers: levels[k-1] = {c, r, angles}. The outermost open ring answers within

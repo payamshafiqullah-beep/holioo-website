@@ -261,31 +261,46 @@ test('local ring: too many items → fewer shown (the caller adds "•••"); 
   many.angles.forEach(a => assert.ok(inside(R.radialPoint(c, many.r, a), s, vp)));
 });
 
-// Phone, tablet (landscape) and tablet portrait: every depth of Capture rapide / Lecture rapide opens beside its parent.
-test('local rings: at every depth the children sit next to their parent and inside the viewport (phone, tablet, tablet portrait)', () => {
+// Phone, tablet (landscape) and tablet portrait: every depth of Capture rapide / Lecture rapide opens beside its parent and no
+// icon ever lands on another one (the earlier rings, the middle button, the other children).
+test('local rings: at every depth the children sit next to their parent, inside the viewport, and on no other icon', () => {
   const opt = { ...R.RADIAL, minR1: 76, rings: 1, local: true };
+  let checked = 0, far = 0;
   for (const [name, vp] of Object.entries(sizes)) {
-    const s = opt.size;
     // Triggers: the Accueil card (right, upper part), the lecture row (lower left), the bottom middle.
     for (const org of [{ x: vp.w - 60, y: vp.top + 220 }, { x: 60, y: vp.h * .7 }, { x: vp.w / 2, y: vp.h - vp.bottom - 60 }]) {
-      const fit = R.radialFit(7, org, vp, opt);
-      assert.equal(fit.rings, 1, `${name}: first ring alone`);
-      const before = R.radialFit(7, org, vp, { ...R.RADIAL, rings: 1, local: true });   // minR1 96
-      assert.ok(fit.r1 <= before.r1 + 3, `${name}: first ring not farther than before (r1=${fit.r1}, was ${before.r1})`);
-      fit.angles1.forEach(a => assert.ok(inside(R.radialPoint(org, fit.r1, a), fit.size, vp), `${name}: first ring on screen`));
-      let parent = R.radialPoint(org, fit.r1, fit.angles1[0]);
-      for (let depth = 2; depth <= 4; depth++) {
-        const h = R.radialLocalFit(6, parent, vp, fit.size, null, opt);
-        assert.ok(h.shown >= 1, `${name}: depth ${depth} has items`);
-        const pts = h.angles.map(a => R.radialPoint(parent, h.r, a));
-        pts.forEach(p => {
-          assert.ok(inside(p, fit.size, vp), `${name}: depth ${depth} item inside the viewport`);
-          assert.ok(Math.abs(gap(p, parent) - h.r) < 1e-6 && h.r <= R.RADIAL.localMaxR * s, `${name}: depth ${depth} item next to its parent (r=${h.r})`);
-        });
-        parent = pts[0];
+      const fit = R.radialFit(7, org, vp, opt), s = fit.size;
+      const taken = [{ x: org.x, y: org.y, r: 30 }, ...fit.angles1.map(a => R.radialPoint(org, fit.r1, a))];
+      // Walk down every first-ring item, and from each one down the first and the last child.
+      for (let pick = 0; pick < fit.angles1.length; pick++) {
+        let parent = taken[1 + pick], all = [...taken];
+        for (let depth = 2; depth <= 4; depth++) {
+          const away = Math.atan2(org.y - parent.y, parent.x - org.x) * 180 / Math.PI;
+          const h = R.radialLocalFit(6, parent, vp, s, opt, all, away);
+          assert.ok(h.shown >= 1, `${name}: depth ${depth} has items`);
+          const pts = h.angles.map(a => R.radialPoint(parent, h.r, a));
+          pts.forEach((p, i) => {
+            assert.ok(inside(p, s, vp), `${name}: depth ${depth} item inside the viewport`);
+            if (h.r > R.RADIAL.localMaxR * s + 1e-6) far++;   // only when nothing free exists nearer (a crowded corner, the last child of the last child…)
+            for (const q of all) assert.ok(gap(p, q) >= s - 1e-6 && (q.r === undefined || gap(p, q) >= q.r + s / 2), `${name}: depth ${depth} item ${i} overlaps an earlier icon`);
+            for (let j = i + 1; j < pts.length; j++) assert.ok(gap(p, pts[j]) >= s - 1e-6, `${name}: depth ${depth} children overlap each other`);
+            checked++;
+          });
+          all = [...all, ...pts];
+          parent = pts[pts.length - 1];
+        }
       }
     }
   }
+  assert.ok(checked > 200, `${checked} items checked`);
+  assert.ok(far / checked < 0.03, `${far} of ${checked} items had to go beyond ${R.RADIAL.localMaxR} item sizes from their parent`);
+});
+test('local ring: with a neighbour in the way the ring goes round it (still next to the parent), never over it', () => {
+  const vp = sizes.phone, s = R.RADIAL.size, c = { x: 195, y: 420 };
+  const neighbour = { x: c.x + s + 8, y: c.y };
+  const h = R.radialLocalFit(5, c, vp, s, R.RADIAL, [neighbour, c]);
+  h.angles.forEach(a => assert.ok(gap(R.radialPoint(c, h.r, a), neighbour) >= s, 'clear of the neighbour'));
+  assert.equal(h.shown, 5);
 });
 const hit=(...a)=>{const r=R.radialHitLevels(...a);return r&&JSON.parse(JSON.stringify(r))};
 test('local hit: the open ring wins, the blurred one answers by its other items (tentative) and its open item', () => {

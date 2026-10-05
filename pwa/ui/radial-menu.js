@@ -251,7 +251,11 @@ function createRadialMenu(o){
     let layout,c=st.o,rr=radialRadius(st.fit,ring,st.opt);
     if(st.local&&ring>=2){
       c=radialPoint(lvC(k),lvR(k),st.levels[k-1].angles[i]);   // the ring opens round the item that was picked, never round the screen centre
-      const hf=radialLocalFit(Math.min(kids.length,o.maxKids||Infinity),c,st.vp,st.fit.size,null,st.opt);
+      // Every circle already on screen (the middle button, every earlier ring): the new ring must not land on any of them.
+      const taken=[{x:st.o.x,y:st.o.y,r:30}];
+      st.levels.forEach((L,j)=>L.angles.forEach(ang=>taken.push(radialPoint(lvC(j+1),lvR(j+1),ang))));
+      const away=Math.hypot(c.x-st.o.x,c.y-st.o.y)>1?radDeg(Math.atan2(st.o.y-c.y,c.x-st.o.x)):90;   // opens away from the trigger
+      const hf=radialLocalFit(Math.min(kids.length,o.maxKids||Infinity),c,st.vp,st.fit.size,st.opt,taken,away);
       layout={angles:hf.angles,step:hf.step,shown:hf.shown,capacity:hf.capacity};rr=hf.r;
     }else layout=radialChildren(kids.length,st.levels[k-1].angles[i],st.o,st.vp,st.fit,st.opt,ring);
     const cap=Math.min(layout.shown,o.maxKids||Infinity);
@@ -260,6 +264,7 @@ function createRadialMenu(o){
     st.levels.push({items:kids,angles:layout.angles,step:layout.step,layout,c:st.local?c:undefined,r:st.local?rr:undefined});st.act.push(-1);st.entered=Math.min(st.entered,k);
     const r=rr,from=radialPoint(lvC(k),lvR(k),st.levels[k-1].angles[i]);
     const rel={x:from.x-st.o.x,y:from.y-st.o.y};
+    if(st.local){const pad=st.fit.size*.6+4;for(const ang of layout.angles){const q=radialPoint(c,r,ang);st.box.push({x0:q.x-pad,x1:q.x+pad,y0:q.y-pad,y1:q.y+pad})}}   // the title keeps clear of the rings really open
     st.el.insertAdjacentHTML('beforeend',kids.map((it,j)=>itemHtml(it,ring,j,radialPoint(c,r,layout.angles[j]),rel)).join(''));
     void st.el.offsetWidth;
     st.el.querySelectorAll(`.radial-item.r${ring}.pre`).forEach(n=>n.classList.remove('pre'));

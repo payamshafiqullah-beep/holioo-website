@@ -1,21 +1,59 @@
-import js from '@eslint/js'
-import globals from 'globals'
-import reactHooks from 'eslint-plugin-react-hooks'
-import reactRefresh from 'eslint-plugin-react-refresh'
-import { defineConfig, globalIgnores } from 'eslint/config'
+import js from '@eslint/js';
+import globals from 'globals';
+import { scriptGlobals } from './tools/script-globals.mjs';
 
-export default defineConfig([
-  globalIgnores(['dist']),
+// The app (pwa/) is plain browser JavaScript: classic <script> files sharing one global scope, no bundler.
+// These rules catch real mistakes (undefined names, unreachable code, duplicate keys…) without imposing a style.
+const appRules = {
+  ...js.configs.recommended.rules,
+  'no-redeclare': 'off', // every file may declare names that other files use: the scope is shared
+  'no-unused-vars': ['warn', { vars: 'local', args: 'none', caughtErrors: 'none', ignoreRestSiblings: true }],
+  'no-empty': ['error', { allowEmptyCatch: true }],
+  'no-useless-escape': 'warn',
+  'no-prototype-builtins': 'warn',
+  'no-cond-assign': ['error', 'except-parens'],
+  'no-control-regex': 'warn',
+  'no-useless-assignment': 'off',
+};
+
+export default [
+  { ignores: ['dist/**', 'node_modules/**', 'pwa/vendor/**', 'supabase/**', 'graphify-out/**'] },
   {
-    files: ['**/*.{js,jsx}'],
-    extends: [
-      js.configs.recommended,
-      reactHooks.configs.flat.recommended,
-      reactRefresh.configs.vite,
-    ],
+    files: ['pwa/**/*.js'],
+    ignores: ['pwa/tests/**', 'pwa/workers/**', 'pwa/sw.js'],
     languageOptions: {
-      globals: globals.browser,
-      parserOptions: { ecmaFeatures: { jsx: true } },
+      ecmaVersion: 'latest',
+      sourceType: 'script',
+      globals: { ...globals.browser, ...scriptGlobals('pwa') },
     },
+    rules: appRules,
   },
-])
+  // Mistakes that are known and recorded in docs/KNOWN_BUGS.md; the refactor leaves the code as it is, so they only warn.
+  {
+    files: ['pwa/pages/SyncPage.js'],
+    rules: { 'no-undef': 'warn' },
+  },
+  {
+    files: ['pwa/features/camera-i18n.js'],
+    rules: { 'no-dupe-keys': 'warn' },
+  },
+  {
+    files: ['pwa/workers/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'script',
+      globals: { ...globals.worker, ...scriptGlobals('pwa') },
+    },
+    rules: appRules,
+  },
+  {
+    files: ['pwa/sw.js'],
+    languageOptions: { ecmaVersion: 'latest', sourceType: 'script', globals: globals.serviceworker },
+    rules: appRules,
+  },
+  {
+    files: ['**/*.mjs', 'vite.config.js', 'eslint.config.js'],
+    languageOptions: { ecmaVersion: 'latest', sourceType: 'module', globals: { ...globals.node, ...globals.browser } },
+    rules: appRules,
+  },
+];

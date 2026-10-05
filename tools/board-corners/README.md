@@ -4,7 +4,7 @@ The Tableau mode finds the board in two layers (see `pwa/ARCHITECTURE.md`):
 
 1. **OpenCV pipeline** (always on, `pwa/features/scan-detect.js`): edges, bright/dark regions and long straight
    lines → candidate outlines → sub-pixel refinement → ranking → a **confidence score**. When the result is
-   doubtful (< 80 %) a second, *normalised* pass runs: the light fall-off is divided out, highlights are
+   doubtful (< 80 %) a second, _normalised_ pass runs: the light fall-off is divided out, highlights are
    clipped, an edge-preserving filter smooths the noise, local contrast is equalised, and the search repeats.
 2. **Corner model** (optional, `pwa/features/scan-ml.js`): a MobileNetV2 regressor in TensorFlow.js. It proposes
    the four corners; the OpenCV code refines them on real edges and ranks them against its own candidates. A wrong

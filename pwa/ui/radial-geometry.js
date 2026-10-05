@@ -146,9 +146,9 @@ function radialChildren(k,parentAngle,o,vp,fit,opt=RADIAL,ring=2){
 }
 
 // ─── Hub rings (stack menus with `hub`) ────────────────────────
-// From the second ring on, a ring is not fanned out from its parent (which pushes the menu to one side of the screen) but laid
-// out as a full circle around the middle zone of the screen, in reach of the thumb whichever side the trigger is on. The ring
-// before it stays where it was, blurred: moving back onto it is the way back.
+// From the second ring on, the children of an item are laid out as a small full circle right round that item (the smallest one
+// that holds them and stays on screen), not fanned far out. Every ring before stays where it was, blurred: moving back onto the
+// open item (the middle of the circle) is the way back.
 const radialHubZone=vp=>({x:vp.w/2,y:(vp.top||0)+(vp.h-(vp.top||0)-(vp.bottom||0))/2});
 
 // n items of `s` px around c: the smallest circle that holds them all and stays on screen, at least one track (item + ringGap)

@@ -17,16 +17,16 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <!-- Fonts never block the first paint (slow or no connection): system font until Inter arrives. -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'" />
-  <link rel="stylesheet" href="./styles/base.css?v=20261005-epure-v43" />
-  <link rel="stylesheet" href="./styles/camera.css?v=20261005-epure-v43" />
-  <link rel="stylesheet" href="./styles/viewers.css?v=20261005-epure-v43" />
-  <link rel="stylesheet" href="./styles/scanner.css?v=20261005-epure-v43" />
-  <link rel="stylesheet" href="./styles/epure-1.css?v=20261005-epure-v43" />
-  <link rel="stylesheet" href="./styles/quick-reading.css?v=20261005-epure-v43" />
-  <link rel="stylesheet" href="./styles/people.css?v=20261005-epure-v43" />
-  <link rel="stylesheet" href="./styles/desk.css?v=20261005-epure-v43" />
-  <link rel="stylesheet" href="./styles/dark.css?v=20261005-epure-v43" />
-  <link rel="stylesheet" href="./styles/epure-2.css?v=20261005-epure-v43" />
+  <link rel="stylesheet" href="./styles/base.css?v=20261005-epure-v44" />
+  <link rel="stylesheet" href="./styles/camera.css?v=20261005-epure-v44" />
+  <link rel="stylesheet" href="./styles/viewers.css?v=20261005-epure-v44" />
+  <link rel="stylesheet" href="./styles/scanner.css?v=20261005-epure-v44" />
+  <link rel="stylesheet" href="./styles/epure-1.css?v=20261005-epure-v44" />
+  <link rel="stylesheet" href="./styles/quick-reading.css?v=20261005-epure-v44" />
+  <link rel="stylesheet" href="./styles/people.css?v=20261005-epure-v44" />
+  <link rel="stylesheet" href="./styles/desk.css?v=20261005-epure-v44" />
+  <link rel="stylesheet" href="./styles/dark.css?v=20261005-epure-v44" />
+  <link rel="stylesheet" href="./styles/epure-2.css?v=20261005-epure-v44" />
   <!-- Exact versions (a new release can't change the app by surprise); CORS so the service worker can keep them offline. -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2" crossorigin="anonymous" defer></script>
 </head>
@@ -39,119 +39,119 @@
     <nav id="bottomNav" class="bottom-nav" aria-label="Navigation principale"></nav>
   </div>
   <!-- Load order = dependency order (see ARCHITECTURE.md). Foundations: local data (data/), Drive and merging (sync/), saved state and navigation (core/) -->
-  <script src="./data/db.js?v=20261005-epure-v43" defer></script>
-  <script src="./sync/drive-api.js?v=20261005-epure-v43" defer></script>
-  <script src="./sync/drive-items.js?v=20261005-epure-v43" defer></script>
-  <script src="./sync/drive-cloud.js?v=20261005-epure-v43" defer></script>
-  <script src="./sync/cloud-sync.js?v=20261005-epure-v43" defer></script>
-  <script src="./sync/sync-signals.js?v=20261005-epure-v43" defer></script>
-  <script src="./sync/state-merge.js?v=20261005-epure-v43" defer></script>
-  <script src="./core/globals.js?v=20261005-epure-v43" defer></script>
-  <script src="./core/state.js?v=20261005-epure-v43" defer></script>
-  <script src="./core/navigation.js?v=20261005-epure-v43" defer></script>
-  <script src="./core/auth.js?v=20261005-epure-v43" defer></script>
-  <script src="./core/sync-runner.js?v=20261005-epure-v43" defer></script>
-  <script src="./core/lookups.js?v=20261005-epure-v43" defer></script>
+  <script src="./data/db.js?v=20261005-epure-v44" defer></script>
+  <script src="./sync/drive-api.js?v=20261005-epure-v44" defer></script>
+  <script src="./sync/drive-items.js?v=20261005-epure-v44" defer></script>
+  <script src="./sync/drive-cloud.js?v=20261005-epure-v44" defer></script>
+  <script src="./sync/cloud-sync.js?v=20261005-epure-v44" defer></script>
+  <script src="./sync/sync-signals.js?v=20261005-epure-v44" defer></script>
+  <script src="./sync/state-merge.js?v=20261005-epure-v44" defer></script>
+  <script src="./core/globals.js?v=20261005-epure-v44" defer></script>
+  <script src="./core/state.js?v=20261005-epure-v44" defer></script>
+  <script src="./core/navigation.js?v=20261005-epure-v44" defer></script>
+  <script src="./core/auth.js?v=20261005-epure-v44" defer></script>
+  <script src="./core/sync-runner.js?v=20261005-epure-v44" defer></script>
+  <script src="./core/lookups.js?v=20261005-epure-v44" defer></script>
 
   <!-- Shared UI (ui/: icons, components, app shell, menus) and the third-party libraries -->
-  <script src="./ui/icons.js?v=20261005-epure-v43" defer></script>
-  <script src="./ui/components.js?v=20261005-epure-v43" defer></script>
-  <script src="./ui/reorder.js?v=20261005-epure-v43" defer></script>
-  <script src="./ui/shell.js?v=20261005-epure-v43" defer></script>
-  <script src="./ui/desk-shell.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/courses/course-navigator.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/camera/camera-picker.js?v=20261005-epure-v43" defer></script>
-  <script src="./ui/radial-geometry.js?v=20261005-epure-v43" defer></script>
-  <script src="./ui/radial-menu.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/photos/photo-editor.js?v=20261005-epure-v43" defer></script>
-  <script src="./vendor/perfect-freehand.js?v=20261005-epure-v43" defer></script>
-  <script src="./vendor/qrcode.js?v=20261005-epure-v43" defer></script>
+  <script src="./ui/icons.js?v=20261005-epure-v44" defer></script>
+  <script src="./ui/components.js?v=20261005-epure-v44" defer></script>
+  <script src="./ui/reorder.js?v=20261005-epure-v44" defer></script>
+  <script src="./ui/shell.js?v=20261005-epure-v44" defer></script>
+  <script src="./ui/desk-shell.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/courses/course-navigator.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/camera/camera-picker.js?v=20261005-epure-v44" defer></script>
+  <script src="./ui/radial-geometry.js?v=20261005-epure-v44" defer></script>
+  <script src="./ui/radial-menu.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/photos/photo-editor.js?v=20261005-epure-v44" defer></script>
+  <script src="./vendor/perfect-freehand.js?v=20261005-epure-v44" defer></script>
+  <script src="./vendor/qrcode.js?v=20261005-epure-v44" defer></script>
 
   <!-- Feature logic, by feature folder (features/<name>/) and the shared viewer, menus and sync pieces they use -->
-  <script src="./ui/media-viewer.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/courses/course-actions.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/photos/image-pipeline.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/photos/photo-edits.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/photos/thumbs.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/camera/camera-i18n.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/camera/camera-destination.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/courses/gallery-logic.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/courses/navigator-logic.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/camera/camera-queue.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/scanner/scan-core.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/scanner/scanner.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/scanner/scan-ml.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/scanner/ocr.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/scanner/text-actions.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/camera/capture-destination.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/camera/capture-status.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/camera/camera-stream.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/camera/camera-scan-modes.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/camera/capture-shutter.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/camera/capture-batch.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/camera/quick-capture.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/home/reading-logic.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/home/quick-reading.js?v=20261005-epure-v43" defer></script>
-  <script src="./ui/item-menu.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/pdf/pdf-actions.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/library/community-actions.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/notes/notebook-ink.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/notes/notebook-page.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/notes/notebook-pointer.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/notes/notebook-geometry.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/notes/notebook-canvas.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/notes/notebook-export.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/admin/xlsx-export.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/admin/activity.js?v=20261005-epure-v43" defer></script>
-  <script src="./sync/remote-sync.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/notes/notes.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/notes/canvas-doc.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/pdf/pdf-ink.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/notes/canvas-render.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/notes/canvas-sync.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/notes/canvas-export.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/people/people.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/people/people-shares.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/people/people-qr.js?v=20261005-epure-v43" defer></script>
-  <script src="./ui/multi-select.js?v=20261005-epure-v43" defer></script>
+  <script src="./ui/media-viewer.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/courses/course-actions.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/photos/image-pipeline.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/photos/photo-edits.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/photos/thumbs.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/camera/camera-i18n.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/camera/camera-destination.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/courses/gallery-logic.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/courses/navigator-logic.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/camera/camera-queue.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/scanner/scan-core.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/scanner/scanner.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/scanner/scan-ml.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/scanner/ocr.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/scanner/text-actions.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/camera/capture-destination.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/camera/capture-status.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/camera/camera-stream.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/camera/camera-scan-modes.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/camera/capture-shutter.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/camera/capture-batch.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/camera/quick-capture.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/home/reading-logic.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/home/quick-reading.js?v=20261005-epure-v44" defer></script>
+  <script src="./ui/item-menu.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/pdf/pdf-actions.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/library/community-actions.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/notes/notebook-ink.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/notes/notebook-page.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/notes/notebook-pointer.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/notes/notebook-geometry.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/notes/notebook-canvas.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/notes/notebook-export.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/admin/xlsx-export.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/admin/activity.js?v=20261005-epure-v44" defer></script>
+  <script src="./sync/remote-sync.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/notes/notes.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/notes/canvas-doc.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/pdf/pdf-ink.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/notes/canvas-render.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/notes/canvas-sync.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/notes/canvas-export.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/people/people.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/people/people-shares.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/people/people-qr.js?v=20261005-epure-v44" defer></script>
+  <script src="./ui/multi-select.js?v=20261005-epure-v44" defer></script>
 
   <!-- Screens (features/<name>/<Name>Page.js); core/app.js, last, starts the app -->
-  <script src="./features/account/LoginPage.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/admin/AdminPage.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/courses/AcademicSetupPage.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/home/HomePage.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/courses/CoursesPage.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/courses/CourseDetailPage.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/courses/SectionPage.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/courses/SessionPage.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/courses/GalleryDeskPage.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/notes/NotesCanvasPage.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/notes/canvas-dom.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/notes/canvas-toolbar.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/notes/canvas-edit.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/notes/canvas-pointer.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/notes/canvas-select.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/notes/canvas-ink.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/notes/canvas-tray.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/camera/LiveCapturePage.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/camera/CapturePage.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/scanner/ScanReviewPage.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/camera/CaptureCompletePage.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/inbox/SplitBatchPage.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/inbox/OrganizeBatchPage.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/inbox/InboxPage.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/photos/PhotoViewerPage.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/pdf/PdfBuilderPage.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/pdf/PdfViewerPage.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/files/FilesPage.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/library/AcademicLibraryPage.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/account/ProfilePage.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/account/SyncPage.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/people/PeoplePage.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/people/HolioSharesPage.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/people/MySharedPdfsPage.js?v=20261005-epure-v43" defer></script>
-  <script src="./features/people/SharedViewerPage.js?v=20261005-epure-v43" defer></script>
+  <script src="./features/account/LoginPage.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/admin/AdminPage.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/courses/AcademicSetupPage.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/home/HomePage.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/courses/CoursesPage.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/courses/CourseDetailPage.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/courses/SectionPage.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/courses/SessionPage.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/courses/GalleryDeskPage.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/notes/NotesCanvasPage.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/notes/canvas-dom.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/notes/canvas-toolbar.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/notes/canvas-edit.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/notes/canvas-pointer.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/notes/canvas-select.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/notes/canvas-ink.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/notes/canvas-tray.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/camera/LiveCapturePage.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/camera/CapturePage.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/scanner/ScanReviewPage.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/camera/CaptureCompletePage.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/inbox/SplitBatchPage.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/inbox/OrganizeBatchPage.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/inbox/InboxPage.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/photos/PhotoViewerPage.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/pdf/PdfBuilderPage.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/pdf/PdfViewerPage.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/files/FilesPage.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/library/AcademicLibraryPage.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/account/ProfilePage.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/account/SyncPage.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/people/PeoplePage.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/people/HolioSharesPage.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/people/MySharedPdfsPage.js?v=20261005-epure-v44" defer></script>
+  <script src="./features/people/SharedViewerPage.js?v=20261005-epure-v44" defer></script>
 
-  <script src="./core/app.js?v=20261005-epure-v43" defer></script>
+  <script src="./core/app.js?v=20261005-epure-v44" defer></script>
 </body>
 </html>

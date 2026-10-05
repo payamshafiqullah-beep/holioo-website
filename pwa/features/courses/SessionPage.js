@@ -55,7 +55,7 @@ async function renderSession(){
     <div class="session-notebook-view ${active==='notebook'?'':'hidden'}">${notebookView}</div>
     ${actions}
   </section>`;
-  byId('backBtn').onclick=()=>{const to=sessionReturnView||'section';sessionReturnView=null;navigate(to)};
+  byId('backBtn').onclick=()=>{const to=sessionReturnView||'section';sessionReturnView=null;goBack(to)};
   byId('sessionViewToggle')?.addEventListener('click',async e=>{
     const next=e.target.closest('[data-session-view]')?.dataset.sessionView;
     if(!next||next===active)return;

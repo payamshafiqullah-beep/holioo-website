@@ -18,7 +18,7 @@ function renderCourse(){
       ${ActionButton({label:c.done?'Réactiver ce cours':'Marquer comme terminé',id:'toggleDone',variant:'ghost',iconName:c.done?'refresh':'checkCircle'})}
     </div>
   </section>`;
-  byId('backBtn').onclick=()=>navigate('courses');
+  byId('backBtn').onclick=()=>goBack('courses');
   document.querySelectorAll('[data-section]').forEach(b=>b.onclick=()=>{currentSectionId=b.dataset.section;navigate('section')});
   document.querySelectorAll('[data-section]').forEach(b=>{const x=c.sections.find(s=>s.id===b.dataset.section);if(x)attachItemMenu(b,sectionMenu(c,x))});
   enableMultiSelect({root:document.querySelector('.list-stack'),itemSelector:'[data-section]',idOf:el=>el.dataset.section,noun:['section','sections'],remove:ids=>bulkRemoveSections(c,ids)});

@@ -9,7 +9,7 @@ async function renderSharedViewer(){
   app.innerHTML=`<div class="pdf-viewer shared-viewer">
     <header class="page-header"><div class="page-header-left"><button class="icon-btn" id="shBack" aria-label="Retour">${icon('chevronLeft',{size:22})}</button><span class="viewer-title"><strong>${esc(d.title)}</strong><small>${esc(shareMetaLine(d))} · lecture seule</small></span></div></header>
     <div class="pdf-frame-wrap"><div class="pdf-pages" id="shPages"><p class="pdf-loading">Chargement…</p></div></div></div>`;
-  byId('shBack').onclick=()=>{revokeSharedUrls();navigate('holiooShares')};
+  byId('shBack').onclick=()=>{revokeSharedUrls();goBack('holiooShares')};
   const host=byId('shPages');
   host.addEventListener('contextmenu',e=>e.preventDefault());
   try{

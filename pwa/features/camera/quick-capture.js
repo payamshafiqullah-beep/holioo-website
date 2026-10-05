@@ -111,16 +111,15 @@ async function sessionHasHandwriting(session){
   return false;
 }
 
-// The séance the last camera photo was filed in (state.cameraShot, set by features/camera/camera-queue.js); when it was deleted
-// or nothing was shot yet, the most recent séance left. null when there is none.
+// Where the camera was last pointed (see lastCameraTarget: its chip's destination, else the séance of the last photo); when both are
+// gone, the most recent séance left. {course, section, session|null}, null when there is none.
 function lastCapturedSession(){
-  const shot=state.cameraShot?.sessionId&&findSessionContext(state.cameraShot.sessionId);
-  return shot?{course:shot.course,section:shot.section,session:shot.session}:latestSession();
+  return lastCameraTarget(state.courses,state.cameraLast,state.cameraShot)||latestSession();
 }
 
 // Reprendre: the camera opens straight into that séance; on a tablet / computer its Notes page opens instead.
 function resumeQuickCapture(latest){
-  const dest={courseId:latest.course.id,sectionId:latest.section.id,sessionId:latest.session.id,source:'quick'};
+  const dest={courseId:latest.course.id,sectionId:latest.section.id,sessionId:latest.session?.id||null,source:'quick'};
   if(typeof isDesk==='function'&&isDesk())openQuickNotes(dest);else openQuickCamera(dest);
 }
 
@@ -129,9 +128,10 @@ function QuickCaptureCard({id='heroQuick',latest=null,hand=false}={}){
   const desk=typeof isDesk==='function'&&isDesk();
   const trigger=`<button type="button" class="qr-trigger qcap-trigger" id="${id}"${desk?' data-desk-notes':''} aria-label="${esc(desk?'Note rapide : ouvrir les notes':camT('qcButton'))}"><i class="qr-ring qr-outer" aria-hidden="true"></i><i class="qr-ring qr-inner" aria-hidden="true"></i><span class="qr-core">${icon(desk?'penLine':'camera',{size:22,stroke:2})}</span></button>`;
   const where=latest?[latest.section.name,latest.course.name].filter(Boolean).join(' · '):'';
-  const caption=latest?`${esc(latest.session.title)}${hand?' · ✍︎ manuscrit':''}`:'Première capture';
+  const sTitle=latest?(latest.session?latest.session.title:'Nouvelle séance'):'';
+  const caption=latest?`${esc(sTitle)}${hand?' · ✍︎ manuscrit':''}`:'Première capture';
   const resume=latest
-    ?`<button type="button" class="qr-resume" id="heroResume" aria-label="Reprendre ${esc(latest.session.title)}, ${esc(where)}"><span class="qr-play">${icon('play',{size:16})}</span><small>Reprendre</small><em class="qr-where">${caption}</em></button>`
+    ?`<button type="button" class="qr-resume" id="heroResume" aria-label="Reprendre ${esc(sTitle)}, ${esc(where)}"><span class="qr-play">${icon('play',{size:16})}</span><small>Reprendre</small><em class="qr-where">${caption}</em></button>`
     :`<button type="button" class="qr-resume" data-nav="capture" aria-label="Capturer un premier cours"><span class="qr-play">${icon('camera',{size:16})}</span><small>Capturer</small><em class="qr-where">${caption}</em></button>`;
   return`<div class="qr-row qcap-row">${resume}<span class="qr-copy"><strong>${esc(desk?'Note rapide':camT('qcTrigger'))}</strong></span>${trigger}</div>`;
 }

@@ -68,7 +68,28 @@ for(const count of [0,1,5])test(`session camera button stays visible with ${coun
 });
 
 test('navigation captures the origin before replacing currentView',()=>{
-  const source=read('../core/navigation.js');const start=source.indexOf('function navigate('),end=source.indexOf('\ndocument.addEventListener',start);
+  const source=read('../core/navigation.js');const start=source.indexOf('const NAV_ROOTS'),end=source.indexOf('\ndocument.addEventListener',start);
   const ctx={currentView:'session',appShell:{classList:{toggle(){}}},prepareCameraEntry:view=>{ctx.origin=view},setNav(){},setChrome(){},window:{scrollTo(){}},render:async()=>{}};
   vm.createContext(ctx);vm.runInContext(source.slice(start,end),ctx);ctx.navigate('capture');assert.equal(ctx.origin,'session');assert.equal(ctx.currentView,'capture');
+});
+
+// Retour goes back to the screen the person really came from (core/navigation.js: navStack, goBack).
+test('goBack: returns through the real trail, with the course / section / séance, then to the default screen',()=>{
+  const source=read('../core/navigation.js');const start=source.indexOf('const NAV_ROOTS'),end=source.indexOf('\ndocument.addEventListener',start);
+  const shown=[];
+  const ctx={currentView:'home',currentCourseId:null,currentSectionId:null,currentSessionId:null,appUpdateReady:false,appShell:{classList:{toggle(){}}},prepareCameraEntry(){},stopCamera(){},setNav(){},setChrome(){},window:{scrollTo(){}},render:async()=>{shown.push(ctx.currentView+'|'+ctx.currentCourseId)},showToast(){}};
+  vm.createContext(ctx);vm.runInContext(source.slice(start,end),ctx);
+  const at=()=>vm.runInContext('currentView+"|"+currentCourseId+"|"+currentSectionId+"|"+currentSessionId',ctx);
+  // Accueil → Holioo Shares → back: Accueil (not the Bibliothèque)
+  ctx.navigate('holiooShares');ctx.goBack('library');assert.equal(at().split('|')[0],'home','Holioo Shares opened from Accueil returns to Accueil');
+  // Accueil → Profil → Synchronisation → back: Profil → back: Accueil
+  ctx.navigate('profile');ctx.navigate('sync');ctx.goBack('profile');assert.equal(at().split('|')[0],'profile');ctx.goBack('home');assert.equal(at().split('|')[0],'home');
+  // Cours → course A → section → séance, back keeps the ids
+  ctx.navigate('courses');ctx.navigate('course',{courseId:'A'});ctx.navigate('section',{sectionId:'S'});ctx.navigate('session',{sessionId:'Q'});
+  ctx.goBack('section');assert.equal(at(),'section|A|S|null');ctx.goBack('course');assert.equal(at().split('|')[0],'course');ctx.goBack('courses');assert.equal(at().split('|')[0],'courses');
+  // Nothing behind: the page's own default
+  ctx.goBack('home');assert.equal(at().split('|')[0],'home');
+  // A tab starts a new trail; viewers and the camera are not on it
+  ctx.navigate('profile');ctx.navigate('files');ctx.goBack('home');assert.equal(at().split('|')[0],'home','after a tab, back goes to the default, not to the screen before the tab');
+  ctx.navigate('profile');ctx.navigate('capture');ctx.navigate('profile');ctx.goBack('home');assert.equal(at().split('|')[0],'home');
 });

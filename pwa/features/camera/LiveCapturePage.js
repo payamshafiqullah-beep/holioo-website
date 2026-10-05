@@ -63,7 +63,7 @@ async function renderLiveCapture(){
       </div>`}
   </section>`;
   const cleanups=[],fields=new Map();
-  byId('liveBack').onclick=()=>navigate('home');
+  byId('liveBack').onclick=()=>goBack('home');
   const box=byId('liveRows');
   const wireRow=row=>{
     const id=row.dataset.photoId,t=row.querySelector('textarea');

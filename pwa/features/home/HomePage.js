@@ -6,7 +6,7 @@ async function renderHome(){
 
   // Capture rapide card: the same panel as Lecture rapide (two turning rings round the trigger, a large title, a round
   // Reprendre button with a caption below: where the last photo went + whether that séance holds handwriting).
-  const hero=QuickCaptureCard({id:'heroQuick',latest,hand:latest?await sessionHasHandwriting(latest.session):false});
+  const hero=QuickCaptureCard({id:'heroQuick',latest,hand:latest?.session?await sessionHasHandwriting(latest.session):false});
 
   app.innerHTML=`<section class="screen">
     ${PageHeader({logo:true})}

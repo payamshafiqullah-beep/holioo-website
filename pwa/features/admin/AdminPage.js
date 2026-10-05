@@ -20,7 +20,7 @@ async function renderAdmin(){
     <div class="list-stack" id="adminList"><p class="pdf-loading">Chargement…</p></div>
     <div id="adminEmpty" hidden>${EmptyState({iconName:'users',title:'Aucun utilisateur',text:'Aucun compte ne correspond à ce filtre.'})}</div>
   </section>`;
-  byId('backBtn').onclick=()=>navigate('profile');
+  byId('backBtn').onclick=()=>goBack('profile');
   byId('adminRefresh').onclick=()=>{adminUsers=null;adminActivity=null;render()};
   try{if(!adminUsers)adminUsers=(await adminCall('list')).users}
   catch(e){byId('adminList').innerHTML=EmptyState({iconName:'x',title:'Chargement impossible',text:e.message});return}

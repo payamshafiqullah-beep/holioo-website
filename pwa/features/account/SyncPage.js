@@ -24,7 +24,7 @@ async function renderSync(){
     </div>
     ${Notice(`${icon('checkCircle',{size:18})}<span>Tous vos appareils connectés au même compte Google voient les mêmes cours, séances, photos et PDF : ce que vous ajoutez, déplacez ou supprimez sur l’un arrive sur les autres. Les fichiers restent aussi accessibles depuis Google Drive.</span>`,'mint')}
   </section>`;
-  byId('backBtn').onclick=()=>navigate('profile');
+  byId('backBtn').onclick=()=>goBack('profile');
   byId('autoSync').onchange=()=>{state.settings.autoDriveSync=byId('autoSync').checked;saveState()};
   byId('syncNow')?.addEventListener('click',()=>runDriveSync('manual'));
   byId('disconnectDrive')?.addEventListener('click',()=>disconnectDrive());

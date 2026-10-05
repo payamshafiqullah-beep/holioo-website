@@ -8,7 +8,7 @@ function renderSection(){
       :EmptyState({iconName:'layers',title:'Aucune séance',text:'Créez une séance puis ajoutez-y vos photos.'})}
     ${ActionButton({label:'Nouvelle séance',id:'newSession',iconName:'plus'})}
   </section>`;
-  byId('backBtn').onclick=()=>navigate('course');
+  byId('backBtn').onclick=()=>goBack('course');
   document.querySelectorAll('[data-session]').forEach(b=>b.onclick=()=>{currentSessionId=b.dataset.session;navigate('session')});
   document.querySelectorAll('[data-session]').forEach(b=>{const q=s.sessions.find(x=>x.id===b.dataset.session);if(q)attachItemMenu(b,sessionMenu(c,s,q))});
   enableMultiSelect({root:document.querySelector('.list-stack'),itemSelector:'[data-session]',idOf:el=>el.dataset.session,noun:['séance','séances'],remove:ids=>bulkRemoveSessions(c,s,ids)});

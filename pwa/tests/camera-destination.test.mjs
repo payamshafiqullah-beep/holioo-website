@@ -118,3 +118,21 @@ test('recent: a created session replaces the "new session" entry of its section'
   r=pushRecentDestination(r,{courseId:'A',sectionId:'A-CM',sessionId:'s9'});
   assert.deepEqual(JSON.parse(JSON.stringify(r)),[{courseId:'A',sectionId:'A-CM',sessionId:'s9'},{courseId:'B',sectionId:'B-TD',sessionId:null}]);
 });
+
+// Accueil "Reprendre": the camera's last destination.
+test('lastCameraTarget: the destination the camera chip showed last, even for a séance still to be created; else the last photo\'s séance; else nothing',()=>{
+  const courses=[{id:'c1',name:'Chimie',sections:[{id:'td',name:'TD',sessions:[{id:'q1',title:'TD 1'},{id:'q2',title:'TD 2'}]},{id:'cm',name:'CM',sessions:[]}]},{id:'c2',name:'VHDL',sections:[{id:'tp',name:'TP',sessions:[{id:'q9',title:'TP 1'}]}]}];
+  const t=ctx.module.exports.lastCameraTarget;
+  // the chip's last destination wins over an older photo
+  assert.equal(t(courses,{courseId:'c1',sectionId:'td',sessionId:'q1'},{sessionId:'q9'}).session.id,'q1');
+  assert.equal(t(courses,{courseId:'c1',sectionId:'td',sessionId:'q1'},{sessionId:'q9'}).course.id,'c1');
+  // a section with no séance yet: opened as a new séance
+  const fresh=t(courses,{courseId:'c1',sectionId:'cm',sessionId:null},{sessionId:'q9'});
+  assert.equal(fresh.section.id,'cm');assert.equal(fresh.session,null);
+  // the séance was deleted: the section stays, as a new séance
+  assert.equal(t(courses,{courseId:'c1',sectionId:'td',sessionId:'gone'},null).session,null);
+  // the whole destination is gone: the séance of the last photo
+  assert.equal(t(courses,{courseId:'gone',sectionId:'x',sessionId:null},{sessionId:'q9'}).session.id,'q9');
+  // nothing left
+  assert.equal(t(courses,null,null),null);assert.equal(t(courses,null,{sessionId:'nope'}),null);
+});

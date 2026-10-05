@@ -41,7 +41,7 @@ function renderProfile(){
     </div>
     <p class="legal-links"><a href="/confidentialite.html" target="_blank" rel="noopener">Politique de confidentialité</a> · <a href="/conditions.html" target="_blank" rel="noopener">Conditions d’utilisation</a></p>
   </section>`;
-  byId('backBtn').onclick=()=>navigate('home');
+  byId('backBtn').onclick=()=>goBack('home');
   byId('pDrawFinger')?.addEventListener('change',e=>{state.settings.drawWithFinger=e.target.checked;saveState();showToast(e.target.checked?'Dessin au doigt activé':'Dessin au doigt désactivé')});
   byId('pDark')?.addEventListener('change',e=>{const on=e.target.checked;if(on)document.documentElement.setAttribute('data-theme','dark');else document.documentElement.removeAttribute('data-theme');try{localStorage.setItem('holioo-theme',on?'dark':'light')}catch{}document.querySelector('meta[name=theme-color]')?.setAttribute('content',on?'#0F1020':'#1689F5')});
   byId('guestToGoogle')?.addEventListener('click',()=>startGoogleLogin());

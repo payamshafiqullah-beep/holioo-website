@@ -81,7 +81,7 @@ async function renderPdfBuilder(){
     makeReorderable(host,{onChange:ids=>{photoOrder=ids}});
   };
 
-  byId('backBtn').onclick=()=>navigate('session');
+  byId('backBtn').onclick=()=>goBack('session');
   document.querySelectorAll('.pdfSession').forEach(cb=>cb.addEventListener('change',syncPhotoOrder));
   byId('generatePdf').onclick=async()=>{
     const ids=[...document.querySelectorAll('.pdfSession:checked')].map(x=>x.value);

@@ -97,4 +97,16 @@ function quickCaptureDestination(course,section,date=new Date()){
   return{courseId:course.id,sectionId:section.id,sessionId:todaySession(section,date)?.id||null,source:'quick'};
 }
 
-if(typeof module!=='undefined')module.exports={matchTimetable,resolveCameraDestination,nextSessionNumber,pushRecentDestination,validRecentDestinations,camMinutes,todaySession,quickCaptureCourses,quickCaptureLastSection,quickCaptureDestination};
+// Where "Reprendre" (Accueil) goes: the camera's last destination — what its chip showed last (state.cameraLast, kept whenever the
+// destination changes and whenever a photo is shot), else the séance of the last photo (state.cameraShot). {course, section, session}
+// with session null when that séance is still to be created (it is made with the first photo). null when neither exists any more.
+function lastCameraTarget(courses,last,shot){
+  const cs=last&&findCourseSection(courses,last.courseId,last.sectionId);
+  if(cs)return{course:cs.course,section:cs.section,session:(last.sessionId&&cs.section.sessions?.find(s=>s.id===last.sessionId))||null};
+  if(shot?.sessionId)for(const course of courses||[])for(const section of course.sections||[]){
+    const session=section.sessions?.find(s=>s.id===shot.sessionId);if(session)return{course,section,session};
+  }
+  return null;
+}
+
+if(typeof module!=='undefined')module.exports={lastCameraTarget,matchTimetable,resolveCameraDestination,nextSessionNumber,pushRecentDestination,validRecentDestinations,camMinutes,todaySession,quickCaptureCourses,quickCaptureLastSection,quickCaptureDestination};

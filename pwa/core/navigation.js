@@ -2,9 +2,35 @@
 // Screens and sheets: navigate(), the bottom sheet, toasts.
 function setChrome(hidden){appShell.classList.toggle('hidden-chrome',hidden)}
 function setNav(view){document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.nav===view))}
+// Where Retour goes: the screens the person really came through, newest last. A tab (Accueil, Cours, Bibliothèque, Fichiers) starts a
+// fresh trail; screens with their own way back (camera, viewers, scan review, login) are never put on it. goBack() returns to the
+// last entry (with its course / section / séance), and only when there is none to the screen the page names as its default.
+const NAV_ROOTS=['home','courses','library','files'];
+const NAV_UNTRACKED=new Set(['login','blocked','academicSetup','capture','scanReview','photoViewer','pdfViewer','sharedViewer']);
+let navStack=[],navRestoring=false;
+const navHere=()=>({view:currentView,courseId:currentCourseId,sectionId:currentSectionId,sessionId:currentSessionId});
+function navRemember(view,payload){
+  if(navRestoring)return;
+  if(NAV_ROOTS.includes(view)){navStack=[];return}
+  if(NAV_UNTRACKED.has(view)||NAV_UNTRACKED.has(currentView))return;
+  const moved=view!==currentView||(payload.courseId&&payload.courseId!==currentCourseId)||(payload.sectionId&&payload.sectionId!==currentSectionId)||(payload.sessionId&&payload.sessionId!==currentSessionId);
+  if(!moved)return;
+  navStack.push(navHere());if(navStack.length>40)navStack.shift();
+}
+function goBack(fallback='home'){
+  while(navStack.length){
+    const e=navStack.pop();
+    if(e.view===currentView&&e.courseId===currentCourseId&&e.sectionId===currentSectionId&&e.sessionId===currentSessionId)continue;
+    navRestoring=true;
+    try{currentCourseId=e.courseId;currentSectionId=e.sectionId;currentSessionId=e.sessionId;navigate(e.view)}finally{navRestoring=false}
+    return;
+  }
+  navigate(fallback);
+}
 function navigate(view,payload={}){
   if(view==='home'&&appUpdateReady&&reloadIfSafe())return;
   if(view==='capture'&&currentView!=='capture')prepareCameraEntry(currentView,payload.cameraDest);
+  navRemember(view,payload);
   appShell.classList.toggle('capture-active',view==='capture');
   if(view!=='capture')stopCamera();if(currentView==='scanReview'&&view!=='scanReview'&&typeof flushScanDelete==='function')flushScanDelete();if(currentView==='session'&&view!=='session'&&typeof flushNotebook==='function')flushNotebook();currentView=view;
   if(['home','courses','library','files'].includes(view)&&typeof sessionReturnView!=='undefined')sessionReturnView=null;

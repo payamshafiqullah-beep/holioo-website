@@ -7,7 +7,7 @@ async function renderInbox(){
     ${PageIntro({eyebrow:'INBOX',title:'Captures à trier',subtitle:total?`${plural(total,'photo')} en attente. Touchez un lot pour l’organiser.`:'Vos captures non classées apparaîtront ici.'})}
     <div class="card-stack" id="inboxList"></div>
   </section>`;
-  byId('backBtn').onclick=()=>navigate('home');
+  byId('backBtn').onclick=()=>goBack('home');
   if(!state.inbox.length){byId('inboxList').innerHTML=EmptyState({iconName:'checkCircle',title:'Tout est classé',text:'Aucune capture en attente.',action:ActionButton({label:'Capturer',variant:'capture',iconName:'camera',full:false,attrs:'data-nav="capture"'})});return}
   for(const batch of state.inbox){
     const el=document.createElement('button');el.className='inbox-card';el.dataset.batch=batch.id;

@@ -3,7 +3,7 @@
 async function renderMySharedPdfs(){
   setChrome(false);
   app.innerHTML=`<section class="screen">${PageHeader({back:true,title:'PDF partagés',actions:false})}<div id="spBody">${peopleSkeleton(2)}</div></section>`;
-  byId('backBtn').onclick=()=>navigate('home');
+  byId('backBtn').onclick=()=>goBack('home');
   const body=byId('spBody');
   if(guestMode||!currentUser){body.innerHTML=Notice(`${icon('user',{size:18})}<span>Connectez-vous avec Google pour partager des PDF.</span>`,'peach');return}
   if(!peopleReady()){body.innerHTML=Notice(`${icon('wifiOff',{size:18})}<span>Connexion Internet nécessaire pour afficher vos PDF partagés.</span>`,'peach');return}

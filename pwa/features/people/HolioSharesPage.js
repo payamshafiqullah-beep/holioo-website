@@ -4,7 +4,7 @@ async function renderHolioShares(){
   setChrome(false);
   app.innerHTML=`<section class="screen hs-screen">${PageHeader({back:true,title:'Holioo Shares',actions:false})}
     <div id="hsBody">${peopleSkeleton(2)}</div></section>`;
-  byId('backBtn').onclick=()=>navigate('library');
+  byId('backBtn').onclick=()=>goBack('home');
   const body=byId('hsBody');
   if(guestMode||!currentUser){body.innerHTML=Notice(`${icon('user',{size:18})}<span>Connectez-vous avec Google pour recevoir des partages.</span>`,'peach');return}
   if(!peopleReady()){body.innerHTML=Notice(`${icon('wifiOff',{size:18})}<span>Connexion Internet nécessaire pour afficher les partages reçus.</span>`,'peach');return}

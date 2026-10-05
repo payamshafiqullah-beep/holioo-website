@@ -10,7 +10,7 @@
 --out       writes best.keras, the SavedModel and the TensorFlow.js model (model.json + shards).
             Copy the TensorFlow.js files to pwa/models/board-corners/ : the app finds them by itself.
 
-The model's contract (pwa/features/scan-ml.js): input 160x160x3 scaled to [-1, 1], output 9 numbers =
+The model's contract (pwa/features/scanner/scan-ml.js): input 160x160x3 scaled to [-1, 1], output 9 numbers =
 x1 y1 x2 y2 x3 y3 x4 y4 present. It is only a first guess: the app refines it on real edges and falls back to
 OpenCV when it is wrong, so the model needs to be good, not perfect.
 

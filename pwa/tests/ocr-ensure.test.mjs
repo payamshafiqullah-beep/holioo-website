@@ -1,4 +1,4 @@
-// Ocr.ensure (features/ocr.js): the PDF export reads the text that is missing and waits for it, so a PDF has the
+// Ocr.ensure (features/scanner/ocr.js): the PDF export reads the text that is missing and waits for it, so a PDF has the
 // same text on every device. Photos taken in Photo mode or imported are never read in the background: before this,
 // a PDF made on a tablet that had not read them held only images. Run: node --test pwa/tests
 import test from 'node:test';
@@ -16,7 +16,7 @@ function setup({engineFails=false}={}){
   ctx.window=ctx;ctx.self=ctx;
   ctx.Tesseract={createWorker:async()=>{calls.create++;if(engineFails)throw new Error('engine unavailable');
     return{recognize:async()=>{calls.recognise++;return{data:{text:'Bonjour Holioo',words:[{text:'Bonjour',confidence:90,bbox:{x0:10,y0:10,x1:200,y1:60}},{text:'Holioo',confidence:88,bbox:{x0:220,y0:10,x1:400,y1:60}}]}}},terminate:async()=>{}}}};
-  vm.createContext(ctx);vm.runInContext(fs.readFileSync(new URL('../features/ocr.js',import.meta.url),'utf8'),ctx);
+  vm.createContext(ctx);vm.runInContext(fs.readFileSync(new URL('../features/scanner/ocr.js',import.meta.url),'utf8'),ctx);
   const add=(id,extra={})=>photos.set(id,{id,blob:new Blob(['p']),...extra});
   return{Ocr:vm.runInContext('Ocr',ctx),kv,add,calls,photos};
 }

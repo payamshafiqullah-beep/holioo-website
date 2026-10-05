@@ -1,4 +1,4 @@
-// Destination chip and sheet (ui/camera-picker.js): what the two lines of the chip say.
+// Destination chip and sheet (features/camera/camera-picker.js): what the two lines of the chip say.
 // The DOM part is checked in the browser; the wording is logic. Run: node --test pwa/tests
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const ctx={console,matchMedia:()=>({matches:false})};ctx.self=ctx;vm.createContext(ctx);
-for(const f of ['../features/camera-i18n.js','../ui/camera-picker.js'])vm.runInContext(fs.readFileSync(new URL(f,import.meta.url),'utf8'),ctx);
+for(const f of ['../features/camera/camera-i18n.js','../features/camera/camera-picker.js'])vm.runInContext(fs.readFileSync(new URL(f,import.meta.url),'utf8'),ctx);
 const run=code=>vm.runInContext(code,ctx);
 
 run(`

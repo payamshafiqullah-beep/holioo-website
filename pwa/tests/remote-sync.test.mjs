@@ -1,10 +1,11 @@
-// Same account on two devices (features/remote-sync.js + state-merge.js + drive.js) against one simulated Drive:
+// Same account on two devices (sync/remote-sync.js + state-merge.js + drive.js) against one simulated Drive:
 // what one device does appears on the other, photos are fetched from Drive, nothing is lost or duplicated.
 // Run: node --test pwa/tests
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import { driveSource } from './helpers/app-files.mjs';
 import {fakeDrive,fakeDb} from './helpers/fake-drive.mjs';
 
 const src=p=>fs.readFileSync(new URL(p,import.meta.url),'utf8');
@@ -17,8 +18,8 @@ function device(drive,clock,courses){
   const ctx=vm.createContext({window,fetch:drive.fetch,Headers,Blob,Response,TextEncoder,URL,URLSearchParams,console,crypto,structuredClone,
     navigator:{onLine:true},setTimeout,clearTimeout,clock,DB:db,sbStub,
     localStorage:{getItem:k=>storage.has(k)?storage.get(k):null,setItem:(k,v)=>storage.set(k,String(v)),removeItem:k=>storage.delete(k)}});
-  vm.runInContext(src('../drive.js'),ctx);
-  vm.runInContext(src('../features/state-merge.js'),ctx);
+  vm.runInContext(driveSource(),ctx);
+  vm.runInContext(src('../sync/state-merge.js'),ctx);
   vm.runInContext(`
     const Drive=window.HoliooDrive;
     var state={profile:{academicYear:'2026–2027'},courses:${JSON.stringify(courses)},inbox:[],files:[],settings:{autoDriveSync:true}};
@@ -36,8 +37,8 @@ function device(drive,clock,courses){
     async function fullSync(){await syncStructure({push:false});await render();await Drive.syncAll({sb,user:currentUser,state,db:DB,documents:notesDriveDocuments,onDocument:notesDocumentSent});await syncStructure({push:true})}
     saveState();
   `,ctx);
-  vm.runInContext(src('../features/remote-sync.js'),ctx);
-  vm.runInContext(src('../features/notes.js'),ctx);
+  vm.runInContext(src('../sync/remote-sync.js'),ctx);
+  vm.runInContext(src('../features/notes/notes.js'),ctx);
   const run=code=>vm.runInContext(code,ctx);
   return{db,sent,peers,run,ctx,
     state:()=>plain(run('state')),
@@ -131,7 +132,7 @@ test('signals carry ids only',async()=>{
   for(const s of phone.sent)for(const v of Object.values(s))assert.ok(v===null||typeof v==='number'||/^[\w-]+$/.test(v),`unexpected value ${v}`);
 });
 
-// ── Typed notes (features/notes.js) ──
+// ── Typed notes (features/notes/notes.js) ──
 test('notes typed on the tablet reach the phone through Drive, and stay one Notes.json',async()=>{
   const{drive,phone,tablet}=setup();
   await phone.sync();await tablet.sync();

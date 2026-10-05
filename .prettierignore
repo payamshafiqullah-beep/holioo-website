@@ -1,0 +1,17 @@
+# Generated / vendored
+dist/
+node_modules/
+package-lock.json
+graphify-out/
+public/
+pwa/vendor/
+supabase/
+
+# The app's own JavaScript, CSS and HTML are written in a deliberately compact style. Reformatting them would
+# rewrite every line (and break the byte-for-byte checks that prove a refactor changed nothing), so they are
+# left as they are; new tooling files outside pwa/ are formatted.
+pwa/
+
+# The deployed landing page is kept byte-for-byte; a local scratch note is not project code.
+index.html
+SAFE_COPY_PROMPT.md

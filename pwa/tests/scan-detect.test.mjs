@@ -1,4 +1,4 @@
-// Scanner detection (features/scan-detect.js) with the same OpenCV.js build as the app: one synthetic photo
+// Scanner detection (features/scanner/scan-detect.js) with the same OpenCV.js build as the app: one synthetic photo
 // per mode, then the hard cases (white on white, a hand on the page, a mat, a shadow, a printed frame…).
 // Corners must land within a pixel or two (frame 512 px wide). Run: node --test pwa/tests
 import test from 'node:test';
@@ -11,7 +11,7 @@ import * as S from './helpers/scenes.mjs';
 const require=createRequire(import.meta.url);
 const ctx={console};ctx.self=ctx;
 vm.createContext(ctx);
-for(const f of ['../features/scan-core.js','../features/scan-refine.js','../features/scan-detect.js'])vm.runInContext(fs.readFileSync(new URL(f,import.meta.url),'utf8'),ctx);
+for(const f of ['../features/scanner/scan-core.js','../features/scanner/scan-refine.js','../features/scanner/scan-detect.js'])vm.runInContext(fs.readFileSync(new URL(f,import.meta.url),'utf8'),ctx);
 
 let cvPromise;
 function opencv(){

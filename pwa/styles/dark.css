@@ -1,0 +1,41 @@
+/* =====================================================================
+   DARK MODE — [data-theme="dark"] on <html>, set by the early script in
+   index.html and the Profile toggle (localStorage 'holioo-theme').
+   ===================================================================== */
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0F1020;--surface:#1A1C30;--ink:#ECEEFB;--muted:#9CA1BB;--line:#2A2D47;
+  --accent:#7A85FF;--accent-soft:#252848;--danger:#FF6B8A;
+  --lavender:#2A2650;--lavender-fg:#B5A5FF;
+  --mint:#14322A;--mint-fg:#4FD9A6;
+  --peach:#3A2519;--peach-fg:#FF9468;
+  --pink:#3B1E28;--pink-fg:#FF8FA6;
+  --yellow:#352C0F;--yellow-fg:#F2BF3A;
+  --sky:#16294A;--sky-fg:#6AAAFF;
+  --shadow-sm:0 2px 8px rgba(0,0,0,.3);--shadow-md:0 10px 30px rgba(0,0,0,.4);--shadow-lg:0 18px 50px rgba(0,0,0,.5);
+}
+[data-theme="dark"] body{background:var(--bg);color:var(--ink)}
+[data-theme="dark"] .bottom-nav::before{background:rgba(26,28,48,.82);border-color:rgba(255,255,255,.08)}
+[data-theme="dark"] .bottom-nav{background:rgba(26,28,48,.94)}
+[data-theme="dark"] .ink-toolbar,[data-theme="dark"] .session-view-toggle{background:rgba(26,28,48,.92)}
+[data-theme="dark"] .radial-title,[data-theme="dark"] .radial-item small{background:rgba(26,28,48,.97)}
+[data-theme="dark"] .radial-item,[data-theme="dark"] .radial-lens-label,[data-theme="dark"] .inline-rename,[data-theme="dark"] .qc-bubble-btn{background:var(--surface)}
+[data-theme="dark"] .category-card small,[data-theme="dark"] .stat-card small,[data-theme="dark"] .collection-card small,[data-theme="dark"] .folder-card small,[data-theme="dark"] .files-image-session-head small{color:var(--muted)}
+[data-theme="dark"] .category-card .progress{background:rgba(255,255,255,.12)}
+[data-theme="dark"] .image-tile,[data-theme="dark"] .thumb{background:#262947}
+[data-theme="dark"] .thumb .check,[data-theme="dark"] .thumb .group-tag{background:var(--surface);color:var(--ink)}
+[data-theme="dark"] .thumb .check{color:var(--accent)}
+[data-theme="dark"] .badge{background:#2A2D47}
+[data-theme="dark"] .hero-card{background:linear-gradient(135deg,#2A2650 0%,#1B2447 100%)}
+[data-theme="dark"] .hero-card::before{background:radial-gradient(circle,rgba(255,255,255,.08),rgba(255,255,255,0) 70%)}
+[data-theme="dark"] .pdf-pages{background:#0B0C16}
+[data-theme="dark"] .course-managed .reorder-handle{color:var(--ink)}
+[data-theme="dark"] .switch::after{background:#fff}
+[data-theme="dark"] .desk-toolbar,[data-theme="dark"] .cv-tray-panel{background:rgba(26,28,48,.94)}
+[data-theme="dark"] .desk-tool:hover,[data-theme="dark"] .desk-tab:hover,[data-theme="dark"] .cnav-link:hover,[data-theme="dark"] .crumb-link:hover,[data-theme="dark"] .desk-live:hover,[data-theme="dark"] .desk-logo:hover,[data-theme="dark"] .desk-menu-item:hover,[data-theme="dark"] .desk-menu-item:focus-visible,[data-theme="dark"] .cv-btn:hover,[data-theme="dark"] .cv-bar button:hover,[data-theme="dark"] .cv-tray-close:hover{background:#2A2D47}
+[data-theme="dark"] .desk-count,[data-theme="dark"] .cv-tray-n{background:#2A2D47}
+[data-theme="dark"] .desk-photo,[data-theme="dark"] .desk-photo img,[data-theme="dark"] .gallery-tile,[data-theme="dark"] .cv-thumb{background:#262947}
+[data-theme="dark"] .desk-photo.is-loading{background:linear-gradient(100deg,#1F2140 30%,#2A2D4D 50%,#1F2140 70%) 0 0/300% 100%}
+[data-theme="dark"] .canvas-screen{background:#0B0C16}
+[data-theme="dark"] .cv-photo{background:#262947}
+

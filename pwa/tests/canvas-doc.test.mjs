@@ -1,4 +1,4 @@
-// Notes page document model (features/canvas-doc.js): reading, history, hit tests, text wrapping, growth, merge, PDF cut.
+// Notes page document model (features/notes/canvas-doc.js): reading, history, hit tests, text wrapping, growth, merge, PDF cut.
 // Run: node --test pwa/tests
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -6,7 +6,7 @@ import fs from 'node:fs';
 
 // Plain browser script: load it in this realm so arrays compare strictly.
 const mod = { exports: {} };
-new Function('module', fs.readFileSync(new URL('../features/canvas-doc.js', import.meta.url), 'utf8'))(mod);
+new Function('module', fs.readFileSync(new URL('../features/notes/canvas-doc.js', import.meta.url), 'utf8'))(mod);
 const C = mod.exports;
 
 const photo = (id, x, y, w, h, z, extra = {}) => ({ id, type: 'photo', photoId: `ph-${id}`, x, y, w, h, z, updatedAt: 1, ...extra });

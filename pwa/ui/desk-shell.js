@@ -6,7 +6,7 @@
 // Toolbar: sidebar button (hides / shows the navigator), logo (Accueil), Galerie, Caméra, Notes, PDF, Drive sync, spacer,
 // Réglages, profile. The active screen is highlighted; on the Notes page the spacer holds undo / redo and
 // "Enregistrement… / Enregistré".
-// Sidebar: the course navigator (ui/course-navigator.js), the same on every screen including Notes. Breadcrumb
+// Sidebar: the course navigator (features/courses/course-navigator.js), the same on every screen including Notes. Breadcrumb
 // (course › type › session) under the toolbar on the screens that follow the selection.
 
 const deskQuery=window.matchMedia('(min-width:768px)');

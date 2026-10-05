@@ -1,7 +1,7 @@
 'use strict';
 // Holioo shared UI components.
 // Every component is a small function that returns an HTML string, so any
-// screen in pwa/pages/ can be restyled by editing one place here.
+// screen in pwa/features/ can be restyled by editing one place here.
 // Components never touch app data; pages pass in what they want displayed.
 
 const TONES=['lavender','sky','mint','peach','pink','yellow'];

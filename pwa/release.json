@@ -1,0 +1,9 @@
+{
+  "release": "20261005-epure-v43",
+  "extraFiles": [
+    "features/photos/image-worker.js",
+    "features/scanner/scanner-worker.js",
+    "features/scanner/scan-detect.js",
+    "features/scanner/scan-refine.js"
+  ]
+}

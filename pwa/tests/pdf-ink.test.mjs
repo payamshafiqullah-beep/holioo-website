@@ -1,11 +1,11 @@
-// PDF viewer ink (features/pdf-ink.js): stored strokes, the two eraser modes and undo, on top of the Notes document model.
+// PDF viewer ink (features/pdf/pdf-ink.js): stored strokes, the two eraser modes and undo, on top of the Notes document model.
 // Run: node --test pwa/tests
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
+import { readAppFile } from './helpers/app-files.mjs';
 
 const mod = { exports: {} };
-const src = f => fs.readFileSync(new URL(`../features/${f}`, import.meta.url), 'utf8');
+const src = readAppFile;
 new Function('module', `${src('canvas-doc.js')}\n${src('pdf-ink.js')}\n`)(mod);
 const C = mod.exports;
 

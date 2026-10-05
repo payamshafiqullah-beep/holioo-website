@@ -1,0 +1,27 @@
+'use strict';
+// Globals of the app: configuration, DOM roots, shared variables and small formatting helpers.
+const SUPABASE_URL='https://vznsvcotzurgmkmtvapm.supabase.co';
+const SUPABASE_KEY='sb_publishable_eN8imVSNAXwp8-K9N3mbZw_ZJX0klU8';
+const STORE_KEY='holioo_pwa_state_v3';
+const LEGACY_KEY='holioo_pwa_state_v1';
+const app=document.getElementById('app');
+const appShell=document.getElementById('appShell');
+const bottomNav=document.getElementById('bottomNav');
+const toastEl=document.getElementById('toast');
+const offlineBanner=document.getElementById('offlineBanner');
+const sheetRoot=document.getElementById('sheetRoot');
+const byId=id=>document.getElementById(id);
+const DB=window.HoliooDB;
+const Drive=window.HoliooDrive;
+let sb=null,currentUser=null,cloudReady=false,currentRole='user',accountBlocked=false,driveStatus={connected:false,email:null};
+let currentView='home',currentCourseId=null,currentSectionId=null,currentSessionId=null,currentBatch=null,currentLibrary={step:'years',year:null,course:null,section:null,item:null};
+let cameraStream=null,cameraTrack=null,captureIds=[],cameraFacing='environment',torchOn=false,zoomValue=1,syncBusy=false;
+let deferredInstallPrompt=null,drivePollTimer=null,libraryChannel=null,appUpdateReady=false;
+const uid=()=>crypto.randomUUID();
+const now=()=>new Date().toISOString();
+const esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[c]));
+const iconLetter=s=>(String(s||'?').trim()[0]||'?').toUpperCase();
+const fmtDate=s=>{try{return new Date(s).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'})}catch{return''}};
+const fmtShort=s=>{try{return new Date(s).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})}catch{return''}};
+const sectionClass=n=>n==='CM'?'cm':n==='TD'?'td':n==='TP'?'tp':'custom';
+const sectionColor=n=>n==='CM'?'#506BFF':n==='TD'?'#8C5CF5':n==='TP'?'#FF9E42':'#29ADB5';

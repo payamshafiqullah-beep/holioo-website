@@ -62,7 +62,7 @@ function attachQuickReading(trigger){
   return createRadialMenu({
     trigger,
     items:quickReadingItems,
-    maxDepth:4,stack:true,hub:true,maxKids:READING_MAX_PDFS,
+    maxDepth:4,stack:true,local:true,fitOptions:{minR1:76},maxKids:READING_MAX_PDFS,
     overflowItem:readingMoreItem,
     describe:quickReadingDescribe,
     onSelect:item=>quickReadingSelect(item),

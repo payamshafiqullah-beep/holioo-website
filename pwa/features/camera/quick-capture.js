@@ -88,7 +88,7 @@ function attachQuickCapture(trigger,onPick=openQuickCamera){
   trigger.dataset.quickCapture='1';
   return createRadialMenu({
     trigger,
-    items:quickCaptureItems,stack:true,hub:true,
+    items:quickCaptureItems,stack:true,local:true,fitOptions:{minR1:76},
     overflowItem:()=>({id:'more',more:true,label:camT('qcMoreSections'),short:'•••',color:'#8A8FA3',aria:camT('qcMoreSections')}),
     describe:quickCaptureDescribe,
     onSelect:(item,parent)=>quickCaptureSelect(item,parent,onPick),

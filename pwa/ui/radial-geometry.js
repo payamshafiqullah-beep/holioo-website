@@ -27,6 +27,8 @@ const RADIAL={
   minR1:96,
   maxR1:260,       // beyond this the ring is out of thumb reach: items shrink instead
   maxItems:7,
+  localMaxR:2.4,   // local rings: farthest a ring of children may sit from its picked item, in item sizes (beyond: fewer items, then "•••")
+  localGap:6,      // local rings: free space between the picked item and the ring of its children
   dwell:180,       // ms the finger rests on another course before its sections replace the open ones
   anim:150
 };
@@ -112,13 +114,13 @@ function radialFit(n,o,vp,opt=RADIAL){
   const tryFit=(roomy,dr)=>{
     for(let s=opt.size;s>=opt.minSize;s-=2){
       for(let r=Math.max(opt.minR1,opt.anchorR+s/2+opt.gap);r<=opt.maxR1;r+=dr){
-        const r2=r+s+opt.ringGap;
+        const r2=opt.local?r:r+s+opt.ringGap;   // local menus: the next ring is laid out round its parent, it needs no room here
         // Farther out, fewer angles stay on screen: once the second ring has none, stop growing.
         let run=radialRun(radialFree(o,r2,s,vp,opt));if(!run)break;
         // Deeper menus: the outermost ring must have room too (a few angles are enough: the rest goes to "more").
         const rOut=r+((opt.rings||2)-1)*(s+opt.ringGap);
         if(rOut!==r2&&!radialRun(radialFree(o,rOut,s,vp,opt)))break;
-        if(roomy&&!run.full){const m=1.5*radialMinStep(r2,s,opt.gap)*1.08;if(run.len<2*m)continue;run={start:run.start+m,len:run.len-2*m,full:false}}
+        if(roomy&&!opt.local&&!run.full){const m=1.5*radialMinStep(r2,s,opt.gap)*1.08;if(run.len<2*m)continue;run={start:run.start+m,len:run.len-2*m,full:false}}
         const fit=place(s,r,run);if(fit)return fit;
       }
     }
@@ -145,18 +147,17 @@ function radialChildren(k,parentAngle,o,vp,fit,opt=RADIAL,ring=2){
   return{angles:radialAngles(shown,radialCenter(run,parentAngle,total),step),step,shown,capacity};
 }
 
-// ─── Hub rings (stack menus with `hub`) ────────────────────────
-// From the second ring on, the children of an item are laid out as a small full circle right round that item (the smallest one
-// that holds them and stays on screen), not fanned far out. Every ring before stays where it was, blurred: moving back onto the
-// open item (the middle of the circle) is the way back.
-const radialHubZone=vp=>({x:vp.w/2,y:(vp.top||0)+(vp.h-(vp.top||0)-(vp.bottom||0))/2});
+// ─── Local rings (menus with `local`) ────────────────────────
+// From the second ring on, the children of an item are laid out as a ring right round THAT item (the smallest circle that holds
+// them and stays on screen: clamped at the screen edges, never moved to the middle of the screen). Every ring before stays where
+// it was, blurred: moving back onto the open item (the middle of the ring) is the way back.
 
-// n items of `s` px around c: the smallest circle that holds them all and stays on screen, at least one track (item + ringGap)
-// away from the circle of the ring before it (prevR) so the two never overlap. Fewer than n when no circle on screen holds them
+// n items of `s` px around c (the picked item): the smallest circle that holds them all and stays on screen, an item plus
+// `localGap` away from c; when prevR is given, also at least one track (item + ringGap) away from that radius. Fewer than n when no circle on screen holds them
 // (`shown` < n: the caller turns the last one into a "more" item). {r, angles, step, shown, capacity, full}
-function radialHubFit(n,c,vp,s,prevR=null,opt=RADIAL){
-  const track=s+opt.ringGap,minR=s+opt.gap+6;
-  const rMax=Math.max(minR,Math.min(vp.w/2,(vp.h-(vp.top||0)-(vp.bottom||0))/2)),best={cap:0};
+function radialLocalFit(n,c,vp,s,prevR=null,opt=RADIAL){
+  const track=s+opt.ringGap,minR=s+(opt.localGap??RADIAL.localGap);
+  const rMax=Math.max(minR,Math.min(vp.w/2,(vp.h-(vp.top||0)-(vp.bottom||0))/2,s*(opt.localMaxR??RADIAL.localMaxR))),best={cap:0};
   for(let r=minR;r<=rMax+1e-9;r+=2){
     if(prevR!==null&&Math.abs(r-prevR)<track)continue;
     const run=radialRun(radialFree(c,r,s,vp,opt));if(!run)continue;

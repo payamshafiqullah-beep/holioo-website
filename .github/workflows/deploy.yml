@@ -37,14 +37,9 @@ jobs:
 
       - name: Verify Holioo PWA JavaScript
         run: |
-          node --check pwa/db.js
-          node --check pwa/drive.js
-          node --check pwa/core.js
-          node --check pwa/app.js
-          node --check pwa/sw.js
-          find pwa/ui pwa/features pwa/pages pwa/workers -name '*.js' -print0 | xargs -0 -n1 node --check
+          node tools/check-syntax.mjs
           node pwa/smoke-test.mjs
-          node --test pwa/tests/*.test.mjs
+          npm test
 
       - name: Build website
         run: npm run build
@@ -104,10 +99,10 @@ jobs:
           done
           grep -q "$RELEASE" /tmp/holioo.html
           grep -q 'drive.js' /tmp/holioo.html
-          grep -q 'pages/CapturePage.js' /tmp/holioo.html
+          grep -q 'features/camera/CapturePage.js' /tmp/holioo.html
           grep -q 'manifest.webmanifest' /tmp/holioo.html
           curl -fsSL -H 'Cache-Control: no-cache' "${URL}sw.js?check=1" | grep -q "$SW_VERSION"
-          curl -fsSL "${URL}features/thumbs.js?v=$RELEASE" -o /dev/null
+          curl -fsSL "${URL}features/photos/thumbs.js?v=$RELEASE" -o /dev/null
           curl -fsSL "${URL}manifest.webmanifest" | grep -q '"display": "standalone"'
           if curl -fs -o /dev/null "${URL}tests/camera-destination.test.mjs"; then echo "Test files must not be published"; exit 1; fi
           echo "Holioo live PWA verification: PASS ($RELEASE)"

@@ -2,11 +2,11 @@
 
 The Tableau mode finds the board in two layers (see `pwa/ARCHITECTURE.md`):
 
-1. **OpenCV pipeline** (always on, `pwa/features/scan-detect.js`): edges, bright/dark regions and long straight
+1. **OpenCV pipeline** (always on, `pwa/features/scanner/scan-detect.js`): edges, bright/dark regions and long straight
    lines → candidate outlines → sub-pixel refinement → ranking → a **confidence score**. When the result is
    doubtful (< 80 %) a second, _normalised_ pass runs: the light fall-off is divided out, highlights are
    clipped, an edge-preserving filter smooths the noise, local contrast is equalised, and the search repeats.
-2. **Corner model** (optional, `pwa/features/scan-ml.js`): a MobileNetV2 regressor in TensorFlow.js. It proposes
+2. **Corner model** (optional, `pwa/features/scanner/scan-ml.js`): a MobileNetV2 regressor in TensorFlow.js. It proposes
    the four corners; the OpenCV code refines them on real edges and ranks them against its own candidates. A wrong
    guess cannot hurt, and with no model published the app is unchanged. **No trained model ships in this repo**:
    there is no public board-corner model, and training one needs labelled photos.
@@ -68,5 +68,5 @@ uses it from then on. Remove the folder to switch it off.
 `train.py` has not been run end to end (there was no GPU and no dataset when it was written): expect to fix small
 things on the first run.
 
-Model contract (`pwa/features/scan-ml.js`): input `[1,160,160,3]`, the whole frame stretched, RGB scaled to [-1, 1];
+Model contract (`pwa/features/scanner/scan-ml.js`): input `[1,160,160,3]`, the whole frame stretched, RGB scaled to [-1, 1];
 output `[1,9]` = `x1 y1 x2 y2 x3 y3 x4 y4 present` (corners TL TR BR BL in 0..1 of the frame; `present` 0..1).

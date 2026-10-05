@@ -1,4 +1,4 @@
-// Characterization of the Notes page (pages/NotesCanvasPage.js + features/canvas-*.js) on a tablet: the real app
+// Characterization of the Notes page (features/notes/NotesCanvasPage.js + features/canvas-*.js) on a tablet: the real app
 // booted in jsdom, the page driven through its own buttons and functions. Locks the page's DOM, its stored document
 // (IndexedDB kv `canvas:<séance>`), the history and the save indicator, so the file can be split without a change.
 import test from 'node:test';

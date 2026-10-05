@@ -1,4 +1,4 @@
-// Cross-device merge of the course structure (features/state-merge.js).
+// Cross-device merge of the course structure (sync/state-merge.js).
 // Run: node --test pwa/tests
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const ctx={};
-vm.runInNewContext(fs.readFileSync(new URL('../features/state-merge.js',import.meta.url),'utf8')+'\n;this.api={syncStamp,syncMerge,syncFlatten,syncSharedPart,syncHash};',ctx);
+vm.runInNewContext(fs.readFileSync(new URL('../sync/state-merge.js',import.meta.url),'utf8')+'\n;this.api={syncStamp,syncMerge,syncFlatten,syncSharedPart,syncHash};',ctx);
 const api=ctx.api;const syncStamp=api.syncStamp,syncSharedPart=api.syncSharedPart,syncHash=api.syncHash;
 const syncMerge=(...a)=>JSON.parse(JSON.stringify(api.syncMerge(...a)));
 const clone=x=>JSON.parse(JSON.stringify(x));

@@ -1,4 +1,4 @@
-// Scanner glue (features/scanner.js): the public API the camera relies on must all be there, and the hand-set
+// Scanner glue (features/scanner/scanner.js): the public API the camera relies on must all be there, and the hand-set
 // corners (Coins) must stay on screen. A missing function here once broke the whole camera screen at load.
 // Run: node --test pwa/tests
 import test from 'node:test';
@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const ctx={console,document:{currentScript:null},matchMedia:()=>({matches:false}),navigator:{}};ctx.self=ctx;ctx.window=ctx;vm.createContext(ctx);
-for(const f of ['../features/scan-core.js','../features/scanner.js'])vm.runInContext(fs.readFileSync(new URL(f,import.meta.url),'utf8'),ctx);
+for(const f of ['../features/scanner/scan-core.js','../features/scanner/scanner.js'])vm.runInContext(fs.readFileSync(new URL(f,import.meta.url),'utf8'),ctx);
 const Scanner=vm.runInContext('Scanner',ctx),has=n=>vm.runInContext(`typeof ${n}`,ctx);
 
 test('the Scanner API used by the camera, the review and the photo editor is complete',()=>{

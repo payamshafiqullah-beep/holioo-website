@@ -1,4 +1,4 @@
-// Scanner logic (features/scan-core.js): corner order, smooth tracking, auto-capture decisions,
+// Scanner logic (features/scanner/scan-core.js): corner order, smooth tracking, auto-capture decisions,
 // book split, ID card layout, tilt hint, screen mapping. Run: node --test pwa/tests
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const ctx={};ctx.self=ctx;vm.createContext(ctx);
-vm.runInContext(fs.readFileSync(new URL('../features/scan-core.js',import.meta.url),'utf8'),ctx);
+vm.runInContext(fs.readFileSync(new URL('../features/scanner/scan-core.js',import.meta.url),'utf8'),ctx);
 const C=ctx.ScanCore;
 const plain=v=>JSON.parse(JSON.stringify(v));
 const Q=[[.2,.1],[.8,.12],[.85,.9],[.15,.88]];

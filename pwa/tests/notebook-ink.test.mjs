@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 
-const source=fs.readFileSync(new URL('../features/notebook-ink.js',import.meta.url),'utf8');
+const source=fs.readFileSync(new URL('../features/notes/notebook-ink.js',import.meta.url),'utf8');
 const load=()=>Function(
   'DB','state','uid','photoBlob','thumbUrl','Notice','icon','byId','matchMedia','window','document','requestAnimationFrame','HoliooPerfectFreehand',
   `${source}; return {syncNotebookBlocks,snapRulerPoints,eraseNotebookStrokes,visibleInkBlocks,visibleInkStrokes,strokeTouchesPath};`

@@ -77,7 +77,7 @@
     <p>
       <b>1. Label</b> a few hundred classroom photos (click the 4 corners of the board; <code>N</code> = no board in the
       picture), save <code>labels.json</code>. <b>2. Evaluate</b> runs the app's detector
-      (<code>pwa/features/scan-detect.js</code>, same code as in the camera) on those photos and reports how many
+      (<code>pwa/features/scanner/scan-detect.js</code>, same code as in the camera) on those photos and reports how many
       outlines overlap the true board by at least 90 % (IoU), how reliable the confidence score is, and how many empty
       pictures get a false board. Serve the repository root (<code>npx http-server .</code>) and open
       <code>/tools/board-corners/eval.html</code>. The same <code>labels.json</code> trains the model
@@ -98,9 +98,9 @@
     <div id="report"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.10.0-release.1/dist/opencv.js"></script>
-    <script src="../../pwa/features/scan-core.js"></script>
-    <script src="../../pwa/features/scan-refine.js"></script>
-    <script src="../../pwa/features/scan-detect.js"></script>
+    <script src="../../pwa/features/scanner/scan-core.js"></script>
+    <script src="../../pwa/features/scanner/scan-refine.js"></script>
+    <script src="../../pwa/features/scanner/scan-detect.js"></script>
     <script>
       'use strict';
       const $ = (id) => document.getElementById(id),

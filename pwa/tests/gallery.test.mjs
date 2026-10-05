@@ -4,7 +4,7 @@ import fs from 'node:fs';
 
 // The app files are plain browser scripts: load this one (in this realm, so arrays compare strictly) and use its functions.
 const mod = { exports: {} };
-new Function('module', fs.readFileSync(new URL('../features/gallery-logic.js', import.meta.url), 'utf8'))(mod);
+new Function('module', fs.readFileSync(new URL('../features/courses/gallery-logic.js', import.meta.url), 'utf8'))(mod);
 const G = mod.exports;
 
 const sec = (name, type, sessions) => ({ id: `s-${name}`, name, type: type || name, sessions });

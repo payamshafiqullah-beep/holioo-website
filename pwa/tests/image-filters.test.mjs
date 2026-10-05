@@ -1,4 +1,4 @@
-// Scanner filters and perspective correction (features/image-pipeline.js, pure pixel functions),
+// Scanner filters and perspective correction (features/photos/image-pipeline.js, pure pixel functions),
 // and the full pipeline per mode: detect → flatten the page → filter. Run: node --test pwa/tests
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -9,7 +9,7 @@ import * as S from './helpers/scenes.mjs';
 
 const require=createRequire(import.meta.url);
 const ctx={console};ctx.self=ctx;vm.createContext(ctx);
-for(const f of ['../features/image-pipeline.js','../features/scan-core.js','../features/scan-detect.js'])vm.runInContext(fs.readFileSync(new URL(f,import.meta.url),'utf8'),ctx);
+for(const f of ['../features/photos/image-pipeline.js','../features/scanner/scan-core.js','../features/scanner/scan-detect.js'])vm.runInContext(fs.readFileSync(new URL(f,import.meta.url),'utf8'),ctx);
 const I=ctx.HoliooImage;
 let cvP;const opencv=()=>cvP??=new Promise(r=>{const cv=require('@techstark/opencv-js');const d=()=>{if(typeof cv.then==='function')delete cv.then;r(cv)};cv.Mat?d():cv.onRuntimeInitialized=d});
 

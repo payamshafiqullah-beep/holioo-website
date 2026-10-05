@@ -1,4 +1,4 @@
-// Sub-pixel page-edge refinement (features/scan-refine.js): from a rough outline to straight edges and
+// Sub-pixel page-edge refinement (features/scanner/scan-refine.js): from a rough outline to straight edges and
 // exact corners — under a thumb, in blur and noise, on a full-size photo. No OpenCV needed.
 // Run: node --test pwa/tests
 import test from 'node:test';
@@ -8,7 +8,7 @@ import vm from 'node:vm';
 import * as S from './helpers/scenes.mjs';
 
 const ctx={console};ctx.self=ctx;vm.createContext(ctx);
-for(const f of ['../features/scan-core.js','../features/scan-refine.js'])vm.runInContext(fs.readFileSync(new URL(f,import.meta.url),'utf8'),ctx);
+for(const f of ['../features/scanner/scan-core.js','../features/scanner/scan-refine.js'])vm.runInContext(fs.readFileSync(new URL(f,import.meta.url),'utf8'),ctx);
 const R=ctx.ScanRefine;
 
 // Worst corner distance in pixels.

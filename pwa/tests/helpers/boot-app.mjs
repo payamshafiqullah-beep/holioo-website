@@ -173,7 +173,7 @@ export async function bootApp({ width = 390, height = 844, state = sampleState()
     globalThis.Date=class extends R{constructor(...a){a.length?super(...a):super(F)}static now(){return F}}})()`);
   win.addEventListener('error', (e) => errors.push(e.message));
   for (const file of scriptFiles()) {
-    if (file === 'db.js') continue; // replaced by the fake database above
+    if (file === 'data/db.js') continue; // replaced by the fake database above
     try {
       run(fs.readFileSync(path.join(PWA, file), 'utf8'), file);
     } catch (error) {

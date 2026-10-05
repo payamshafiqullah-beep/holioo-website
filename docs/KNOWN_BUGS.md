@@ -11,21 +11,21 @@ phases 3 and 4 use the function names to find them again.
 
 ### 1. The "Déconnecter Google Drive" button calls a function that does not exist
 
-- `pwa/pages/SyncPage.js:30` (`()=>disconnectDrive()`); the button is created at `SyncPage.js:22`.
+- `pwa/features/account/SyncPage.js:30` (`()=>disconnectDrive()`); the button is created at `SyncPage.js:22`.
 - No file defines `disconnectDrive`. Tapping the button throws `ReferenceError` and nothing happens. ESLint reports
   it as `no-undef`.
-- Fix: call `Drive.disconnect(sb)` (it exists in `drive.js`), refresh `driveStatus`, then re-render.
+- Fix: call `Drive.disconnect(sb)` (it exists in `sync/drive.js`), refresh `driveStatus`, then re-render.
 
 ### 2. Duplicate key `ready` in the camera texts
 
-- `pwa/features/camera-i18n.js:53`.
+- `pwa/features/camera/camera-i18n.js:53`.
 - The object literal defines `ready` twice; the later value silently wins, so one of the two messages can never be
   shown. ESLint reports it as `no-dupe-keys`.
 - Fix: rename one of the keys (check which message each caller expects).
 
 ### 3. PDF viewer leaks listeners on every open and never destroys its ink layer
 
-- `pwa/features/pdf-ink.js:163` and `pwa/pages/PdfViewerPage.js:76-78`, `:90`.
+- `pwa/features/pdf/pdf-ink.js:163` and `pwa/features/pdf/PdfViewerPage.js:76-78`, `:90`.
 - `leave()` flushes the ink but never calls `ink.destroy()`; `destroy()` runs only when the page is already gone
   before the ink finished loading. Each opening of a PDF leaves two capture-phase `document` listeners
   (`touchend`, `touchcancel`) alive, holding the detached viewer DOM. `leave()` also runs only from the Back button:
@@ -67,7 +67,7 @@ phases 3 and 4 use the function names to find them again.
 ### 8. Two cross-device merge systems run without mutual exclusion
 
 - `pwa/core.js:182` (`runDriveSync`) → `pwa/drive.js` (`syncAll`, `cloudPull`, `cloudPush`, `CloudSync.merge`) and
-  `pwa/features/remote-sync.js` (`syncStructure`, `syncMerge`).
+  `pwa/sync/remote-sync.js` (`syncStructure`, `syncMerge`).
 - Both merge `state.courses` / `state.inbox`. `remoteSyncChain` serialises only the second one. `applyPendingRemote`
   replaces `state.courses` and `state.inbox` with new objects while `syncAll` still holds `photoContexts(state)` of the
   old ones, so photos can upload under stale names and `CloudSync.merge` can mutate objects that are being replaced.
@@ -84,7 +84,7 @@ phases 3 and 4 use the function names to find them again.
 
 ### 10. Camera race after `video.play()`
 
-- `pwa/features/capture-actions.js:316-321`.
+- `pwa/features/camera/capture-actions.js:316-321`.
 - `camStartToken` is checked before `await video.play()` but not after. If the user leaves, flips the camera or the
   app is backgrounded meanwhile, `cameraStream` / `cameraTrack` are set again after `stopCamera()` ran. The stream is
   already stopped, so its `ended` event never fires: a black preview with no error panel.
@@ -92,7 +92,7 @@ phases 3 and 4 use the function names to find them again.
 
 ### 11. A retried camera save can file one photo twice
 
-- `pwa/features/camera-queue.js:49-52`.
+- `pwa/features/camera/camera-queue.js:49-52`.
 - `fileIntoSession` pushes the photo id unconditionally. If anything after it throws before `items.shift()`, the retry
   pushes the same id again.
 - Fix: skip the push when the id is already in the list.
@@ -106,7 +106,7 @@ phases 3 and 4 use the function names to find them again.
 
 ### 13. The download-slot semaphore lets more than three downloads run
 
-- `pwa/features/remote-sync.js:127-131` (`withDownloadSlot`).
+- `pwa/sync/remote-sync.js:127-131` (`withDownloadSlot`).
 - The slot is incremented on release and decremented again when the waiter resumes; a new caller can take it in
   between, so four downloads run and the counter dips below zero.
 - Fix: hand the slot to the waiter without incrementing.
@@ -119,7 +119,7 @@ phases 3 and 4 use the function names to find them again.
 
 ## Lint notes
 
-`npm run lint` reports a few `no-unused-vars` warnings (for example `pwa/features/media-viewer.js:201`,
-`pwa/ui/camera-picker.js:83`, `pwa/features/pdf-actions.js:90`) and `no-useless-escape` /
-`no-control-regex` warnings in `pwa/features/people.js:113` and `pwa/features/xlsx-export.js`. None changes
+`npm run lint` reports a few `no-unused-vars` warnings (for example `pwa/ui/media-viewer.js:201`,
+`pwa/features/camera/camera-picker.js:83`, `pwa/features/pdf/pdf-actions.js:90`) and `no-useless-escape` /
+`no-control-regex` warnings in `pwa/features/people/people.js:113` and `pwa/features/admin/xlsx-export.js`. None changes
 behaviour; they are left as they are.

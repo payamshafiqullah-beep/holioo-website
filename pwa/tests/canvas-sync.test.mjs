@@ -1,4 +1,4 @@
-// Notes page on two devices (features/canvas-sync.js + canvas-doc.js + drive.js) against one simulated Drive:
+// Notes page on two devices (features/notes/canvas-sync.js + canvas-doc.js + drive.js) against one simulated Drive:
 // the page is sent once as Page.json, announced by a signal, read and merged by the other device; edits made apart
 // on both devices end up on both; a deletion travels; nothing is sent twice. Run: node --test pwa/tests
 import test from 'node:test';
@@ -18,8 +18,8 @@ function device(drive){
   const ctx=vm.createContext({window,fetch:drive.fetch,Headers,Blob,Response,TextEncoder,URL,URLSearchParams,console,crypto,structuredClone,
     navigator:{onLine:true},setTimeout,clearTimeout,DB:db,sbStub,applied,
     localStorage:{getItem:k=>storage.has(k)?storage.get(k):null,setItem:(k,v)=>storage.set(k,String(v)),removeItem:k=>storage.delete(k)}});
-  vm.runInContext(src('../drive.js'),ctx);
-  vm.runInContext(src('../features/state-merge.js'),ctx);
+  vm.runInContext(src('../sync/drive.js'),ctx);
+  vm.runInContext(src('../sync/state-merge.js'),ctx);
   vm.runInContext(`
     const Drive=window.HoliooDrive;
     var state={profile:{academicYear:'2026–2027'},courses:[{id:'c1',name:'Analyse',sections:[{id:'sec1',name:'CM',type:'CM',sessions:[{id:'${SESSION}',number:1,title:'CM 1',photoIds:[]}]}]}],inbox:[],files:[],settings:{autoDriveSync:true}};
@@ -31,9 +31,9 @@ function device(drive){
     function canvasApplyRemote(rt,merged){applied.push(merged)}
     function canvasDiscardRuntime(){canvasRuntime=null}
   `,ctx);
-  vm.runInContext(src('../features/remote-sync.js'),ctx);   // the real sendSyncSignal / onRemoteSignal / remoteSyncReady / updatePresence
-  vm.runInContext(src('../features/canvas-doc.js'),ctx);
-  vm.runInContext(src('../features/canvas-sync.js'),ctx);
+  vm.runInContext(src('../sync/remote-sync.js'),ctx);   // the real sendSyncSignal / onRemoteSignal / remoteSyncReady / updatePresence
+  vm.runInContext(src('../features/notes/canvas-doc.js'),ctx);
+  vm.runInContext(src('../features/notes/canvas-sync.js'),ctx);
   const run=code=>vm.runInContext(code,ctx);
   return{db,sent,applied,tracked,run,
     // The page as this device stores it (what the screen's autosave writes).

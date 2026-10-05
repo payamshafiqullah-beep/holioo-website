@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import { fakeDrive, fakeDb } from './helpers/fake-drive.mjs';
 
-const code = fs.readFileSync(new URL('../drive.js', import.meta.url), 'utf8');
+const code = fs.readFileSync(new URL('../sync/drive.js', import.meta.url), 'utf8');
 
 function load(drive) {
   const storage = new Map();

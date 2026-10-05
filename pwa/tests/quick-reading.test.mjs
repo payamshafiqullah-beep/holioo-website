@@ -1,5 +1,5 @@
 // Lecture rapide: the radial menu with up to 4 rings (ui/radial-menu.js), the courses → sections → sessions → PDFs tree
-// (features/reading-logic.js) and the items built from it (features/quick-reading.js). Capture rapide is covered by
+// (features/home/reading-logic.js) and the items built from it (features/home/quick-reading.js). Capture rapide is covered by
 // radial-menu.test.mjs, which must keep passing unchanged.
 // Run: node --test pwa/tests
 import test from 'node:test';
@@ -11,7 +11,7 @@ const read=p=>fs.readFileSync(new URL(p,import.meta.url),'utf8');
 // Every file runs in ONE context, like the browser's classic scripts (top-level const / function are shared).
 const ctx=vm.createContext({module:{exports:{}},console,Date,Math,Number,Array,Object,Set,Map,JSON,Promise,String,Boolean,parseInt,parseFloat,isFinite});
 const run=p=>vm.runInContext(read(p),ctx,{filename:p});
-for(const f of ['../ui/radial-menu.js','../features/camera-i18n.js','../features/reading-logic.js','../ui/icons.js','../features/quick-capture.js','../features/quick-reading.js'])run(f);
+for(const f of ['../ui/radial-menu.js','../features/camera/camera-i18n.js','../features/home/reading-logic.js','../ui/icons.js','../features/camera/quick-capture.js','../features/home/quick-reading.js'])run(f);
 const get=name=>vm.runInContext(name,ctx);
 const R=vm.runInContext('({RADIAL,radialRadius,radialFit,radialChildren,radialHit,radialHitN,radialFree,radialRun,radialMinStep,radialPoint})',ctx);
 const {RADIAL,radialRadius,radialFit,radialChildren,radialHit,radialHitN,radialPoint}=R;
@@ -198,8 +198,8 @@ test('the title above the rings follows the path: "Chimie · TD · TD 2" and wha
 });
 
 test('the menu is configured as stacked and four rings deep; so is Capture rapide (hub rings); the item menu is not',()=>{
-  const src=read('../features/quick-reading.js'),qc=read('../features/quick-capture.js');
+  const src=read('../features/home/quick-reading.js'),qc=read('../features/camera/quick-capture.js');
   assert.match(src,/maxDepth:4,stack:true/);
   assert.match(src,/hub:true/);assert.match(qc,/stack:true,hub:true/);
-  assert.doesNotMatch(read('../features/item-menu.js'),/maxDepth|stack:/);
+  assert.doesNotMatch(read('../ui/item-menu.js'),/maxDepth|stack:/);
 });

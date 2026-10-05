@@ -1,4 +1,4 @@
-// Same account, same files on every device: the merge of two devices' states (features/cloud-sync.js).
+// Same account, same files on every device: the merge of two devices' states (sync/cloud-sync.js).
 // The rule under test: nothing is lost. Run: node --test pwa/tests
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const ctx={};ctx.self=ctx;vm.createContext(ctx);
-vm.runInContext(fs.readFileSync(new URL('../features/cloud-sync.js',import.meta.url),'utf8')+';this.CloudSync=CloudSync',ctx);
+vm.runInContext(fs.readFileSync(new URL('../sync/cloud-sync.js',import.meta.url),'utf8')+';this.CloudSync=CloudSync',ctx);
 const C=ctx.CloudSync;
 const plain=v=>JSON.parse(JSON.stringify(v)),eq=(a,b,m)=>assert.deepEqual(plain(a),plain(b),m);   // values built inside the vm have another Array prototype
 

@@ -1,4 +1,4 @@
-// Geometry of the photo editor (features/image-pipeline.js): crop boxes always stay inside the
+// Geometry of the photo editor (features/photos/image-pipeline.js): crop boxes always stay inside the
 // photo, aspect choices follow the photo's orientation, and "no change" is recognised.
 // Run: node --test pwa/tests
 import test from 'node:test';
@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const ctx={};ctx.self=ctx;
-vm.runInNewContext(fs.readFileSync(new URL('../features/image-pipeline.js',import.meta.url),'utf8'),ctx);
+vm.runInNewContext(fs.readFileSync(new URL('../features/photos/image-pipeline.js',import.meta.url),'utf8'),ctx);
 const I=ctx.HoliooImage;
 const inside=(quad,ratio)=>quad.every(([x,y])=>x>-1e-6&&x<1+1e-6&&y>-1e-6&&y<ratio+1e-6);
 const close=(a,b,e=1e-6)=>Math.abs(a-b)<e;

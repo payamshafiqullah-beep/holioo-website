@@ -1,4 +1,4 @@
-// PDF export (features/pdf-actions.js) with the real pdf-lib: page order and orientation, invisible
+// PDF export (features/pdf/pdf-actions.js) with the real pdf-lib: page order and orientation, invisible
 // searchable text, table of contents, metadata, file name. Run: node --test pwa/tests
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -10,7 +10,7 @@ const require=createRequire(import.meta.url);
 const lib=require('pdf-lib');
 // Same realm as pdf-lib (it checks arrays with instanceof), as in the browser.
 const mod={exports:{}};
-new Function('module',fs.readFileSync(new URL('../features/pdf-actions.js',import.meta.url),'utf8'))(mod);
+new Function('module',fs.readFileSync(new URL('../features/pdf/pdf-actions.js',import.meta.url),'utf8'))(mod);
 const P=mod.exports;
 
 const b64=s=>new Uint8Array(Buffer.from(s,'base64'));

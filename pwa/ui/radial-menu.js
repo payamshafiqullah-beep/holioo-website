@@ -11,11 +11,11 @@
 // The keyboard works too (accessibility): Enter opens, arrows move, Enter chooses, Escape closes.
 //
 // Reusable on any element:  createRadialMenu({trigger, items, onSelect})
-// A gesture can also start elsewhere (features/item-menu.js: a long-press on an item): begin(x, y, id),
+// A gesture can also start elsewhere (ui/item-menu.js: a long-press on an item): begin(x, y, id),
 // then the same finger's move(x, y), lift(x, y) or interrupt().
 // Deeper menus: `maxDepth` (default 2) allows courses → sections → sessions → documents … (ring k opens from an item of
-// ring k-1, further out); `stack:true` blurs the ring before the open one and hides the older ones (features/quick-reading.js).
-// Nothing here knows about courses or the camera (see features/quick-capture.js).
+// ring k-1, further out); `stack:true` blurs the ring before the open one and hides the older ones (features/home/quick-reading.js).
+// Nothing here knows about courses or the camera (see features/camera/quick-capture.js).
 // Geometry and hit testing are pure functions, tested in tests/radial-menu.test.mjs.
 // Angles are in degrees, 0 = right, 90 = straight up, counter-clockwise.
 

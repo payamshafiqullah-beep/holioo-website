@@ -1,4 +1,4 @@
-// Accuracy of the board detector (pwa/features/scan-detect.js) on randomised synthetic photos.
+// Accuracy of the board detector (pwa/features/scanner/scan-detect.js) on randomised synthetic photos.
 //
 //   node tools/board-corners/eval-synthetic.mjs [count=150] [seed=1] [--verbose]
 //
@@ -25,7 +25,7 @@ const require = createRequire(import.meta.url);
 const ctx = { console };
 ctx.self = ctx;
 vm.createContext(ctx);
-for (const f of ['features/scan-core.js', 'features/scan-refine.js', 'features/scan-detect.js'])
+for (const f of ['features/scanner/scan-core.js', 'features/scanner/scan-refine.js', 'features/scanner/scan-detect.js'])
   vm.runInContext(fs.readFileSync(new URL(f, root), 'utf8'), ctx);
 const cv = await new Promise((res) => {
   const c = require('@techstark/opencv-js');

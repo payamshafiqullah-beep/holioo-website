@@ -1,4 +1,4 @@
-// Board-corner model glue (features/scan-ml.js): what the model's output is turned into. The model itself
+// Board-corner model glue (features/scanner/scan-ml.js): what the model's output is turned into. The model itself
 // is not in the repository (see tools/board-corners/); this checks the contract and that nothing is trusted
 // blindly. Run: node --test pwa/tests
 import test from 'node:test';
@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const ctx={console};ctx.self=ctx;vm.createContext(ctx);
-for(const f of ['../features/scan-core.js','../features/scan-ml.js'])vm.runInContext(fs.readFileSync(new URL(f,import.meta.url),'utf8'),ctx);
+for(const f of ['../features/scanner/scan-core.js','../features/scanner/scan-ml.js'])vm.runInContext(fs.readFileSync(new URL(f,import.meta.url),'utf8'),ctx);
 const ML=vm.runInContext('ScanML',ctx);
 const plain=v=>JSON.parse(JSON.stringify(v));
 const board=[.2,.2, .8,.18, .84,.78, .16,.8];   // TL TR BR BL

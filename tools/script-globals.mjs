@@ -4,7 +4,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import * as espree from 'espree';
 
-const SKIP_DIRS = new Set(['tests', 'vendor', 'workers', 'node_modules']);
+const SKIP_DIRS = new Set(['tests', 'vendor', 'node_modules']);
+const isWorker = (file) => file.endsWith('-worker.js'); // worker scripts have their own global scope
 
 // Libraries loaded on demand from a CDN, and CommonJS-style exports of files that are also tested in Node.
 const EXTERNAL = { Tesseract: 'readonly', module: 'writable' };
@@ -17,7 +18,7 @@ function* appScripts(dir) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
       if (!SKIP_DIRS.has(entry.name)) yield* appScripts(full);
-    } else if (entry.name.endsWith('.js') && entry.name !== 'sw.js') {
+    } else if (entry.name.endsWith('.js') && entry.name !== 'sw.js' && !isWorker(entry.name)) {
       yield full;
     }
   }

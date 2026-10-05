@@ -6,8 +6,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 
-const driveCode=fs.readFileSync(new URL('../drive.js',import.meta.url),'utf8');
-const cloudCode=fs.readFileSync(new URL('../features/cloud-sync.js',import.meta.url),'utf8');
+const driveCode=fs.readFileSync(new URL('../sync/drive.js',import.meta.url),'utf8');
+const cloudCode=fs.readFileSync(new URL('../sync/cloud-sync.js',import.meta.url),'utf8');
 
 // ── A small in-memory Google Drive that keeps file contents ──
 function fakeDrive(){

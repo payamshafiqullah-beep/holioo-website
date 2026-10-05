@@ -1,4 +1,4 @@
-// Tests for the camera destination logic (features/camera-destination.js).
+// Tests for the camera destination logic (features/camera/camera-destination.js).
 // Run: node --test pwa/tests
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -7,7 +7,7 @@ import vm from 'node:vm';
 
 // The app files are plain browser scripts: load this one into a sandbox and use its functions.
 const ctx={module:{exports:{}}};
-vm.runInNewContext(fs.readFileSync(new URL('../features/camera-destination.js',import.meta.url),'utf8'),ctx);
+vm.runInNewContext(fs.readFileSync(new URL('../features/camera/camera-destination.js',import.meta.url),'utf8'),ctx);
 const {matchTimetable,resolveCameraDestination,nextSessionNumber,pushRecentDestination,validRecentDestinations}=ctx.module.exports;
 
 // 2026-10-05 is a Monday (day 1).

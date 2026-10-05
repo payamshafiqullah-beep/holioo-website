@@ -11,9 +11,9 @@ function setup(){
   ctx.findSessionContext=(id=ctx.currentSessionId)=>{for(const course of state.courses)for(const section of course.sections){const session=section.sessions.find(s=>s.id===id);if(session)return{course,section,session}}};
   vm.createContext(ctx);
   ctx.Scanner={subscribe(){}};
-  vm.runInContext(read('../features/camera-destination.js'),ctx);
-  vm.runInContext(read('../features/camera-queue.js'),ctx);
-  vm.runInContext(read('../features/capture-actions.js'),ctx);
+  vm.runInContext(read('../features/camera/camera-destination.js'),ctx);
+  vm.runInContext(read('../features/camera/camera-queue.js'),ctx);
+  vm.runInContext(read('../features/camera/capture-actions.js'),ctx);
   vm.runInContext('setCameraThumb=()=>{}; renderCameraChip=()=>{};',ctx);
   const run=code=>vm.runInContext(code,ctx);
   return{ctx,state,run};
@@ -61,13 +61,13 @@ test('pending photo retains its session when the user switches to another sessio
 for(const count of [0,1,5])test(`session camera button stays visible with ${count} photos`,async()=>{
   const{ctx}=setup();ctx.findSessionContext().session.photoIds=Array.from({length:count},(_,i)=>String(i));
   Object.assign(ctx,{enableMultiSelect:()=>null,bulkRemovePhotos:()=>{},app:{innerHTML:''},PageHeader:()=>'',PageIntro:()=>'',SectionTitle:()=>'',pdfRowMarkup:()=>'',EmptyState:()=>'',ActionButton:({id,attrs,label})=>`<button id="${id}" ${attrs||''}>${label}</button>`,plural:()=>'',fmtDate:()=>'',icon:()=>'',byId:()=>({addEventListener(){}}),fillSessionThumbs:async()=>{},updateSessionOcrLabel(){},isDesk:()=>false});ctx.state.files=ctx.state.files||[];
-  vm.runInContext(read('../pages/SessionPage.js'),ctx);await ctx.renderSession();
+  vm.runInContext(read('../features/courses/SessionPage.js'),ctx);await ctx.renderSession();
   assert.match(ctx.app.innerHTML,/id="addSessionPhotos" data-nav="capture"/);
   assert.equal((ctx.app.innerHTML.match(/id="addSessionPhotos"/g)||[]).length,1);
 });
 
 test('navigation captures the origin before replacing currentView',()=>{
-  const source=read('../core.js');const start=source.indexOf('function navigate('),end=source.indexOf('\ndocument.addEventListener',start);
+  const source=read('../core/core.js');const start=source.indexOf('function navigate('),end=source.indexOf('\ndocument.addEventListener',start);
   const ctx={currentView:'session',appShell:{classList:{toggle(){}}},prepareCameraEntry:view=>{ctx.origin=view},setNav(){},setChrome(){},window:{scrollTo(){}},render:async()=>{}};
   vm.createContext(ctx);vm.runInContext(source.slice(start,end),ctx);ctx.navigate('capture');assert.equal(ctx.origin,'session');assert.equal(ctx.currentView,'capture');
 });

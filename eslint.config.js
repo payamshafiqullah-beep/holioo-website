@@ -20,7 +20,7 @@ export default [
   { ignores: ['dist/**', 'node_modules/**', 'pwa/vendor/**', 'supabase/**', 'graphify-out/**'] },
   {
     files: ['pwa/**/*.js'],
-    ignores: ['pwa/tests/**', 'pwa/workers/**', 'pwa/sw.js'],
+    ignores: ['pwa/tests/**', 'pwa/**/*-worker.js', 'pwa/sw.js'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'script',
@@ -30,15 +30,15 @@ export default [
   },
   // Mistakes that are known and recorded in docs/KNOWN_BUGS.md; the refactor leaves the code as it is, so they only warn.
   {
-    files: ['pwa/pages/SyncPage.js'],
+    files: ['pwa/features/account/SyncPage.js'],
     rules: { 'no-undef': 'warn' },
   },
   {
-    files: ['pwa/features/camera-i18n.js'],
+    files: ['pwa/features/camera/camera-i18n.js'],
     rules: { 'no-dupe-keys': 'warn' },
   },
   {
-    files: ['pwa/workers/**/*.js'],
+    files: ['pwa/**/*-worker.js'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'script',

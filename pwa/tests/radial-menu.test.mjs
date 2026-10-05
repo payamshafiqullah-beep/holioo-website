@@ -1,5 +1,5 @@
 // Quick Capture: radial menu geometry and hit testing (ui/radial-menu.js), the course order and
-// today's session (features/camera-destination.js), and the camera opening on that destination.
+// today's session (features/camera/camera-destination.js), and the camera opening on that destination.
 // Run: node --test pwa/tests
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -9,7 +9,7 @@ import vm from 'node:vm';
 const read=p=>fs.readFileSync(new URL(p,import.meta.url),'utf8');
 const load=p=>{const ctx={module:{exports:{}}};vm.runInNewContext(read(p),ctx);return ctx.module.exports};
 const R=load('../ui/radial-menu.js');
-const D=load('../features/camera-destination.js');
+const D=load('../features/camera/camera-destination.js');
 
 const screens={
   'iPhone SE (320×568)':{w:320,h:568},
@@ -189,7 +189,7 @@ function cameraSandbox(){
   const ctx={state,currentCourseId:null,currentSectionId:null,currentSessionId:null,byId:()=>null,saveState(){},window:{addEventListener(){}},clearTimeout,setTimeout,DB:{get:async()=>null,put:async()=>{}},now:()=>new Date().toISOString(),uid:()=>'new-session'};
   ctx.findSessionContext=id=>{for(const course of state.courses)for(const section of course.sections){const session=section.sessions.find(s=>s.id===id);if(session)return{course,section,session}}};
   vm.createContext(ctx);ctx.Scanner={subscribe(){},stop(){}};
-  for(const f of ['../features/camera-destination.js','../features/camera-queue.js','../features/capture-actions.js'])vm.runInContext(read(f),ctx);
+  for(const f of ['../features/camera/camera-destination.js','../features/camera/camera-queue.js','../features/camera/capture-actions.js'])vm.runInContext(read(f),ctx);
   vm.runInContext('setCameraThumb=()=>{}; renderCameraChip=()=>{};',ctx);
   return{ctx,state,run:code=>vm.runInContext(code,ctx)};
 }

@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:app": "vite pwa",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint .",
@@ -12,9 +13,12 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check:syntax": "node tools/check-syntax.mjs",
+    "release": "node tools/release.mjs",
+    "release:check": "node tools/release.mjs --check",
     "test:smoke": "node pwa/smoke-test.mjs",
     "test": "node --test --test-concurrency=4 \"pwa/tests/*.test.mjs\"",
-    "check": "npm run lint && npm run format:check && npm run check:syntax && npm run test:smoke && npm test"
+    "verify:dist": "node tools/verify-deploy.mjs dist/app",
+    "check": "npm run lint && npm run format:check && npm run release:check && npm run check:syntax && npm run test:smoke && npm test"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

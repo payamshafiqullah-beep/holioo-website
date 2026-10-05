@@ -1,10 +1,119 @@
 # Holioo PWA architecture
 
-Holioo is organized so a small future change can be made in one place without rebuilding unrelated screens.
+Holioo is organized so a small change can be made in one place without touching unrelated screens: code is grouped by
+**feature**, the layers underneath (data, sync, core, shared UI) are separate, and nothing needs a build step.
 
-## Screen rule
+## Folder map
 
-Every visible app screen has its own JavaScript file in `pwa/pages/`.
+```
+pwa/
+  index.html          the page: lists every script and style sheet, in load order
+  sw.js               service worker (offline cache; the list of cached files is written by tools/release.mjs)
+  release.json        THE release version (see "Release and checks")
+  manifest.webmanifest, icon*.png|svg   installable-app files
+  core/               the shell of the app: shared variables, saved state, navigation, sign-in, sync queue, boot
+  data/               IndexedDB (photos, PDFs and documents are stored here, never in localStorage)
+  sync/               Google Drive, the account's shared snapshot, merging devices, Supabase signals
+  ui/                 shared interface: components, icons, app shell, radial menus, item menus, viewer helpers
+  features/<name>/    one folder per feature: its screens (…Page.js), its logic and, where it has one, its worker
+  styles/             the style sheet, cut by subject; linked in the order of index.html (the cascade depends on it)
+  vendor/             third-party libraries kept in the repository (QR code, perfect-freehand)
+  tests/              automated tests (not published)   smoke-test.mjs  structure checks (not published)
+```
+
+| Folder              | What is in it                                                                                                                                                                             |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `core/`             | `globals` (configuration, DOM roots, shared variables, formatters) · `state` (default state, load / save, account switch) · `navigation` (`navigate`, sheets, toasts) · `auth` (Google sign-in, profile, `bootstrapCloud`) · `sync-runner` (`runDriveSync`) · `lookups` · `app` (render loop, update logic, start) |
+| `data/`             | `db` — the IndexedDB wrapper (`HoliooDB`)                                                                                                                                                 |
+| `sync/`             | `drive-api` (Drive REST calls, token, folders) · `drive-items` (pushing photos / PDFs / documents, `state.json`) · `drive-cloud` (the shared snapshot, `syncAll`, publishes `HoliooDrive`) · `cloud-sync` (pure three-way merge) · `state-merge` · `remote-sync` · `sync-signals` |
+| `ui/`               | `components`, `icons`, `shell`, `desk-shell` (tablet / computer chrome), `reorder`, `multi-select`, `item-menu`, `radial-geometry` + `radial-menu`, `media-viewer`                          |
+| `features/account`  | sign-in screen, profile, Google Drive screen                                                                                                                                              |
+| `features/admin`    | admin screen, Excel export, usage activity counter                                                                                                                                        |
+| `features/camera`   | the camera: stream, shutter, destination, save queue, Quick Capture, Capture en direct                                                                                                    |
+| `features/courses`  | courses, sections, séances, the Galerie, the course navigator (tablet / computer), first-run setup                                                                                        |
+| `features/files`    | Fichiers: PDFs and images of the device                                                                                                                                                   |
+| `features/home`     | Accueil and Lecture rapide                                                                                                                                                                |
+| `features/inbox`    | Captures à trier: the inbox, splitting and organising a batch                                                                                                                             |
+| `features/library`  | the academic library and publishing                                                                                                                                                       |
+| `features/notes`    | Notes page (tablet / computer), the session notebook (Carnet), typed notes                                                                                                                |
+| `features/pdf`      | PDF builder, PDF viewer, PDF export, ink on PDFs                                                                                                                                          |
+| `features/people`   | People, Holioo Shares, sharing, QR codes                                                                                                                                                  |
+| `features/photos`   | photo viewer and editor, image pipeline, previews, image worker                                                                                                                           |
+| `features/scanner`  | document scanner (OpenCV in a worker), scan review, OCR                                                                                                                                   |
+
+## How the pieces load
+
+There is no bundler and no module system: `index.html` loads every file as a **classic script** (`<script defer>`), in
+the order written there, and all of them share one global scope. A top-level `function`, `const` or `let` in one file is
+visible to every file loaded after it, and to any code that runs later.
+
+- **Load order is dependency order.** index.html lists: foundations (`data`, `sync`, `core`), shared UI, feature logic,
+  then the screens, and `core/app.js` last (it starts the app). A file may use at load time only what was loaded
+  before it; inside a function it may use anything, because functions run after everything has loaded.
+- **A big file is several scripts.** `core/`, `sync/drive-*.js`, `features/notes/canvas-*.js`, … are one subject cut into
+  parts that load next to each other, in order. The Drive layer (`sync/drive-*.js`) shares names through a private
+  namespace that is removed once `window.HoliooDrive` is published.
+- **Pure logic is kept apart from the DOM** (`canvas-doc`, `cloud-sync`, `state-merge`, `radial-geometry`,
+  `scan-core`, `navigator-logic`, …) so it can be tested in Node without a browser.
+- **Workers** (`features/photos/image-worker.js`, `features/scanner/scanner-worker.js`) load the pure scripts they
+  need with `importScripts`, relative to their own folder.
+
+## Data flow
+
+1. **State** — `core/state.js` keeps the course structure, settings and profile in `state`, saved to `localStorage`
+   (per account) by `saveState()`. Binary data (photos, PDFs, notebooks, notes) is in IndexedDB through `data/db.js`.
+2. **Screens** — `navigate(view)` → `render()` (`core/app.js`) → the screen's `render…()` rebuilds the DOM from `state`.
+3. **Sync** — `runDriveSync()` (`core/sync-runner.js`) calls `HoliooDrive.syncAll` (`sync/drive-cloud.js`): pull and merge
+   what other devices of the account wrote, upload what only this device has, write the merged snapshot back.
+   Supabase only carries small signals (ids) so other open devices look at Drive at once (`sync/sync-signals.js`).
+4. **Accounts** — local data is kept per Google account on the device; test mode ("Essayer sans compte") never
+   touches the server.
+
+## Where to find things
+
+| You want to change…                    | Start in                                                                                  |
+| -------------------------------------- | ----------------------------------------------------------------------------------------- |
+| a screen                               | `features/<feature>/<Name>Page.js` (the list of screens is below)                         |
+| the camera                             | `features/camera/` (`CapturePage.js` is the screen; `camera-stream.js`, `capture-shutter.js`) |
+| the Notes page                         | `features/notes/NotesCanvasPage.js`, then `canvas-*.js`; the data model is `canvas-doc.js`  |
+| what is saved, and how                 | `core/state.js`, `data/db.js`                                                             |
+| Google Drive                           | `sync/drive-*.js`                                                                         |
+| how two devices are merged             | `sync/cloud-sync.js`, `sync/state-merge.js`                                               |
+| a colour, a spacing, a component style | `styles/base.css` (tokens + shared components); tablet / computer rules are in `styles/desk.css` |
+| the offline cache or an app update     | `pwa/release.json`, `tools/release.mjs`, `sw.js`, `core/app.js` (`reloadIfSafe`)          |
+
+## How to add or change a feature
+
+1. Create `features/<name>/` with a `<Name>Page.js` that defines `render<Name>()`, plus the logic files it needs.
+2. Add the `<script>` tags to `index.html`: logic in the "feature logic" block, the screen in the "screens" block.
+3. Register the screen in `VIEWS` in `core/app.js`; open it with `navigate('<view>')`.
+4. Styles: put them in the right `styles/*.css`. Rules for tablets and computers go in `styles/desk.css` (and the desk
+   part of `epure-2.css`) under `@media (min-width:768px)` only — `smoke-test.mjs` checks it.
+5. Run `npm run release` so the new files are listed in the offline cache (it rewrites `index.html` and `sw.js`).
+6. Add a test in `tests/` (pure logic: load the script with `vm` and `helpers/app-files.mjs`; a screen: boot the app with
+   `helpers/boot-app.mjs`). If a screen changes on purpose, update its snapshot: `UPDATE_SNAPSHOTS=1 npm test`.
+7. `npm run check` must pass; then update this file.
+
+## Release and checks
+
+- **One release version.** `pwa/release.json` holds it. `node tools/release.mjs <new-release>` writes it into
+  `index.html` (the `?v=` of every script and style sheet) and into `sw.js` (`RELEASE`, the cache name `holioo-<release>`
+  and `CORE`, the list of cached files read from `index.html`). A new release means new URLs, so installed apps load
+  the new files, and the previous release's cache is deleted when the new one activates. Bump it with every change that
+  reaches installed apps. `npm run release:check` (run by CI) fails when a file disagrees.
+- **`npm run check`** runs ESLint (plain browser scripts, with the cross-file globals collected by
+  `tools/script-globals.mjs`), Prettier on the tooling files (the app's own compact source is left as it is), the
+  release check, a syntax check of every script, `smoke-test.mjs` and the whole test suite.
+- **Tests** (`node --test`, concurrency 4): unit tests of the logic, two-device sync against a simulated Drive, and
+  _characterization tests_ that boot the real app in jsdom and compare the markup of every screen with
+  `tests/__snapshots__/screens.json` — a refactor that moves or splits files must leave them untouched.
+- **CI** (`.github/workflows/deploy.yml`): the checks above, the build, `tools/verify-deploy.mjs dist/app` (the
+  published files are exactly the files of `pwa/`, no test among them), then after publishing the same check against
+  the live site.
+
+## Screens
+
+Every visible app screen has its own JavaScript file, in the folder of its feature.
 
 Examples:
 - Home → `features/home/HomePage.js`
@@ -26,7 +135,7 @@ If only one screen changes, edit that page file first. Do not rewrite unrelated 
 
 ## Tablet & computer layout (window ≥ 768 px)
 
-Phones (< 768 px, including the 720–767 px left rail) are never touched: `ui/desk-shell.js` builds the desk chrome only when `matchMedia('(min-width:768px)')` matches and removes it below; every desk style is in the `TABLET & COMPUTER` block at the end of `styles.css`, scoped to `.desk` (checked by `smoke-test.mjs`).
+Phones (< 768 px, including the 720–767 px left rail) are never touched: `ui/desk-shell.js` builds the desk chrome only when `matchMedia('(min-width:768px)')` matches and removes it below; every desk style is in the `TABLET & COMPUTER` block at the end of `styles/*.css`, scoped to `.desk` (checked by `smoke-test.mjs`).
 - Top toolbar (`ui/desk-shell.js`): sidebar button (hides / shows the course navigator, remembered in `state.settings.deskSidebar`; hidden by default in a window under 1000 px), logo (Accueil), Galerie, Caméra, Notes, PDF, Drive sync (one tap syncs now; opens the Drive screen when not connected), spacer, Réglages, profile. The active screen is highlighted (`DESK_TAB_OF`). In the spacer, the Notes page puts undo / redo and "Enregistrement… / Enregistré" (`canvasTopBarHtml`). PDF is contextual: on Notes it exports the page, elsewhere it opens the PDF builder on what the navigator has selected (a séance, else the latest séance with photos of the selected type or course). Réglages is a small menu: automatic sync switch + the screens the toolbar has no button for (Bibliothèque, Fichiers, Captures à trier, Capture en direct, Google Drive). Page headers there hide their own inbox / avatar buttons (and the logo-only header of Accueil).
 - **Course navigator** (`features/courses/course-navigator.js`, pure logic `features/courses/navigator-logic.js`, tests `tests/navigator.test.mjs`): ONE tree, docked in the 264 px sidebar of every desk screen — Galerie, Notes, Séance, PDF builder, Accueil, Fichiers … — it replaces the old course list, the course → section → séance tree, the CM / TD / TP / Tous pills, the course page, the type page and the Notes séance selector (the phone keeps `CoursesPage` / `CourseDetailPage` / `SectionPage`; on a tablet / computer `core/app.js` redirects those views to the Galerie, `DESK_REDIRECT`).
   - Content: search (filters courses by name) · the courses, each with its colour dot · under an open course its types (every section: CM, TD, TP, custom ones) with a "+" (new séance, `navigatorAddSession`) and their séances · "Ajouter un cours" at the bottom (`navigatorAddCourse` = `openNewCourseSheet`). Tap a course: it is selected and unfolded; tap it again (while it is the selection) to fold it, the arrow folds / unfolds without selecting (`navCourseTap`). Tap a type or a séance to select it (highlighted). Long-press / right-click: the same item menu as before (`courseMenu` / `sectionMenu` / `sessionMenu`).
@@ -60,7 +169,7 @@ Shared behavior that several screens use lives in `pwa/features/`:
 - `scan-core.js`, `scan-refine.js`, `scan-detect.js`, `scanner.js`, `../features/scanner/scanner-worker.js` — document scanner in the camera (modes Photo / Document / Tableau / Livre / Carte / QR): live page detection with OpenCV.js in a worker (loaded on first use), smooth tracking, auto-capture, book split, ID card page, QR (jsQR); each page keeps its original + a crop/filter edit rendered by the image worker. How a page is found and made precise:
   - `scan-detect.js` (OpenCV): fast pass (Canny + bright/dark region) → sensitive pass only when nothing convincing (CLAHE + low thresholds: white paper on a white table) → the best 3 outlines are refined and ranked by size × edge support × paper-likeness (median brightness inside, so a sheet on a dark mat wins over the mat) × centrality. Also reports `far` (page too small, never auto-captured), `cutoff` (page runs off the frame), `glare`. With a `prior` outline (previous frame) only that outline is re-fitted while it still sits on real edges (~5 ms instead of ~16 ms; a full search every 6th frame).
   - `scan-refine.js` (plain JS, no OpenCV): sub-pixel edges — each side is searched across its normal at 48 places, one straight line is fitted with RANSAC (a hand, shadow or pen over part of an edge is ignored), corners = intersections of neighbouring lines. Used live, on the full-size still after the shot (`preciseScanEdit` in `scanner.js`: the live outline is kept in `row.scanQuad` and refined before the first render; book halves are cut from the refined whole spread), on gallery imports and in the photo editor's "Détecter les bords".
-  - Overlay (`scanner.js` + `.scan-overlay` in `styles.css`): SVG built once, states by `data-state` (search / tracking / ready / warn / qr) so colours slide; corner brackets, hold-still progress around the outline, framing guide per mode while no page is found, outline flies into the thumbnail after a shot. Hints in `camera-i18n.js` (dark, blur, tilt, far, cut off, glare, "find" tip after 2.5 s without a page).
+  - Overlay (`scanner.js` + `.scan-overlay` in `styles/*.css`): SVG built once, states by `data-state` (search / tracking / ready / warn / qr) so colours slide; corner brackets, hold-still progress around the outline, framing guide per mode while no page is found, outline flies into the thumbnail after a shot. Hints in `camera-i18n.js` (dark, blur, tilt, far, cut off, glare, "find" tip after 2.5 s without a page).
   - Boards in bad light (`normalizedPass` in `scan-detect.js`): when the best outline's `confidence` (`ScanCore.confidence`: edge support, brightness step, size, shape, weakest side, edges that go on past the corners = the outline stopped on a shadow) is under 80 %, the light fall-off is divided out, highlights clipped, an edge-preserving filter applied, local contrast equalised, and the search repeats; everything found competes in the same ranking. Board line candidates are de-duplicated and penalised when a line runs far past its corners (a shadow or ledge, not the board).
   - Confidence and the manual fallback: the camera shows "Fiabilité N %" under 80 %; under 60 % a board is never auto-captured (`judgeFrame` → `lowconf`). The **Coins** button (`Scanner.setManual`) puts four draggable handles on the preview (`ScanCore.mapFromScreen` turns the finger into a frame point); the shutter then crops exactly there (`edit.refined`, no search on the photo).
   - Optional corner model (`scan-ml.js`, TensorFlow.js MobileNetV2): inactive until `pwa/models/board-corners/model.json` is published. Then, in Tableau mode, it proposes the four corners every few frames; they enter `scanDetect` as ONE candidate (`hint`), refined on real edges and dropped when the edges are not there, so a wrong guess cannot hurt and OpenCV stays the fallback. Training, labelling and measuring: `tools/board-corners/` (`eval-synthetic.mjs`, `eval.html`, `train.py`). No trained model is shipped.
@@ -77,23 +186,23 @@ Shared behavior that several screens use lives in `pwa/features/`:
 ## Services and app shell
 
 - `data/db.js` — IndexedDB local-first binary storage
-- `cloud-sync.js` + `sync/drive.js` (`cloudPull` / `cloudPush`) — the same account sees the same files on every device. Drive is no longer a one-way backup: `Holioo/holioo-sync.json` holds the shared part of the state (courses, sections, séances, Captures, PDFs, favourites, timetable) and where every photo / PDF is in Drive. Every `syncAll`: read it (only when its `modifiedTime` changed), merge it into the state IN PLACE with a three-way merge against `state.cloud.base` (the snapshot of the last sync: added/removed here vs there, more recent change wins for fields, children merged one by one; something is removed only when the other device removed it and nothing new was put into it here; empty sample courses are not duplicated), keep a placeholder row (`placeholder: true`, with its `driveFileId`) for every photo / PDF to fetch and fetch them (3 at a time, retried next sync: `state.cloud.pending`), upload what only this device has, then write the merged snapshot back (skipped when the account already has exactly that). `state.lastModified` (stamped by `saveState` only when the shared part changes; the sync's own saves are `saveState.quiet`) decides conflicts. A pull refreshes the screen only on safe views. Triggers: start, every change, back on screen (at most once a minute). Not shared yet: handwriting (Carnet, still a Drive copy only), edits made to a photo after it was first synced (the other device keeps the first version), OCR text (each device reads its own).
-- `sync/drive.js` — per-user Google Drive sync: photos and PDFs one file each, plus documents of several files given by the app (`documents` in `syncAll` / `pendingCount`): the session notebooks (`notebookDriveDocuments` in `features/notes/notebook-ink.js`) go to the session folder as one image per written page (`Carnet-01.jpg`…) and `Carnet.json` (the strokes). What was sent is kept in IndexedDB `kv` `drive:ink:<session id>`; a page is replaced in place only when what it shows changed, moved when a name changes, sent to the Drive trash when it is gone. Leaving the session screen or the app (`flushNotebook`) saves the last strokes and asks for a sync. Tests: `tests/drive-sync.test.mjs`
+- `cloud-sync.js` + `sync/drive-cloud.js` (`cloudPull` / `cloudPush`) — the same account sees the same files on every device. Drive is no longer a one-way backup: `Holioo/holioo-sync.json` holds the shared part of the state (courses, sections, séances, Captures, PDFs, favourites, timetable) and where every photo / PDF is in Drive. Every `syncAll`: read it (only when its `modifiedTime` changed), merge it into the state IN PLACE with a three-way merge against `state.cloud.base` (the snapshot of the last sync: added/removed here vs there, more recent change wins for fields, children merged one by one; something is removed only when the other device removed it and nothing new was put into it here; empty sample courses are not duplicated), keep a placeholder row (`placeholder: true`, with its `driveFileId`) for every photo / PDF to fetch and fetch them (3 at a time, retried next sync: `state.cloud.pending`), upload what only this device has, then write the merged snapshot back (skipped when the account already has exactly that). `state.lastModified` (stamped by `saveState` only when the shared part changes; the sync's own saves are `saveState.quiet`) decides conflicts. A pull refreshes the screen only on safe views. Triggers: start, every change, back on screen (at most once a minute). Not shared yet: handwriting (Carnet, still a Drive copy only), edits made to a photo after it was first synced (the other device keeps the first version), OCR text (each device reads its own).
+- `sync/drive-api.js`, `drive-items.js`, `drive-cloud.js` — per-user Google Drive sync: photos and PDFs one file each, plus documents of several files given by the app (`documents` in `syncAll` / `pendingCount`): the session notebooks (`notebookDriveDocuments` in `features/notes/notebook-ink.js`) go to the session folder as one image per written page (`Carnet-01.jpg`…) and `Carnet.json` (the strokes). What was sent is kept in IndexedDB `kv` `drive:ink:<session id>`; a page is replaced in place only when what it shows changed, moved when a name changes, sent to the Drive trash when it is gone. Leaving the session screen or the app (`flushNotebook`) saves the last strokes and asks for a sync. Tests: `tests/drive-sync.test.mjs`
 - Same account, same data on every device (`sync/state-merge.js`, `sync/remote-sync.js`, `sync/sync-signals.js`):
   - **Drive holds the content.** The course structure (courses → sections → séances → photo ids, Captures batches) goes to the user's Drive as `Holioo/.holioo/state.json`, with a photo id → Drive file id map. A photo made on another device is downloaded from Drive the first time it is shown (`ensurePhotoLocal`, called by `photoThumbUrl`) and stored as already synced.
   - **Supabase only signals.** Table `sync_signals` (RLS: own rows only, kept one day) + Realtime: `{device_id, kind: state|photo|note, ref_id, session_id, drive_file_id, rev}`, ids only, never names, text or images. Presence on the account's channel says which devices are open (Live Capture).
   - **Stamps.** `saveState()` compares with the last save (`syncStamp`): changed courses / sections / séances / batches get `updatedAt`, the order of courses and batches `state.sync.coursesAt / inboxAt`, removed ids a tombstone in `state.sync.deleted` (90 days), an id brought back by Annuler `state.sync.revived` (beats an older tombstone everywhere). `saveState({remote:true})` saves a merge without stamping it.
   - **Merge** (`syncMerge`, tests `tests/state-merge.test.mjs`): by id, newer own fields win, a moved child goes where the newer parent put it, children only one side has are kept, tombstones win. On a device's first merge, untouched starter courses the account already has by name are dropped.
   - **Order** (`runDriveSync`): read + merge `state.json` → upload photos / PDFs / notebooks → write `state.json` if this device has something new → signal. A remote change is applied to `state` only at the start of `render()` (`applyPendingRemote`), and waits while the camera, an editor, a sheet or a text field is in use, so a screen never edits objects the merge replaced. Photos deleted on another device are removed here too (Drive keeps its copy); `recoverOrphanPhotos` ignores tombstoned ids.
-  - **Drive token.** `sync/drive.js` keeps the short-lived access token in memory until a minute before it expires and asks for a new one once after a 401 (`accessToken`, `context`); the refresh token stays server-side.
-- `core/core.js` — shared state, Supabase bootstrap, navigation helpers, sync queue
+  - **Drive token.** `sync/drive-api.js` keeps the short-lived access token in memory until a minute before it expires and asks for a new one once after a 401 (`accessToken`, `context`); the refresh token stays server-side.
+- `core/` — shared variables, saved state, navigation, Google sign-in and profile, the sync queue (see the folder map)
 - `core/app.js` — route dispatcher and lifecycle listeners only
-- `styles.css` — shared visual tokens and shared component styling
+- `styles/` — the style sheet cut by subject (tokens and shared components in `base.css`), linked in the order of `index.html`
 - `sw.js` — offline cache: versioned app files cache-first, page network-first (3.5 s timeout), CDN libraries/fonts in a cache kept across releases; never reloads open windows (app.js `reloadIfSafe` does, when it can't interrupt a capture)
 - `smoke-test.mjs` — critical flow checks
 - `tests/` — unit tests (`node --test pwa/tests`, needs `npm ci` for OpenCV.js / pdf-lib / jsQR test copies), run in CI on every pull request; not published; `tests/helpers/scenes.mjs` draws one test photo per scan mode
 
-Release: bump the `?v=` value everywhere in `index.html`, `sw.js` (`CORE` + `VERSION`) and `smoke-test.mjs` together.
+Release: `npm run release` (one version, see "Release and checks" at the top).
 
 ## Future change rule
 

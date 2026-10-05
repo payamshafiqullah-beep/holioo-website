@@ -32,7 +32,8 @@ const drive=['./sync/drive-api.js','./sync/drive-items.js','./sync/drive-cloud.j
 const html=read('./index.html');
 const sw=read('./sw.js');
 const manifest=JSON.parse(read('./manifest.webmanifest'));
-if(!html.includes('20261004-epure-v42'))throw new Error('Asset cache-bust version missing');
+const release=JSON.parse(read('./release.json')).release;   // the one release version (tools/release.mjs writes it into index.html and sw.js)
+if(!html.includes(`?v=${release}`)||!sw.includes(`const RELEASE='${release}'`))throw new Error('Asset cache-bust version missing');
 
 const required=[
   'Diviser le lot','Organiser les photos','Captures à trier','Section personnalisée','Nouvelle séance',

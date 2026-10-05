@@ -35,6 +35,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Lint and formatting
+        run: |
+          npm run lint
+          npm run format:check
+
+      - name: One release version (index.html and sw.js agree with pwa/release.json)
+        run: node tools/release.mjs --check
+
       - name: Verify Holioo PWA JavaScript
         run: |
           node tools/check-syntax.mjs
@@ -50,6 +58,9 @@ jobs:
           cp -R pwa/. dist/app/
           # Checks and tests are not part of the published app.
           rm -rf dist/app/smoke-test.mjs dist/app/tests
+
+      - name: Published app files are exactly the files of pwa/
+        run: node tools/verify-deploy.mjs dist/app
 
       - name: Configure Pages
         if: github.ref == 'refs/heads/main'
@@ -80,6 +91,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
       - name: Verify deployed Holioo app
         run: |
           set -e
@@ -90,9 +106,9 @@ jobs:
           curl -fsSL "${ROOT}conditions.html" | grep -q 'Conditions d'
           URL="${ROOT}app/"
           # The exact release that was just built must be the one served (the CDN can take a few minutes).
-          RELEASE=$(grep -o 'core.js?v=[^"]*' pwa/index.html | head -1 | cut -d= -f2)
-          SW_VERSION=$(grep -o "const VERSION='[^']*'" pwa/sw.js)
-          echo "Expecting release $RELEASE ($SW_VERSION)"
+          RELEASE=$(node -p "require('./pwa/release.json').release")
+          SW_VERSION="const RELEASE='$RELEASE'"
+          echo "Expecting release $RELEASE"
           for i in $(seq 1 20); do
             if curl -fsSL -H 'Cache-Control: no-cache' "$URL?check=$i" -o /tmp/holioo.html && grep -q "$RELEASE" /tmp/holioo.html; then break; fi
             sleep 15
@@ -106,6 +122,9 @@ jobs:
           curl -fsSL "${URL}manifest.webmanifest" | grep -q '"display": "standalone"'
           if curl -fs -o /dev/null "${URL}tests/camera-destination.test.mjs"; then echo "Test files must not be published"; exit 1; fi
           echo "Holioo live PWA verification: PASS ($RELEASE)"
+
+      - name: Deployed app files are exactly the files of pwa/
+        run: node tools/verify-deploy.mjs https://www.holioo.fr/app/
 
       - name: Report Google Drive OAuth readiness
         run: |

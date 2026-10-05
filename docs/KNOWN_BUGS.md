@@ -40,19 +40,19 @@ The files were moved and split by the refactor but never edited, so the line num
   server keeps the real ID (a trigger protects it) but the device shows a wrong one until the next bootstrap.
 - Fix: create a profile only when `!error && !profile`, and check the insert result.
 
-### 5. The service worker cache name is not tied to the release
+### 5. The service worker's `install` can store a stale page shell (the cache name part is resolved)
 
-- `pwa/sw.js:9` (`VERSION`), `:26-32` (`activate`), `:18` (`install`).
-- `VERSION` (`holioo-epure-v23`) is a separate counter from the `?v=` token of the files, and has gone backwards in a
-  merge before. `activate` only deletes caches whose name differs from `VERSION`, so the old `?v=` files of every
-  release stay in the same cache forever. `install` fetches `./` and `./index.html` through the HTTP cache, so it can
-  store a stale page shell.
-- Fix: derive the cache name from the release token (done by the release stamp of phase 5) and fetch the shell with
-  `{cache:'reload'}`.
+- `pwa/sw.js` (`install`, `activate`).
+- Before phase 5 the cache name (`holioo-epure-v23`) was a separate counter from the `?v=` token of the files, so old
+  releases' files stayed in the same cache forever. **Resolved** by the release stamp: the cache name is now
+  `holioo-<release>` (`tools/release.mjs`), a new release gets its own cache and the previous one is deleted when
+  it activates.
+- Still open: `install` fetches `./` and `./index.html` through the HTTP cache, so it can store a stale page shell.
+  Fix: fetch them with `{cache:'reload'}`.
 
 ### 6. Manifest icons are not precached
 
-- `pwa/sw.js:11` (`CORE`): `icon-192.png` and `icon-512.png`, used by `manifest.webmanifest`, are missing from the
+- `pwa/sw.js` (`CORE`, written by `tools/release.mjs`): `icon-192.png` and `icon-512.png`, used by `manifest.webmanifest`, are missing from the
   offline cache. Every other file is cached.
 
 ### 7. An unknown manifest version is ignored on every sync

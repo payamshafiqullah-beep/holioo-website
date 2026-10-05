@@ -5,6 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import { driveSource } from './helpers/app-files.mjs';
 import {fakeDrive,fakeDb} from './helpers/fake-drive.mjs';
 
 const src=p=>fs.readFileSync(new URL(p,import.meta.url),'utf8');
@@ -18,7 +19,7 @@ function device(drive){
   const ctx=vm.createContext({window,fetch:drive.fetch,Headers,Blob,Response,TextEncoder,URL,URLSearchParams,console,crypto,structuredClone,
     navigator:{onLine:true},setTimeout,clearTimeout,DB:db,sbStub,applied,
     localStorage:{getItem:k=>storage.has(k)?storage.get(k):null,setItem:(k,v)=>storage.set(k,String(v)),removeItem:k=>storage.delete(k)}});
-  vm.runInContext(src('../sync/drive.js'),ctx);
+  vm.runInContext(driveSource(),ctx);
   vm.runInContext(src('../sync/state-merge.js'),ctx);
   vm.runInContext(`
     const Drive=window.HoliooDrive;

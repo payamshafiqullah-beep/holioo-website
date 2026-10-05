@@ -4,8 +4,7 @@ The `refactor-structure` work changes **no behaviour**, so every suspected bug f
 instead of being fixed. Each entry: where, what breaks, why, a suggested fix, and whether it was **confirmed** (read
 in the code or reported by a tool) or only **suspected** (needs a device or a second device to reproduce).
 
-Line numbers are those of the code at the start of the refactor (`origin/main` at `6c890da`); after the file moves of
-phases 3 and 4 use the function names to find them again.
+The files were moved and split by the refactor but never edited, so the line numbers below are those of the current files.
 
 ## Confirmed
 
@@ -14,7 +13,7 @@ phases 3 and 4 use the function names to find them again.
 - `pwa/features/account/SyncPage.js:30` (`()=>disconnectDrive()`); the button is created at `SyncPage.js:22`.
 - No file defines `disconnectDrive`. Tapping the button throws `ReferenceError` and nothing happens. ESLint reports
   it as `no-undef`.
-- Fix: call `Drive.disconnect(sb)` (it exists in `sync/drive.js`), refresh `driveStatus`, then re-render.
+- Fix: call `Drive.disconnect(sb)` (it exists in `sync/drive-api.js`), refresh `driveStatus`, then re-render.
 
 ### 2. Duplicate key `ready` in the camera texts
 
@@ -25,7 +24,7 @@ phases 3 and 4 use the function names to find them again.
 
 ### 3. PDF viewer leaks listeners on every open and never destroys its ink layer
 
-- `pwa/features/pdf/pdf-ink.js:163` and `pwa/features/pdf/PdfViewerPage.js:76-78`, `:90`.
+- `pwa/features/pdf/pdf-ink.js:163` and `pwa/features/pdf/PdfViewerPage.js:76-78`, `:88`.
 - `leave()` flushes the ink but never calls `ink.destroy()`; `destroy()` runs only when the page is already gone
   before the ink finished loading. Each opening of a PDF leaves two capture-phase `document` listeners
   (`touchend`, `touchcancel`) alive, holding the detached viewer DOM. `leave()` also runs only from the Back button:
@@ -35,7 +34,7 @@ phases 3 and 4 use the function names to find them again.
 
 ### 4. A transient profile-query error is treated as "no profile"
 
-- `pwa/core.js:154-158` (`bootstrapCloud`).
+- `pwa/core/auth.js:35-43` (`bootstrapCloud`).
 - Only auth-looking errors are handled. Any other `error` (offline blip, 5xx) leaves `profile` as `null`, so a new
   `holiooId` is generated and saved locally, and the `insert` that follows fails on the existing row, unchecked. The
   server keeps the real ID (a trigger protects it) but the device shows a wrong one until the next bootstrap.
@@ -58,7 +57,7 @@ phases 3 and 4 use the function names to find them again.
 
 ### 7. An unknown manifest version is ignored on every sync
 
-- `pwa/drive.js:327`: `if(remote&&remote.v===1)` skips any other version without recording it, so a device running an
+- `pwa/sync/drive-cloud.js:65`: `if(remote&&remote.v===1)` skips any other version without recording it, so a device running an
   older app downloads the manifest on every sync and never merges it, with no message.
 - Fix: store the metadata anyway and tell the user to update the app.
 
@@ -66,7 +65,7 @@ phases 3 and 4 use the function names to find them again.
 
 ### 8. Two cross-device merge systems run without mutual exclusion
 
-- `pwa/core.js:182` (`runDriveSync`) → `pwa/drive.js` (`syncAll`, `cloudPull`, `cloudPush`, `CloudSync.merge`) and
+- `pwa/core/sync-runner.js:18` (`runDriveSync`) → `pwa/sync/drive-cloud.js` (`syncAll`, `cloudPull`, `cloudPush`, `CloudSync.merge`) and
   `pwa/sync/remote-sync.js` (`syncStructure`, `syncMerge`).
 - Both merge `state.courses` / `state.inbox`. `remoteSyncChain` serialises only the second one. `applyPendingRemote`
   replaces `state.courses` and `state.inbox` with new objects while `syncAll` still holds `photoContexts(state)` of the
@@ -76,7 +75,7 @@ phases 3 and 4 use the function names to find them again.
 
 ### 9. A deletion made on one device can come back
 
-- `pwa/drive.js:349-362` (`cloudPush`).
+- `pwa/sync/drive-cloud.js:87-100` (`cloudPush`).
 - The "has someone written the manifest since I read it?" check and the write are two steps; after `round>=2` it
   overwrites anyway. Device B deletes X and pushes; device A (which has not pulled) pushes with X and overwrites B's
   manifest; B's next pull sees X as new on the other side and restores it.
@@ -84,7 +83,7 @@ phases 3 and 4 use the function names to find them again.
 
 ### 10. Camera race after `video.play()`
 
-- `pwa/features/camera/capture-actions.js:316-321`.
+- `pwa/features/camera/camera-stream.js:119-124`.
 - `camStartToken` is checked before `await video.play()` but not after. If the user leaves, flips the camera or the
   app is backgrounded meanwhile, `cameraStream` / `cameraTrack` are set again after `stopCamera()` ran. The stream is
   already stopped, so its `ended` event never fires: a black preview with no error panel.
@@ -99,7 +98,7 @@ phases 3 and 4 use the function names to find them again.
 
 ### 12. `fetchMissing` workers keep running after a fatal error
 
-- `pwa/drive.js:290-318`.
+- `pwa/sync/drive-cloud.js:28-56` (`fetchMissing`).
 - A fatal error in one of the three workers rejects `Promise.all`; the others keep changing `cs.pending` after the
   caller moved on, and the final `save?.()` never runs.
 - Fix: `allSettled`, or a shared abort flag.
@@ -113,13 +112,13 @@ phases 3 and 4 use the function names to find them again.
 
 ## Minor
 
-- `pwa/core.js:162`: `libraryChannel` is never removed on sign-out (a small leak).
-- `pwa/core.js:48-52`, `:90`: unreadable local state is backed up under a `backup-<time>` key, then replaced by an
+- `pwa/core/auth.js:47`: `libraryChannel` is never removed on sign-out (a small leak).
+- `pwa/core/state.js:24-28`, `:66`: unreadable local state is backed up under a `backup-<time>` key, then replaced by an
   empty state with no message; nothing in the UI points to the backup.
 
 ## Lint notes
 
 `npm run lint` reports a few `no-unused-vars` warnings (for example `pwa/ui/media-viewer.js:201`,
 `pwa/features/camera/camera-picker.js:83`, `pwa/features/pdf/pdf-actions.js:90`) and `no-useless-escape` /
-`no-control-regex` warnings in `pwa/features/people/people.js:113` and `pwa/features/admin/xlsx-export.js`. None changes
+`no-control-regex` warnings in `pwa/features/people/people-shares.js:4` and `pwa/features/admin/xlsx-export.js`. None changes
 behaviour; they are left as they are.

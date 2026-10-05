@@ -7,8 +7,9 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const read=p=>fs.readFileSync(new URL(p,import.meta.url),'utf8');
-const load=p=>{const ctx={module:{exports:{}}};vm.runInNewContext(read(p),ctx);return ctx.module.exports};
-const R=load('../ui/radial-menu.js');
+const captureParts=['capture-destination','capture-status','camera-stream','camera-scan-modes','capture-shutter','capture-batch'].map(n=>`../features/camera/${n}.js`);
+const load=(...files)=>{const ctx=vm.createContext({module:{exports:{}}});for(const p of files)vm.runInContext(read(p),ctx);return ctx.module.exports};
+const R=load('../ui/radial-geometry.js','../ui/radial-menu.js');
 const D=load('../features/camera/camera-destination.js');
 
 const screens={
@@ -189,7 +190,7 @@ function cameraSandbox(){
   const ctx={state,currentCourseId:null,currentSectionId:null,currentSessionId:null,byId:()=>null,saveState(){},window:{addEventListener(){}},clearTimeout,setTimeout,DB:{get:async()=>null,put:async()=>{}},now:()=>new Date().toISOString(),uid:()=>'new-session'};
   ctx.findSessionContext=id=>{for(const course of state.courses)for(const section of course.sections){const session=section.sessions.find(s=>s.id===id);if(session)return{course,section,session}}};
   vm.createContext(ctx);ctx.Scanner={subscribe(){},stop(){}};
-  for(const f of ['../features/camera/camera-destination.js','../features/camera/camera-queue.js','../features/camera/capture-actions.js'])vm.runInContext(read(f),ctx);
+  for(const f of ['../features/camera/camera-destination.js','../features/camera/camera-queue.js',...captureParts])vm.runInContext(read(f),ctx);
   vm.runInContext('setCameraThumb=()=>{}; renderCameraChip=()=>{};',ctx);
   return{ctx,state,run:code=>vm.runInContext(code,ctx)};
 }

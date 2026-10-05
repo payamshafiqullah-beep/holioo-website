@@ -28,3 +28,6 @@ export function appFile(name) {
 }
 
 export const readAppFile = (name) => fs.readFileSync(appFile(name), 'utf8');
+
+/** The Drive layer is several scripts (sync/drive-*.js) that load one after the other: their text, in load order. */
+export const driveSource = () => ['drive-api.js', 'drive-items.js', 'drive-cloud.js'].map(readAppFile).join('');

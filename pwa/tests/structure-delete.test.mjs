@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 const read=p=>fs.readFileSync(new URL(p,import.meta.url),'utf8');
 const coursesCode=read('../features/courses/CoursesPage.js');
-const coreLine=read('../core/core.js').split(/\r?\n/).find(l=>l.startsWith('function ensureDefaultSections'));
+const coreLine=read('../core/state.js').split(/\r?\n/).find(l=>l.startsWith('function ensureDefaultSections'));
 
 const session=(id,photoIds)=>({id,title:`Séance ${id}`,photoIds,createdAt:'2026-10-01'});
 function setup(){

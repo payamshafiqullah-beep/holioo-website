@@ -5,9 +5,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import { driveSource } from './helpers/app-files.mjs';
 import {fakeDrive,fakeDb} from './helpers/fake-drive.mjs';
 
-const code=fs.readFileSync(new URL('../sync/drive.js',import.meta.url),'utf8');
+const code=driveSource();
 
 function load(drive){
   const storage=new Map();

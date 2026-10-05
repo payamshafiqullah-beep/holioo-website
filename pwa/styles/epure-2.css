@@ -1,0 +1,168 @@
+/* =====================================================================
+   ÉPURÉ (2/2) — the desk layout (window ≥ 768px): toolbar 40px, navigator 200px, breadcrumb, Galerie, Notes.
+   Same palette, sizes and phone / landscape-phone exclusions as part 1/2 (before the desk section above),
+   which sets the tokens used here. Sits after the desk and dark-theme rules so it overrides them at equal
+   specificity; their dark-theme rules are more specific and keep winning in the dark theme.
+   ===================================================================== */
+@media (min-width:768px) and (min-height:521px),(min-width:960px){
+  .desk{--desk-bar-h:40px;--desk-side-w:var(--rail-w);--desk-crumb-h:0px}
+  .desk.desk-crumb-on{--desk-crumb-h:32px}
+  .desk:not(.hidden-chrome) .main{padding:var(--s6) var(--s6) calc(var(--s8) + env(safe-area-inset-bottom))}
+
+  /* Toolbar: 40px, 28px buttons, 16px icons */
+  .desk-toolbar{gap:var(--s2);padding:env(safe-area-inset-top) var(--s3) 0;background:var(--bg);-webkit-backdrop-filter:none;backdrop-filter:none}
+  .desk-toolbar-start,.desk-toolbar-end,.desk-toolbar-nav{gap:var(--s1)}
+  .desk-wordmark{margin-left:var(--s1);font-size:16px}
+  .desk-logo{height:28px;padding:0 var(--s2);border-radius:6px}
+  .desk-logo:hover,.desk-tool:hover,.desk-tab:hover{background:var(--hover)}
+  .desk-tool{width:28px;height:28px;border-radius:6px}
+  .desk-tool[aria-expanded="true"],.desk-tool.open{background:var(--accent-soft)}
+  /* 6px each side: an icon-only tab (narrow window) is exactly 28px wide; with a label it gets 2px more on the right. */
+  .desk-tab,.desk-tab.desk-capture,.desk-tab.desk-capture:hover{gap:var(--s2);height:28px;padding:0 6px;border-radius:6px;font-size:13px}
+  .desk-tab span{padding-right:2px}
+  .desk-tab.active{background:var(--accent-soft)}
+  .desk-tab.desk-capture,.desk-tab.desk-capture:hover{margin:0 var(--s1);font-weight:600;background:var(--accent);box-shadow:none}
+  .desk-tab.desk-capture:hover{opacity:.9}
+  .desk-tab .sync-dot{width:8px;height:8px}
+  .desk-toolbar .avatar-btn{margin-left:0}
+  .desk-count{min-width:20px;height:18px;padding:0 var(--s2);border-radius:6px;background:var(--line);font-size:12px;line-height:18px}
+  .cv-status{height:24px;padding:0 var(--s3);border-radius:6px;font-size:12px}
+
+  /* Course navigator (left): 200px, rows 28px */
+  .cnav-head{padding:var(--s3) var(--s3) var(--s2)}
+  .cnav-search{gap:var(--s2);height:28px;padding:0 var(--s3);border:1px solid var(--line);border-radius:6px}
+  .cnav-search:focus-within{border-color:var(--accent)}
+  .cnav-search input{font-size:13px}
+  .cnav-tree{padding:0 var(--s2) var(--s3)}
+  .cnav-types{padding-left:20px;margin:0 0 var(--s1)}
+  .cnav-sessions{padding-left:var(--s3);margin:0 0 2px}
+  .cnav-row{border-radius:6px}
+  .cnav-twisty{width:20px;height:28px;border-radius:6px}
+  .cnav-link{gap:var(--s2);min-height:28px;padding:var(--s1) var(--s3);border-radius:6px;font-size:13px}
+  .cnav-type-row .cnav-link{min-height:24px}
+  .cnav-type-row .cnav-link strong{letter-spacing:.04em}
+  .cnav-link:hover{background:var(--hover)}
+  .cnav-session strong,.cnav-session small{line-height:1.25}
+  .cnav-session{gap:1px}
+  .cnav-add{width:24px;height:24px;margin-right:0;border-radius:6px}
+  .cnav-dot{width:8px;height:8px}
+  .cnav-empty,.cnav-none{padding:var(--s2) var(--s3);font-size:12px}
+  .cnav-foot{padding:var(--s2) var(--s3) calc(var(--s3) + env(safe-area-inset-bottom))}
+  .cnav-new{gap:var(--s2);height:28px;border-radius:6px;font-size:13px}
+  .cnav-twisty:focus-visible,.cnav-link:focus-visible,.cnav-add:focus-visible,.cnav-new:focus-visible,.crumb-link:focus-visible{outline:2px solid rgba(0,122,255,.55);outline-offset:-2px}
+
+  /* Breadcrumb */
+  .desk-crumb{padding:0 var(--s6);background:var(--bg);-webkit-backdrop-filter:none;backdrop-filter:none}
+  .crumb-list{font-size:13px}
+  .crumb-link{padding:var(--s1) var(--s2);border-radius:6px}
+  .crumb-link:hover{background:var(--hover)}
+  .crumb-here span{padding:var(--s1) var(--s2)}
+
+  /* Séance: photos beside their notes */
+  .desk-session-head,.live-head,.gallery-head{gap:var(--s3)}
+  .desk-session-actions{gap:var(--s2)}
+  .desk-action{gap:var(--s2);min-height:28px;padding:0 var(--s4);border-radius:6px;font-size:13px;box-shadow:none}
+  .desk-action:hover{border-color:var(--muted)}
+  #addSessionPhotos.desk-action{background:var(--accent)}
+  .desk-session-body{gap:var(--s4)}
+  .desk-session-note,.desk-note{gap:var(--s1)}
+  .desk-note-label{font-size:12px}
+  .desk-session-note textarea,.desk-note textarea{min-height:72px;padding:var(--s3) var(--s4);border-radius:6px;font-size:13px;line-height:1.5;box-shadow:none}
+  .desk-note textarea{min-height:120px}
+  .desk-session-note textarea:focus,.desk-note textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,122,255,.14)}
+  .desk-rows{gap:var(--s4)}
+  .desk-row{gap:var(--s3)}
+  @container (min-width:620px){
+    .desk-row{gap:var(--s4)}
+    .desk-note{top:calc(var(--desk-top) + var(--desk-crumb-h) + var(--s3))}
+  }
+  .desk-photo{border:1px solid var(--line);border-radius:6px;box-shadow:none}
+  .desk-photo .num{left:6px;bottom:6px;min-width:20px;height:20px;padding:0 var(--s2);border-radius:10px;line-height:20px}
+  .desk-row>.reorder-handle{left:4px;top:4px}
+
+  /* Capture en direct */
+  .desk-live{gap:var(--s2);height:28px;padding:0 var(--s3);border-radius:6px;font-size:13px}
+  .desk-live:hover{background:var(--hover)}
+  .live-status{gap:var(--s2);min-height:24px;padding:0 var(--s3);border-radius:6px;font-size:12px}
+  .live-pulse{width:8px;height:8px}
+  .live-empty{gap:var(--s3);max-width:420px;margin:var(--s6) auto;padding:var(--s6);border:1px solid var(--line);border-radius:6px;box-shadow:none}
+  .live-empty-icon{width:40px;height:40px;border-radius:6px}
+  .live-empty h2{font-size:15px}
+  .live-empty ol{padding-left:var(--s6);font-size:13px;line-height:1.5}
+  .live-new .desk-photo{box-shadow:0 0 0 2px rgba(0,122,255,.5)}
+
+  /* Galerie */
+  .desk:not(.hidden-chrome) .screen.gallery-screen{padding-bottom:56px}
+  .gallery-head{margin-bottom:var(--s3)}
+  .gallery-meta{gap:var(--s2)}
+  .gallery-filter-chip,.gallery-count{height:24px;padding:0 var(--s3);border-radius:6px;font-size:12px}
+  .gallery-grid{grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:var(--s2)}
+  .gallery-tile{border:1px solid var(--line);border-radius:6px;box-shadow:none}
+  .gallery-tile:hover{border-color:var(--accent);box-shadow:none}
+  .gallery-tile-btn:focus-visible{outline:2px solid rgba(0,122,255,.6);border-radius:6px}
+  .gallery-tile-tag{left:4px;bottom:4px;max-width:calc(100% - 8px);padding:2px var(--s2);border-radius:6px;font-size:12px}
+  .gallery-fab{right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));width:28px;height:28px;border-radius:6px;background:var(--accent);box-shadow:var(--shadow-lg)}
+  .gallery-fab:hover{transform:none;box-shadow:var(--shadow-lg);opacity:.9}
+  .gallery-fab:active{transform:none}
+  .gallery-fab:focus-visible{outline:2px solid rgba(0,122,255,.5);outline-offset:2px}
+  .pos-picker{gap:var(--s3);padding:var(--s2) 0}
+  .pos-step{width:28px;height:28px;border-radius:6px;font-size:16px}
+  .pos-picker output{min-width:72px;font-size:13px}
+  .pos-picker output strong{font-size:18px}
+  .pos-quick{gap:var(--s2);margin-bottom:var(--s2)}
+
+  /* Notes: the free page */
+  .canvas-screen{background:var(--line)}
+  .cv-tools{gap:var(--s2);padding:var(--s2) var(--s3)}
+  .cv-sep{height:16px;margin:0 var(--s1)}
+  .cv-btn{width:28px;height:28px;border-radius:6px}
+  .cv-btn:hover{background:var(--hover)}
+  .cv-btn.active{box-shadow:inset 0 0 0 1px var(--accent)}
+  .cv-color{width:20px;height:20px;margin:0 2px;border-width:2px}
+  .cv-bar{padding:2px;border-radius:6px;box-shadow:var(--shadow-lg)}
+  .cv-bar button{width:28px;height:28px;border-radius:6px}
+  .cv-bar button:hover{background:var(--hover)}
+  .cv-tray-panel{border-radius:6px;box-shadow:var(--shadow-lg)}
+  .cv-tray-panel header{padding:var(--s2) var(--s1) var(--s2) var(--s3);font-size:12px}
+  .cv-tray-n{min-width:20px;height:18px;border-radius:6px;background:var(--line);font-size:12px;line-height:18px}
+  .cv-tray-close{width:24px;height:24px;border-radius:6px}
+  .cv-tray-close:hover{background:var(--hover)}
+  .cv-tray-list{gap:var(--s2);padding:0 var(--s2) var(--s2)}
+  .cv-thumb,.cv-ghost{border-radius:6px}
+  .cv-badge.new{height:18px;border-radius:6px;font-size:12px}
+  .cv-badge.check{width:18px;height:18px}
+  .cv-tray-hint,.cv-tray-empty{padding:0 var(--s3) var(--s3);font-size:12px}
+  .cv-tray-fab{gap:var(--s2);height:28px;padding:0 var(--s3);border-radius:6px;font-size:13px;box-shadow:var(--shadow-lg)}
+  .cv-btn:focus-visible,.cv-color:focus-visible,.cv-bar button:focus-visible,.cv-tray-fab:focus-visible,.cv-thumb:focus-visible{outline:2px solid rgba(0,122,255,.55)}
+
+  /* Réglages menu (under the gear) */
+  .desk-menu{min-width:220px;padding:var(--s2);border-radius:6px}
+  .desk-menu-title{padding:var(--s2) var(--s3) var(--s1)}
+  .desk-menu hr{margin:var(--s2) var(--s1)}
+  .desk-menu-row,.desk-menu-item{min-height:28px;padding:0 var(--s3);font-size:13px}
+  .desk-menu-item{gap:var(--s3);border-radius:6px}
+  .desk-menu-item:hover,.desk-menu-item:focus-visible{background:var(--hover)}
+}
+/* Touch screens: the desk's text fields stay 16px so iPad Safari doesn't zoom in on focus. */
+@media (min-width:768px) and (min-height:521px) and (pointer:coarse),(min-width:960px) and (pointer:coarse){
+  .desk .cnav-search input,.desk .desk-session-note textarea,.desk .desk-note textarea{font-size:16px}
+  /* Finger: invisible 40px-tall touch layer around the 28px toolbar / canvas buttons (see part 1/2). */
+  .desk-logo,.desk-tool,.desk-tab,.cv-btn,.cv-bar button,.cv-tray-close,.cnav-add,.cnav-twisty{position:relative}
+  .desk-logo::after,.desk-tool::after,.desk-tab::after,.cv-btn::after,.cv-bar button::after,.cv-tray-close::after,.cnav-add::after,.cnav-twisty::after{content:"";position:absolute;inset:-6px -2px}
+}
+
+/* ⋯ grip: the same blue, smaller, as frosted glass (translucent + blur + hairline border) */
+.reorder-handle .grip,.course-managed .reorder-handle .grip,.pdf-thumb .reorder-handle .grip{width:22px;height:22px;background:rgba(80,107,255,.38);border:1px solid rgba(255,255,255,.5);-webkit-backdrop-filter:blur(8px) saturate(1.6);backdrop-filter:blur(8px) saturate(1.6);box-shadow:0 2px 8px rgba(80,107,255,.25),inset 0 1px 0 rgba(255,255,255,.35)}
+.reorder-handle .grip::before,.reorder-handle .grip::after{width:4px;height:4px;margin-left:-2px}
+.reorder-handle .grip::before{top:calc(50% - 5px)}
+.reorder-handle .grip::after{top:calc(50% + 1px)}
+.reorder-handle,.course-managed .reorder-handle,.pdf-thumb .reorder-handle{color:#fff}
+@media (min-width:768px){.reorder-handle .grip{width:18px;height:18px}.reorder-handle .grip::before,.reorder-handle .grip::after{width:3px;height:3px;margin-left:-1.5px}.reorder-handle .grip::before{top:calc(50% - 4px)}.reorder-handle .grip::after{top:calc(50% + 1px)}}
+/* ⋯ menu actions (Renommer / Déplacer, Supprimer): light frosted glass; the lensed action keeps its colour */
+.radial.item-menu .radial-item.r1:not(.hot):not(.parent){background:rgba(255,255,255,.55);-webkit-backdrop-filter:blur(10px) saturate(1.5);backdrop-filter:blur(10px) saturate(1.5);box-shadow:0 8px 22px rgba(29,33,64,.18),inset 0 0 0 2px var(--c),inset 0 1px 0 rgba(255,255,255,.6)}
+[data-theme="dark"] .radial.item-menu .radial-item.r1:not(.hot):not(.parent){background:rgba(36,39,66,.55)}
+/* ⋯ menu, pressed: the grip turns into the same blue, small and frosted (it was a large solid disc); the action under the finger is tinted glass, not solid */
+.radial.item-menu .radial-center{width:30px;height:30px;margin:-15px 0 0 -15px;background:rgba(80,107,255,.42);border:1px solid rgba(255,255,255,.5);-webkit-backdrop-filter:blur(8px) saturate(1.6);backdrop-filter:blur(8px) saturate(1.6);box-shadow:0 2px 8px rgba(80,107,255,.25),inset 0 1px 0 rgba(255,255,255,.35)}
+.radial.item-menu .radial-center .ico{width:15px;height:15px}
+.radial.item-menu.center-hot .radial-center{background:rgba(29,33,64,.5)}
+.radial.item-menu .radial-item.r1.hot,.radial.item-menu .radial-item.r1.parent{background:color-mix(in srgb,var(--c) 72%,transparent);-webkit-backdrop-filter:blur(10px) saturate(1.6);backdrop-filter:blur(10px) saturate(1.6);box-shadow:0 8px 22px rgba(29,33,64,.2),inset 0 0 0 1.5px rgba(255,255,255,.6),inset 0 1px 0 rgba(255,255,255,.5)}

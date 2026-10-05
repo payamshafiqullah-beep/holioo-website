@@ -16,7 +16,7 @@ test('deleting a populated course preserves unique photos and PDFs, clears stale
  ctx.removeCourse('b');assert.equal(state.courses.length,0);assert.deepEqual(Array.from(state.inbox[2].photoIds),['shared']);
 });
 test('loading a saved empty course list does not recreate defaults',()=>{
- const core=read('../core/core.js');const load=core.slice(core.indexOf('function loadState(){'),core.indexOf('\nlet state=loadState();'));
+ const core=read('../core/state.js');const load=core.slice(core.indexOf('function loadState(){'),core.indexOf('\nlet state=loadState();'));
  const ctx={localStorage:{getItem:()=>JSON.stringify({courses:[],inbox:[],files:[]})},stateKey:()=> 'key',stateOwner:'',STORE_KEY:'key',LEGACY_KEY:'old',defaultState:()=>({profile:{},settings:{},courses:[course('default')]}),ensureDefaultSections:()=>{},console};
  vm.createContext(ctx);vm.runInContext(load,ctx);assert.equal(ctx.loadState().courses.length,0);
 });

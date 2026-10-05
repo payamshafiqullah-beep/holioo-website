@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
+import { readAppFile } from './helpers/app-files.mjs';
 import test from 'node:test';
 
-const source=fs.readFileSync(new URL('../features/notes/notebook-ink.js',import.meta.url),'utf8');
+const source=['notebook-ink','notebook-page','notebook-pointer','notebook-geometry','notebook-canvas','notebook-export'].map(n=>readAppFile(`${n}.js`)).join('');
 const load=()=>Function(
   'DB','state','uid','photoBlob','thumbUrl','Notice','icon','byId','matchMedia','window','document','requestAnimationFrame','HoliooPerfectFreehand',
   `${source}; return {syncNotebookBlocks,snapRulerPoints,eraseNotebookStrokes,visibleInkBlocks,visibleInkStrokes,strokeTouchesPath};`

@@ -11,7 +11,7 @@ const read=p=>fs.readFileSync(new URL(p,import.meta.url),'utf8');
 // Every file runs in ONE context, like the browser's classic scripts (top-level const / function are shared).
 const ctx=vm.createContext({module:{exports:{}},console,Date,Math,Number,Array,Object,Set,Map,JSON,Promise,String,Boolean,parseInt,parseFloat,isFinite});
 const run=p=>vm.runInContext(read(p),ctx,{filename:p});
-for(const f of ['../ui/radial-menu.js','../features/camera/camera-i18n.js','../features/home/reading-logic.js','../ui/icons.js','../features/camera/quick-capture.js','../features/home/quick-reading.js'])run(f);
+for(const f of ['../ui/radial-geometry.js','../ui/radial-menu.js','../features/camera/camera-i18n.js','../features/home/reading-logic.js','../ui/icons.js','../features/camera/quick-capture.js','../features/home/quick-reading.js'])run(f);
 const get=name=>vm.runInContext(name,ctx);
 const R=vm.runInContext('({RADIAL,radialRadius,radialFit,radialChildren,radialHit,radialHitN,radialFree,radialRun,radialMinStep,radialPoint})',ctx);
 const {RADIAL,radialRadius,radialFit,radialChildren,radialHit,radialHitN,radialPoint}=R;

@@ -1,0 +1,43 @@
+/* =====================================================================
+   LECTURE RAPIDE — the paper-page trigger on Accueil and the stacked rings of its radial menu (features/quick-reading.js).
+   Only menus created with `stack` get data-depth / .blurred / .gone: Capture rapide and the item menus never match.
+   ===================================================================== */
+.radial[data-depth] .radial-item{transition:transform .15s var(--ease),opacity .15s var(--ease),filter .15s var(--ease),background .12s,color .12s,box-shadow .12s}
+.radial.open .radial-item.blurred{filter:blur(3px);opacity:.55}
+.radial.open .radial-item.blurred.hot,.radial.open .radial-item.blurred.lensed{filter:none;opacity:1}
+.radial.open .radial-item.gone{opacity:0;pointer-events:none;transform:translate(-50%,-50%) translate(var(--dx),var(--dy)) scale(.6)}
+.radial-dot.has-icon{display:grid;place-items:center;max-width:none;overflow:visible}
+@media (prefers-reduced-motion:reduce){.radial[data-depth] .radial-item{transition:none}}
+
+.qr-row{display:flex;align-items:center;gap:var(--s3);padding:var(--s3) var(--s4);border-radius:18px;background:color-mix(in srgb,var(--lavender-fg) 10%,var(--surface));border:1px solid color-mix(in srgb,var(--lavender-fg) 28%,transparent)}
+.qr-trigger{position:relative;flex:none;display:grid;place-items:center;width:72px;height:72px;border-radius:50%;color:#fff;touch-action:none}
+.qr-trigger:focus-visible{outline:3px solid var(--lavender-fg);outline-offset:2px}
+.qr-core{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:var(--lavender-fg);color:#fff;transition:transform .15s var(--ease)}
+.qr-ring{position:absolute;border-radius:50%;pointer-events:none;border:1.5px solid color-mix(in srgb,var(--lavender-fg) 55%,transparent)}
+.qr-outer{inset:0;border-style:dashed;animation:qr-spin 24s linear infinite}
+.qr-inner{inset:9px;border-style:dotted;animation:qr-spin 18s linear infinite reverse}
+@keyframes qr-spin{to{transform:rotate(360deg)}}
+.qr-trigger.radial-active .qr-core{transform:scale(1.08)}
+.qr-copy{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.qr-copy strong{font-size:17px;color:var(--lavender-fg)}
+.qr-copy small{font-size:13px;color:var(--muted)}
+.qr-resume{flex:none;display:flex;flex-direction:column;align-items:center;gap:4px}
+.qr-play{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:#fff;color:var(--lavender-fg);box-shadow:0 1px 4px rgba(0,0,0,.15)}
+.qr-resume small{font-size:11px;font-weight:600;color:var(--lavender-fg)}
+@media (prefers-reduced-motion:reduce){.qr-ring{animation:none}}
+/* Capture rapide card (Accueil): same panel as Lecture rapide, in the app's blue; a bigger title; Reprendre + caption. */
+.qcap-row{background:color-mix(in srgb,var(--accent) 10%,var(--surface));border-color:color-mix(in srgb,var(--accent) 28%,transparent)}
+.qcap-row .qr-copy{align-items:flex-end;text-align:right}
+.qcap-row .qr-ring{border-color:color-mix(in srgb,var(--accent) 55%,transparent)}
+.qcap-row .qr-core{background:var(--accent)}
+.qcap-row .qr-trigger:focus-visible{outline-color:var(--accent)}
+.qcap-row .qr-copy strong{font-size:22px;line-height:1.1;font-weight:800;letter-spacing:-.03em;color:var(--accent)}
+.qcap-row .qr-play{color:var(--accent)}
+.qcap-row .qr-resume small{color:var(--accent)}
+.qr-where{max-width:104px;font-size:11px;font-style:normal;font-weight:500;line-height:1.2;text-align:center;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Épuré (tablet / computer): smaller page, 1px-style strokes, no shadow. */
+@media (min-width:720px) and (min-height:521px),(min-width:960px){
+  .radial.open .radial-item.blurred{filter:blur(2px)}
+}
+

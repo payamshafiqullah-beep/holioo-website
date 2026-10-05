@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 const read=p=>fs.readFileSync(new URL(p,import.meta.url),'utf8');
+const captureParts=['capture-destination','capture-status','camera-stream','camera-scan-modes','capture-shutter','capture-batch'].map(n=>`../features/camera/${n}.js`);
 
 function setup(){
   const sections=['CM','TD','TP'].map(id=>({id,name:id,sessions:[1,2].map(n=>({id:id+n,number:n,photoIds:[],title:id+n,createdAt:'2026-09-30'}))}));
@@ -13,7 +14,7 @@ function setup(){
   ctx.Scanner={subscribe(){}};
   vm.runInContext(read('../features/camera/camera-destination.js'),ctx);
   vm.runInContext(read('../features/camera/camera-queue.js'),ctx);
-  vm.runInContext(read('../features/camera/capture-actions.js'),ctx);
+  for(const f of captureParts)vm.runInContext(read(f),ctx);
   vm.runInContext('setCameraThumb=()=>{}; renderCameraChip=()=>{};',ctx);
   const run=code=>vm.runInContext(code,ctx);
   return{ctx,state,run};
@@ -67,7 +68,7 @@ for(const count of [0,1,5])test(`session camera button stays visible with ${coun
 });
 
 test('navigation captures the origin before replacing currentView',()=>{
-  const source=read('../core/core.js');const start=source.indexOf('function navigate('),end=source.indexOf('\ndocument.addEventListener',start);
+  const source=read('../core/navigation.js');const start=source.indexOf('function navigate('),end=source.indexOf('\ndocument.addEventListener',start);
   const ctx={currentView:'session',appShell:{classList:{toggle(){}}},prepareCameraEntry:view=>{ctx.origin=view},setNav(){},setChrome(){},window:{scrollTo(){}},render:async()=>{}};
   vm.createContext(ctx);vm.runInContext(source.slice(start,end),ctx);ctx.navigate('capture');assert.equal(ctx.origin,'session');assert.equal(ctx.currentView,'capture');
 });

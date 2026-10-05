@@ -111,7 +111,7 @@ for(const f of ['./features/people/PeoplePage.js','./features/people/HolioShares
 if(home.includes('Relire mes PDF')||!home.includes('QuickReadingTrigger')||!home.includes('attachQuickReading'))throw new Error('Accueil must use the Lecture rapide trigger in place of "Relire mes PDF"');
 for(const s of ['quickReadingItems','quickReadingSelect','maxDepth:4,stack:true','openPdfViewer(item.pdfId,\'home\')','readingTree','qr-page'])if(!rd.includes(s))throw new Error(`Lecture rapide missing: ${s}`);
 for(const s of ['radialHitN','radialRadius','applyStack','maxDepth'])if(!radial.includes(s))throw new Error(`Radial menu missing: ${s}`);
-if(/maxDepth|stack:/.test(read('./ui/item-menu.js')))throw new Error('item menus must keep the plain two-ring menu (Capture rapide and Lecture rapide use stacked hub rings)');
+if(/maxDepth|stack:/.test(read('./ui/item-menu.js')))throw new Error('item menus must keep the plain two-ring menu (Capture rapide and Lecture rapide use stacked local rings)');
 for(const s of ['.radial.open .radial-item.blurred','.radial.open .radial-item.gone','.qr-ring','.qr-resume'])if(!css.includes(s))throw new Error(`Lecture rapide style missing: ${s}`);
 if(html.indexOf('features/home/reading-logic.js')>html.indexOf('features/home/quick-reading.js')||html.indexOf('features/home/quick-reading.js')<html.indexOf('features/camera/quick-capture.js'))throw new Error('reading-logic.js, then quick-reading.js, must load after quick-capture.js');}
 // Tablet / computer layout: built only at ≥768px, phones keep their own DOM; typed notes beside the photos.

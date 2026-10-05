@@ -13,7 +13,7 @@
     "format:check": "prettier --check .",
     "check:syntax": "node tools/check-syntax.mjs",
     "test:smoke": "node pwa/smoke-test.mjs",
-    "test": "node --test \"pwa/tests/*.test.mjs\"",
+    "test": "node --test --test-concurrency=4 \"pwa/tests/*.test.mjs\"",
     "check": "npm run lint && npm run format:check && npm run check:syntax && npm run test:smoke && npm test"
   },
   "devDependencies": {
@@ -22,6 +22,7 @@
     "eslint": "^10.12.0",
     "espree": "^10.4.0",
     "globals": "^17.13.0",
+    "jsdom": "^26.1.0",
     "jsqr": "1.4.0",
     "pdf-lib": "1.17.1",
     "postcss": "^8.4.35",

@@ -112,3 +112,5 @@ body:has(.msel-bar) .toast{bottom:calc(var(--float-bottom) + 64px)}
   .action-btn.ppl-add,.action-btn.ppl-revoke{position:relative}
 }
 
+.ppl-row.ppl-open{width:100%;border:0;font:inherit;color:inherit;text-align:left;cursor:pointer}
+.ppl-copy.ppl-open{cursor:pointer}

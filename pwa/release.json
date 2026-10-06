@@ -1,5 +1,5 @@
 {
-  "release": "20261005-epure-v47",
+  "release": "20261006-epure-v48",
   "extraFiles": [
     "features/photos/image-worker.js",
     "features/scanner/scanner-worker.js",

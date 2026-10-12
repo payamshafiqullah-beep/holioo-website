@@ -43,10 +43,10 @@ function showCameraPanel(kind){
 // right inside its pointerup (no await or timer before it); the camera screen then uses that stream.
 let camPrewarm=null;
 const cameraCanStream=()=>!!(window.isSecureContext&&navigator.mediaDevices?.getUserMedia);
-// Scan modes ask for the sharpest video the camera offers (text must stay readable).
+// Every mode asks for the sharpest video the camera offers: scans need readable text, and plain photos are then
+// shrunk from it, which averages the sensor noise away (the browser has no access to the phone's own noise reduction).
 function cameraConstraints(){
-  const res=isScanMode(state.camMode)?{width:{ideal:3840},height:{ideal:2160}}:{width:{ideal:1920},height:{ideal:1080}};
-  return{video:{facingMode:{ideal:cameraFacing},...res},audio:false};
+  return{video:{facingMode:{ideal:cameraFacing},width:{ideal:3840},height:{ideal:2160}},audio:false};
 }
 function prewarmCamera(){
   if(!cameraCanStream())return false;

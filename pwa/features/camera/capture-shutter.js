@@ -18,16 +18,16 @@ function capturePhoto({auto=false}={}){
   const sh=video.videoHeight/digitalZoom;
   const sx=(video.videoWidth-sw)/2;
   const sy=(video.videoHeight-sh)/2;
-  // Scans keep the full video resolution; plain photos stay light.
-  const maxW=isScanMode(camMode)?4096:2000;
+  // Scans keep the full video resolution; plain photos are shrunk (smoothly: this averages the noise) to stay light.
+  const maxW=isScanMode(camMode)?4096:2560;
   const outScale=Math.min(1,maxW/Math.max(sw,sh));
 
   const canvas=document.createElement('canvas');
   canvas.width=Math.max(1,Math.round(sw*outScale));
   canvas.height=Math.max(1,Math.round(sh*outScale));
-  canvas.getContext('2d',{alpha:false}).drawImage(
-    video,sx,sy,sw,sh,0,0,canvas.width,canvas.height
-  );
+  const g=canvas.getContext('2d',{alpha:false});
+  g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';
+  g.drawImage(video,sx,sy,sw,sh,0,0,canvas.width,canvas.height);
 
   const dest=cameraDestContext()?destinationForShot():{batchId:camBatchId||(camBatchId=uid())};   // no destination: the photo waits in this visit's Captures entry
   if(isScanMode(camMode)||camRetakeId){

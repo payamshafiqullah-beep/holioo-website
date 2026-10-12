@@ -10,7 +10,7 @@ async function renderHome(){
 
   app.innerHTML=`<section class="screen">
     ${PageHeader({logo:true})}
-    <div class="page-intro"><p class="greeting">Bonjour${firstName()?` ${esc(firstName())}`:''} 👋</p><h1 class="hero-title">Prêt à apprendre aujourd’hui ?</h1></div>
+    <div class="page-intro"><p class="greeting">Bonjour${firstName()?` ${esc(firstName())}`:''} 👋</p><h1 class="hero-title home-title">Prêt à apprendre aujourd’hui ?</h1></div>
     ${hero}
     ${SectionTitle('Mes cours',{action:'Voir tout',nav:'courses'})}
     ${courses.length?`<div class="category-grid" id="homeCourses">${courses.map((c,i)=>{const v=courseVisual(c,i),s=courseStats(c);return CategoryCard({tone:v.tone,iconName:v.iconName,title:c.name,meta:`${s.filled}/${s.sections} sections · ${plural(s.sessions,'séance')}`,pct:s.pct,attrs:`data-course="${c.id}"`})}).join('')}</div>${courses.length>1?'<p class="reorder-hint">Maintenez un cours puis faites-le glisser pour changer son ordre.</p>':''}`

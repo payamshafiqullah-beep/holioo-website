@@ -68,6 +68,7 @@
   /* ---------- Type ---------- */
   .greeting,.lead{font-size:13px}
   .hero-title,.detail-hero .hero-title{font-size:18px;line-height:1.2;letter-spacing:-.02em}
+  .hero-title.home-title{font-size:18px}
   .eyebrow,.hero-label{font-size:12px;letter-spacing:.08em}
   .meta-line,.small{font-size:12px}
   .section-title{font-size:13px;letter-spacing:-.01em}

@@ -26,14 +26,14 @@
 .qr-resume small{font-size:11px;font-weight:600;color:var(--lavender-fg)}
 @media (prefers-reduced-motion:reduce){.qr-ring{animation:none}}
 /* Capture rapide card (Accueil): same panel as Lecture rapide, in the app's blue; a bigger title; Reprendre + caption. */
-.qcap-row{background:color-mix(in srgb,var(--accent) 10%,var(--surface));border-color:color-mix(in srgb,var(--accent) 28%,transparent)}
+.qcap-row{background:color-mix(in srgb,var(--accent) 10%,var(--surface));border-color:color-mix(in srgb,var(--accent-on-surface) 28%,transparent)}
 .qcap-row .qr-copy{align-items:flex-end;text-align:right}
-.qcap-row .qr-ring{border-color:color-mix(in srgb,var(--accent) 55%,transparent)}
+.qcap-row .qr-ring{border-color:color-mix(in srgb,var(--accent-on-surface) 55%,transparent)}
 .qcap-row .qr-core{background:var(--accent)}
-.qcap-row .qr-trigger:focus-visible{outline-color:var(--accent)}
-.qcap-row .qr-copy strong{font-size:22px;line-height:1.1;font-weight:800;letter-spacing:-.03em;color:var(--accent)}
-.qcap-row .qr-play{color:var(--accent)}
-.qcap-row .qr-resume small{color:var(--accent)}
+.qcap-row .qr-trigger:focus-visible{outline-color:var(--accent-on-surface)}
+.qcap-row .qr-copy strong{font-size:22px;line-height:1.1;font-weight:800;letter-spacing:-.03em;color:var(--accent-on-surface)}
+.qcap-row .qr-play{color:var(--accent-on-surface)}
+.qcap-row .qr-resume small{color:var(--accent-on-surface)}
 .qr-where{max-width:104px;font-size:11px;font-style:normal;font-weight:500;line-height:1.2;text-align:center;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* Épuré (tablet / computer): smaller page, 1px-style strokes, no shadow. */

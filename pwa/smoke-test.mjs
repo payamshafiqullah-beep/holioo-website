@@ -151,4 +151,4 @@ if(!deskCss.includes('.cnav-add')||!deskCss.includes('.cnav-dot'))throw new Erro
 if(css.slice(0,css.indexOf('TABLET & COMPUTER')).includes('.cnav-'))throw new Error('Navigator styles must only exist in the tablet / computer block');}
 console.log(`Holioo modular smoke test: PASS (${pageFiles.length} page files)`);
 
-for(const s of ['HOLIOO UI v2','--bg:#F7F7FB','--accent:#5B67F1','.bottom-nav','.capture-orb','.shutter','.cam-dest','.cam-sheet'])if(!readCss().includes(s))throw new Error(`UI v2 style missing: ${s}`);
+for(const s of ['HOLIOO UI v2','--bg:#F7F7FB','--accent:#3B45D6','--accent-on-surface:','.bottom-nav','.capture-orb','.shutter','.cam-dest','.cam-sheet'])if(!readCss().includes(s))throw new Error(`UI v2 style missing: ${s}`);

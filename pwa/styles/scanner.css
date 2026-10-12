@@ -105,6 +105,6 @@
 .ocr-text{width:100%;min-height:200px;padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--bg);color:var(--ink);font:14px/1.5 inherit;resize:vertical}
 .ocr-results{margin-bottom:var(--s4)}
 .field-note{margin:6px 0 0;font-size:13px;line-height:1.45;color:var(--muted)}
-.field-note .link-btn{display:flex;margin:0 0 -6px -6px;color:var(--accent);font-weight:700}   /* own line under the note */
+.field-note .link-btn{display:flex;margin:0 0 -6px -6px;color:var(--accent-on-surface);font-weight:700}   /* own line under the note */
 @media (prefers-reduced-motion:reduce){.focus-ring.go,.srv-filter-name.show,.scan-quad,.scan-guide,.scan-overlay[data-page=""] .scan-guide,.scan-overlay[data-state="warn"] .scan-quad,.cam-notice.scan-hint::before{animation:none;transition:none}}
 

@@ -114,7 +114,7 @@ jobs:
             sleep 15
           done
           grep -q "$RELEASE" /tmp/holioo.html
-          grep -q 'drive.js' /tmp/holioo.html
+          grep -q 'sync/drive-api.js' /tmp/holioo.html
           grep -q 'features/camera/CapturePage.js' /tmp/holioo.html
           grep -q 'manifest.webmanifest' /tmp/holioo.html
           curl -fsSL -H 'Cache-Control: no-cache' "${URL}sw.js?check=1" | grep -q "$SW_VERSION"

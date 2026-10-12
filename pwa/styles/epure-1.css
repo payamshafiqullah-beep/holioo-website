@@ -4,7 +4,7 @@
    landscape-phone screens, which keep the phone layout; a window 960px wide or more is always a tablet /
    computer. Nothing above this block changes, so phones look exactly as before. The desk layout's own
    chrome (toolbar, course navigator, breadcrumb, Galerie, Notes) is sized in part 2/2 at the end of the file.
-   Palette  whites #F5F5F7 · blues #007AFF · grays #8E8E93 · 1px #E5E5E7 borders, no shadows
+   Palette  whites #F5F5F7 · blue #3B45D6 · grays #6C6C70 · 1px #E5E5E7 borders, no shadows
    Sizing   icons 16 · buttons 28×28 · toolbars 40 · sidebar 180–200 · text 12–13 · gaps 4–8 · radius 6
    Colours come from the tokens, so the dark theme keeps working. The camera viewfinder, the radial menus
    and the Quick Capture trigger are used by thumb: they keep their phone-size controls.
@@ -13,11 +13,11 @@
 
   /* ---------- Tokens ---------- */
   :root{
-    --bg:#F5F5F7;--surface:#F5F5F7;--ink:#1D1D1F;--muted:#8E8E93;--line:#E5E5E7;
-    --accent:#007AFF;--accent-soft:#E6F1FF;--hover:rgba(29,29,31,.05);
+    --bg:#F5F5F7;--surface:#F5F5F7;--ink:#1D1D1F;--muted:#6C6C70;--line:#E5E5E7;
+    --accent:#3B45D6;--accent-on-surface:#3B45D6;--accent-soft:#E6F1FF;--hover:rgba(29,29,31,.05);
     /* The pastel tones fold into the palette: blue tint with blue text (the red of "delete" stays). */
-    --lavender:#E6F1FF;--lavender-fg:#007AFF;--mint:#E6F1FF;--mint-fg:#007AFF;
-    --peach:#E6F1FF;--peach-fg:#007AFF;--yellow:#E6F1FF;--yellow-fg:#007AFF;--sky:#E6F1FF;--sky-fg:#007AFF;
+    --lavender:#E6F1FF;--lavender-fg:var(--accent-on-surface);--mint:#E6F1FF;--mint-fg:var(--accent-on-surface);
+    --peach:#E6F1FF;--peach-fg:var(--accent-on-surface);--yellow:#E6F1FF;--yellow-fg:var(--accent-on-surface);--sky:#E6F1FF;--sky-fg:var(--accent-on-surface);
     --s1:4px;--s2:6px;--s3:8px;--s4:12px;--s5:14px;--s6:16px;--s8:24px;
     --r-chip:6px;--r-btn:6px;--r-md:6px;--r-lg:6px;--r-nav:6px;
     --shadow-sm:0 0 0 0 transparent;--shadow-md:0 0 0 0 transparent;--shadow-lg:0 6px 20px rgba(0,0,0,.12);
@@ -31,7 +31,7 @@
 
   /* ---------- Base ---------- */
   body{font-size:13px}
-  :focus-visible{outline:2px solid rgba(0,122,255,.45);outline-offset:1px}
+  :focus-visible{outline:2px solid var(--accent-on-surface);outline-offset:1px}
   .tone-neutral{--tone-bg:var(--line);--tone-fg:var(--muted)}
   /* Icons: 16px everywhere except the camera, the radial menus and the Quick Capture orb. */
   .app-shell:not(.capture-active) .ico,.sheet .ico,.pe .ico,.desk-menu .ico{width:16px;height:16px}
@@ -79,7 +79,7 @@
   /* ---------- Controls ---------- */
   .search-bar{height:32px;padding:0 var(--s3);gap:var(--s2);border:1px solid var(--line);border-radius:6px;background:var(--surface)}
   .search-bar input{font-size:13px}
-  .search-bar:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,122,255,.14)}
+  .search-bar:focus-within{border-color:var(--accent-on-surface);box-shadow:0 0 0 3px rgba(59,69,214,.14)}
   .chips{gap:var(--s2)}
   .chip{height:28px;padding:0 var(--s4);border-radius:6px;font-size:12px}
   .action-btn{min-height:28px;padding:0 var(--s4);gap:var(--s2);border-radius:6px;font-size:13px;font-weight:600;letter-spacing:0}
@@ -107,10 +107,10 @@
   .field input,.field select,.field textarea{height:32px;padding:0 var(--s3);border:1px solid var(--line);border-radius:6px;background-color:var(--surface);font-size:13px}
   .field textarea{height:auto;min-height:64px;padding:var(--s2) var(--s3)}
   .field select{background-size:16px 16px;background-position:right 8px center;padding-right:28px}
-  .field input:focus,.field select:focus{box-shadow:0 0 0 3px rgba(0,122,255,.14)}
+  .field input:focus,.field select:focus{box-shadow:0 0 0 3px rgba(59,69,214,.14)}
   .field-row{gap:var(--s3)}
   .toggle-card,.check-card{padding:var(--s3) var(--s4);gap:var(--s3)}
-  .check-card:has(input:checked){border-color:var(--accent);box-shadow:none}
+  .check-card:has(input:checked){border-color:var(--accent-on-surface);box-shadow:none}
   .switch{width:36px;height:20px;border-radius:10px}
   .switch::after{top:2px;left:2px;width:16px;height:16px}
   .switch:checked::after{transform:translateX(16px)}
@@ -131,7 +131,7 @@
   .hero-art{width:72px}
   .qc-trigger{width:96px;gap:var(--s2)}
   .qc-trigger-orb{background:var(--accent);box-shadow:0 0 0 4px var(--bg)}
-  .qc-trigger-orb::before{border:1px dashed rgba(0,122,255,.55)}
+  .qc-trigger-orb::before{border:1px dashed rgba(59,69,214,.55)}
   .qc-trigger small{font-size:12px;color:var(--muted)}
   .qc-bubble{padding:var(--s3) var(--s4);border-radius:6px;font-size:13px}
   .qc-bubble-btn{height:28px;border-radius:6px;font-size:12px}

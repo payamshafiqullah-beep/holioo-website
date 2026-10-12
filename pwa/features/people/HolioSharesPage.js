@@ -2,7 +2,7 @@
 // Above each document: one line of its own metadata, e.g. "PDF · TD · Chimie". Reached from the icon in Bibliothèque.
 async function renderHolioShares(){
   setChrome(false);
-  app.innerHTML=`<section class="screen hs-screen">${PageHeader({back:true,title:'Holioo Shares',large:true,actions:false})}
+  app.innerHTML=`<section class="screen hs-screen">${PageHeader({back:true,title:'Holioo Shares',actions:false})}
     <div id="hsBody">${peopleSkeleton(2)}</div></section>`;
   byId('backBtn').onclick=()=>goBack('home');
   const body=byId('hsBody');

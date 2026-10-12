@@ -208,10 +208,7 @@ html.radial-haptic-confirm body{animation:radialHapticConfirm .2s var(--ease)}
 
 /* ---------- Header ---------- */
 .page-header{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);min-height:44px}
-.page-header.has-large{flex-direction:column;align-items:stretch;gap:var(--s2)}
-.page-header-top{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);min-height:44px}
-/* iOS large title: same size as .hero-title (34/41), sits under the button row */
-.page-header-large{margin:0;font-size:34px;line-height:41px;font-weight:800;letter-spacing:.012em;overflow-wrap:anywhere}
+.page-header-large{margin:0;font-size:30px;line-height:1.1;font-weight:800;letter-spacing:-.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .page-header-left,.page-header-right{display:flex;align-items:center;gap:var(--s2);min-width:0}
 .page-header-title{font-size:17px;font-weight:700;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .wordmark{position:relative;display:inline-block;align-self:flex-start;font-size:26px;font-weight:800;letter-spacing:-.05em;color:var(--ink)}

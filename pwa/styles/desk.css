@@ -21,9 +21,6 @@
   /* A header with only the logo (Accueil) is not repeated under the toolbar's. */
   .desk:not(.hidden-chrome) .page-header:has(.page-header-left>.wordmark:only-child):not(:has(.page-header-right>:not([data-nav="inbox"]):not(.avatar-btn))){display:none}
 
-  /* Large-title pages: the button row is dropped when it only held the buttons the toolbar already shows. */
-  .desk:not(.hidden-chrome) .page-header-top:not(:has(#backBtn)):not(:has(.page-header-right>:not([data-nav="inbox"]):not(.avatar-btn))){display:none}
-
   /* Toolbar */
   .desk-toolbar{grid-column:1/-1;grid-row:1;position:sticky;top:0;z-index:46;display:flex;align-items:center;gap:var(--s3);height:var(--desk-top);padding:env(safe-area-inset-top) var(--s4) 0;background:rgba(255,255,255,.9);-webkit-backdrop-filter:blur(20px) saturate(1.5);backdrop-filter:blur(20px) saturate(1.5);border-bottom:1px solid var(--line)}
   .desk-toolbar-start,.desk-toolbar-end{display:flex;align-items:center;gap:var(--s1);flex:none}

@@ -3,7 +3,7 @@ function renderProfile(){
   setChrome(false);
   const p=state.profile;
   app.innerHTML=`<section class="screen">
-    ${PageHeader({back:true,title:'Profil',actions:false})}
+    ${PageHeader({back:true,title:'Profil',large:true,actions:false})}
     <div class="profile-card">
       <label class="profile-avatar-picker" aria-label="Choisir une photo de profil" title="JPG, PNG ou WebP · 5 Mo max.">
         <span class="profile-avatar">${p.avatarUrl?`<img src="${esc(p.avatarUrl)}" alt="Photo de profil">`:esc(iconLetter(p.displayName))}</span>

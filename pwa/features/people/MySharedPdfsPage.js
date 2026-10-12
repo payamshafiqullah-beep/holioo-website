@@ -2,7 +2,7 @@
 // Reached from "PDF partagés" on Accueil. What others shared with me lives in Holioo Shares.
 async function renderMySharedPdfs(){
   setChrome(false);
-  app.innerHTML=`<section class="screen">${PageHeader({back:true,title:'PDF partagés',actions:false})}<div id="spBody">${peopleSkeleton(2)}</div></section>`;
+  app.innerHTML=`<section class="screen">${PageHeader({back:true,title:'PDF partagés',large:true,actions:false})}<div id="spBody">${peopleSkeleton(2)}</div></section>`;
   byId('backBtn').onclick=()=>goBack('home');
   const body=byId('spBody');
   if(guestMode||!currentUser){body.innerHTML=Notice(`${icon('user',{size:18})}<span>Connectez-vous avec Google pour partager des PDF.</span>`,'peach');return}

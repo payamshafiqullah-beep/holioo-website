@@ -1,0 +1,8 @@
+{
+  "appId": "fr.holioo.app",
+  "appName": "Holioo",
+  "webDir": "dist-ios",
+  "ios": {
+    "contentInset": "never"
+  }
+}

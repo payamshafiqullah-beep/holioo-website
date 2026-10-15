@@ -17,7 +17,9 @@ const appRules = {
 };
 
 export default [
-  { ignores: ['dist/**', 'node_modules/**', 'pwa/vendor/**', 'supabase/**', 'graphify-out/**'] },
+  {
+    ignores: ['dist/**', 'node_modules/**', 'pwa/vendor/**', 'supabase/**', 'graphify-out/**', 'ios/**', 'dist-ios/**'],
+  },
   {
     files: ['pwa/**/*.js'],
     ignores: ['pwa/tests/**', 'pwa/**/*-worker.js', 'pwa/sw.js'],

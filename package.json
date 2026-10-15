@@ -18,9 +18,14 @@
     "test:smoke": "node pwa/smoke-test.mjs",
     "test": "node --test --test-concurrency=4 \"pwa/tests/*.test.mjs\"",
     "verify:dist": "node tools/verify-deploy.mjs dist/app",
-    "check": "npm run lint && npm run format:check && npm run release:check && npm run check:syntax && npm run test:smoke && npm test"
+    "check": "npm run lint && npm run format:check && npm run release:check && npm run check:syntax && npm run test:smoke && npm test",
+    "ios:prepare": "node tools/prepare-ios.mjs",
+    "ios:sync": "npm run ios:prepare && cap sync ios",
+    "ios:open": "cap open ios",
+    "ios:run": "npm run ios:sync && cap run ios"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.3",
     "@eslint/js": "^10.0.1",
     "@techstark/opencv-js": "4.10.0-release.1",
     "eslint": "^10.12.0",
@@ -33,5 +38,9 @@
     "prettier": "^3.9.9",
     "qrcode": "1.5.4",
     "vite": "^5.1.0"
+  },
+  "dependencies": {
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/ios": "^8.5.3"
   }
 }

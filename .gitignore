@@ -6,3 +6,10 @@
 !.env.example
 node_modules/
 supabase/.temp/
+
+# iOS (Capacitor)
+dist-ios/
+ios/App/Pods/
+ios/App/build/
+ios/DerivedData/
+ios/**/xcuserdata/

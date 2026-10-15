@@ -15,3 +15,6 @@ pwa/
 # The deployed landing page is kept byte-for-byte; a local scratch note is not project code.
 index.html
 SAFE_COPY_PROMPT.md
+
+ios/
+dist-ios/

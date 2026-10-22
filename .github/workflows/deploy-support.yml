@@ -1,0 +1,92 @@
+name: Deploy support page preserving live Holioo v52
+
+# Manual only: publish the support page without releasing the newer app on main.
+# Refuse to run if the live app has moved beyond the pinned, verified release.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy-support:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout support page
+        uses: actions/checkout@v7
+        with:
+          path: support-source
+
+      - name: Checkout the unchanged live release
+        uses: actions/checkout@v7
+        with:
+          ref: 5a7663c742236f754f71b7c510c72e6f9e04f1a6
+          path: live-release
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Refuse to replace a different live app
+        working-directory: live-release
+        run: node tools/verify-deploy.mjs https://www.holioo.fr/app/
+
+      - name: Check and build the unchanged live release
+        working-directory: live-release
+        run: |
+          npm ci
+          node tools/release.mjs --check
+          node tools/check-syntax.mjs
+          node pwa/smoke-test.mjs
+          npm test
+          npm run build
+
+      - name: Add only support.html and the unchanged app
+        working-directory: live-release
+        run: |
+          cp ../support-source/public/support.html dist/support.html
+          mkdir -p dist/app
+          cp -R pwa/. dist/app/
+          rm -rf dist/app/smoke-test.mjs dist/app/tests
+          cmp ../support-source/public/support.html dist/support.html
+          node tools/verify-deploy.mjs dist/app
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: live-release/dist
+
+      - name: Recheck the live app immediately before publishing
+        working-directory: live-release
+        run: node tools/verify-deploy.mjs https://www.holioo.fr/app/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
+
+      - name: Verify public support page and unchanged live app
+        working-directory: live-release
+        run: |
+          set -e
+          for attempt in $(seq 1 20); do
+            status=$(curl -sS -o /tmp/holioo-support.html -w '%{http_code}' -H 'Cache-Control: no-cache' "https://www.holioo.fr/support.html?verify=${GITHUB_SHA}-${attempt}")
+            if [ "$status" = 200 ] && cmp -s ../support-source/public/support.html /tmp/holioo-support.html; then break; fi
+            sleep 5
+          done
+          test "$status" = 200
+          cmp ../support-source/public/support.html /tmp/holioo-support.html
+          node tools/verify-deploy.mjs https://www.holioo.fr/app/

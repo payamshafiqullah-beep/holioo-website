@@ -1,0 +1,108 @@
+name: Deploy library signed URL hotfix on live v52
+
+# Manual only: publish the signed-URL fix without releasing unrelated app changes.
+# Accept only the known live v52 release or this exact hotfix before publishing.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy-library-hotfix:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout support page
+        uses: actions/checkout@v7
+        with:
+          path: support-source
+
+      - name: Checkout the pinned library hotfix
+        uses: actions/checkout@v7
+        with:
+          ref: a693d26433cf745a846588f877d56a9100ec7572
+          path: live-release
+
+      - name: Checkout the previous live release for the deployment guard
+        uses: actions/checkout@v7
+        with:
+          ref: 5a7663c742236f754f71b7c510c72e6f9e04f1a6
+          path: previous-live
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Refuse to replace a different live app
+        working-directory: live-release
+        run: |
+          node tools/verify-deploy.mjs https://www.holioo.fr/app/ ||
+            node ../previous-live/tools/verify-deploy.mjs https://www.holioo.fr/app/
+
+      - name: Check and build the pinned library hotfix
+        working-directory: live-release
+        run: |
+          cmp ../support-source/pwa/features/library/AcademicLibraryPage.js pwa/features/library/AcademicLibraryPage.js
+          cmp ../support-source/pwa/features/people/MySharedPdfsPage.js pwa/features/people/MySharedPdfsPage.js
+          if grep -n 'getPublicUrl' pwa/features/library/AcademicLibraryPage.js pwa/features/people/MySharedPdfsPage.js; then
+            echo 'Library code must use signed URLs'
+            exit 1
+          fi
+          npm ci
+          node tools/release.mjs --check
+          node tools/check-syntax.mjs
+          node pwa/smoke-test.mjs
+          npm test
+          npm run build
+
+      - name: Include support.html and the hotfixed app
+        working-directory: live-release
+        run: |
+          cp ../support-source/public/support.html dist/support.html
+          mkdir -p dist/app
+          cp -R pwa/. dist/app/
+          rm -rf dist/app/smoke-test.mjs dist/app/tests
+          cmp ../support-source/public/support.html dist/support.html
+          node tools/verify-deploy.mjs dist/app
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: live-release/dist
+
+      - name: Recheck the live app immediately before publishing
+        working-directory: live-release
+        run: |
+          node tools/verify-deploy.mjs https://www.holioo.fr/app/ ||
+            node ../previous-live/tools/verify-deploy.mjs https://www.holioo.fr/app/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
+
+      - name: Verify support page and every hotfixed app file
+        working-directory: live-release
+        run: |
+          set -e
+          for attempt in $(seq 1 20); do
+            status=$(curl -sS -o /tmp/holioo-support.html -w '%{http_code}' -H 'Cache-Control: no-cache' "https://www.holioo.fr/support.html?verify=${GITHUB_SHA}-${attempt}")
+            if [ "$status" = 200 ] && cmp -s ../support-source/public/support.html /tmp/holioo-support.html; then break; fi
+            sleep 5
+          done
+          test "$status" = 200
+          cmp ../support-source/public/support.html /tmp/holioo-support.html
+          node tools/verify-deploy.mjs https://www.holioo.fr/app/

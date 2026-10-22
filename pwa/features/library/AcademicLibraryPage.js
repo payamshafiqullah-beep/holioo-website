@@ -156,11 +156,10 @@ async function renderLibraryItem(){
   if(sb&&pdf){
     const path=(i.storage_paths||[])[0];
     if(path){
-      const{data}=sb.storage.from('public-materials').getPublicUrl(path);
-      byId('openPublicPdf').onclick=()=>{const w=window.open(data.publicUrl,'_blank','noopener');if(!w)location.href=data.publicUrl};
+      byId('openPublicPdf').onclick=async()=>{const{data,error}=await sb.storage.from('public-materials').createSignedUrl(path,3600);if(error||!data?.signedUrl){showToast('Fichier indisponible');return}const w=window.open(data.signedUrl,'_blank','noopener');if(!w)location.href=data.signedUrl};
     }else byId('openPublicPdf').disabled=true;
   }else if(sb){
-    for(let x=0;x<(i.storage_paths||[]).length;x++){const{data}=sb.storage.from('public-materials').getPublicUrl(i.storage_paths[x]),d=document.createElement('div');d.className='thumb';d.innerHTML=`<img src="${data.publicUrl}" alt="Photo publique ${x+1}" loading="lazy"><span class="num">${x+1}</span>`;byId('publicThumbs').appendChild(d)}
+    (async()=>{const paths=i.storage_paths||[];if(!paths.length)return;const{data}=await sb.storage.from('public-materials').createSignedUrls(paths,3600);paths.forEach((_,x)=>{const url=data?.[x]?.signedUrl;if(!url)return;const d=document.createElement('div');d.className='thumb';d.innerHTML=`<img src="${url}" alt="Photo publique ${x+1}" loading="lazy"><span class="num">${x+1}</span>`;byId('publicThumbs')?.appendChild(d)})})();
   }
   byId('favMaterial').onclick=()=>{toggleFavorite(i);showToast(isFavorite(i.id)?'Ajouté aux favoris':'Retiré des favoris');render()};
   byId('deletePublicMaterial')?.addEventListener('click',()=>confirmDeletePublicMaterial(i));

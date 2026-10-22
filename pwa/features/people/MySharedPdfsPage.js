@@ -24,7 +24,7 @@ async function renderMySharedPdfs(){
   body.querySelectorAll('[data-open-lib]').forEach(b=>b.onclick=()=>{
     const m=lib.find(x=>x.id===b.dataset.openLib),path=(m?.storage_paths||[])[0];
     if(!path){showToast('Fichier introuvable');return}
-    openDoc({...m,publicUrl:sb.storage.from('public-materials').getPublicUrl(path).data.publicUrl});
+    sb.storage.from('public-materials').createSignedUrl(path,3600).then(({data,error})=>{if(error||!data?.signedUrl){showToast('Fichier introuvable');return}openDoc({...m,publicUrl:data.signedUrl})});
   });
   body.querySelectorAll('[data-open-sent]').forEach(b=>{const go=()=>{const s=given.find(x=>x.id===b.dataset.openSent);if(s)openDoc(s)};b.onclick=go;b.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go()}}});
   body.querySelectorAll('[data-revoke]').forEach(b=>b.onclick=()=>{

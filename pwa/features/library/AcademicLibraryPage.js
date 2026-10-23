@@ -168,7 +168,7 @@ async function renderLibraryItem(){
 
 // A report is sent by e-mail to the Holioo contact address (the same one as in the privacy policy),
 // with the reference of the material, so it can be reviewed and removed.
-const HOLIOO_CONTACT='payamshafiqullah@gmail.com';
+const HOLIOO_CONTACT='contact@holioo.fr';
 function reportMaterial(item){
   openSheet({title:'Signaler ce matériel',subtitle:'Votre application e-mail va s’ouvrir avec la référence du matériel. Expliquez le problème (données personnelles, contenu inapproprié, erreur…).',confirmText:'Écrire le signalement',onConfirm:()=>{
     const subject=`Signalement Holioo — ${item.title||'matériel'}`;

@@ -1,0 +1,97 @@
+name: Deploy privacy policy and terms on live v52 (manual)
+
+# Manual only: publish public/confidentialite.html and public/conditions.html (from main) on top of the release that is live now
+# (pinned contact e-mail hotfix eb88ab7, with support.html from main), without releasing the newer app on main.
+# Refuse to run if the live app is not exactly that release.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy-legal:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout the pages to publish
+        uses: actions/checkout@v7
+        with:
+          path: pages-source
+
+      - name: Checkout the live release (contact e-mail hotfix)
+        uses: actions/checkout@v7
+        with:
+          ref: eb88ab77ae01c79598a8f37627e09c07fa00bfa2
+          path: live-release
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Refuse to replace a different live app
+        working-directory: live-release
+        run: node tools/verify-deploy.mjs https://www.holioo.fr/app/
+
+      - name: Check and build the unchanged live release
+        working-directory: live-release
+        run: |
+          npm ci
+          node tools/release.mjs --check
+          node tools/check-syntax.mjs
+          npm run build
+
+      - name: Include the legal pages, support.html and the unchanged app
+        working-directory: live-release
+        run: |
+          for page in confidentialite conditions support; do
+            cp "../pages-source/public/$page.html" "dist/$page.html"
+            cmp "../pages-source/public/$page.html" "dist/$page.html"
+          done
+          grep -q 'Dernière mise à jour : 28 octobre 2026' dist/confidentialite.html
+          grep -q 'Dernière mise à jour : 28 octobre 2026' dist/conditions.html
+          mkdir -p dist/app
+          cp -R pwa/. dist/app/
+          rm -rf dist/app/smoke-test.mjs dist/app/tests
+          node tools/verify-deploy.mjs dist/app
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: live-release/dist
+
+      - name: Recheck the live app immediately before publishing
+        working-directory: live-release
+        run: node tools/verify-deploy.mjs https://www.holioo.fr/app/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
+
+      - name: Verify the published pages and the unchanged live app
+        working-directory: live-release
+        run: |
+          set -e
+          for page in confidentialite conditions support; do
+            for attempt in $(seq 1 40); do
+              status=$(curl -sS -o "/tmp/$page.html" -w '%{http_code}' -H 'Cache-Control: no-cache' "https://www.holioo.fr/$page.html?verify=${GITHUB_SHA}-${attempt}")
+              if [ "$status" = 200 ] && cmp -s "../pages-source/public/$page.html" "/tmp/$page.html"; then break; fi
+              sleep 15
+            done
+            test "$status" = 200
+            cmp "../pages-source/public/$page.html" "/tmp/$page.html"
+          done
+          node tools/verify-deploy.mjs https://www.holioo.fr/app/
